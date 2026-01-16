@@ -1,0 +1,11 @@
+{
+  "name": "STOXX Europe (Sample)",
+  "description": "Large-cap mix from STOXX Europe for demo runs",
+  "version": "2026-01-12",
+  "selection_rule": "Handpicked EU blue chips for MVP",
+  "survivorship_bias_note": "Static subset for demos, not full index",
+  "symbols": [
+    "NESN", "NOVN", "CSGN", "LONN", "SAN", "OR", "MC", "AIR", "AI", "ACA",
+    "ENEL", "ISP", "TTE", "ULVR", "BATS", "RIO", "HSBA", "RDSA", "BP", "ADYEN"
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "llm_output.v1.schema.json",
+  "type": "object",
+  "required": ["meta", "market_summary", "top5_narrative", "recommendations", "document_requests", "constraints"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["model", "temperature", "prompt_version", "input_hash"],
+      "properties": {
+        "model": { "type": "string" },
+        "temperature": { "type": "number", "enum": [0] },
+        "prompt_version": { "type": "string" },
+        "input_hash": { "type": "string" }
+      }
+    },
+
+    "market_summary": {
+      "type": "object",
+      "required": ["bullets"],
+      "properties": {
+        "bullets": { "type": "array", "items": { "type": "string" }, "maxItems": 3 }
+      }
+    },
+
+    "top5_narrative": {
+      "type": "array",
+      "description": "Exactly 5 entries aligned with run.selections.top5",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["symbol", "why_now", "thesis_bullets", "risk_bullets"],
+        "properties": {
+          "symbol": { "type": "string" },
+          "why_now": { "type": "string", "maxLength": 240 },
+          "thesis_bullets": { "type": "array", "items": { "type": "string" }, "maxItems": 4 },
+          "risk_bullets": { "type": "array", "items": { "type": "string" }, "maxItems": 3 }
+        }
+      }
+    },
+
+    "recommendations": {
+      "type": "array",
+      "description": "Recommendation wording only; must not claim certainty.",
+      "items": {
+        "type": "object",
+        "required": ["symbol", "label", "confidence"],
+        "properties": {
+          "symbol": { "type": "string" },
+          "label": {
+            "type": "string",
+            "enum": [
+              "strong_recommendation_to_buy",
+              "medium_recommendation_to_buy",
+              "weak_recommendation_to_buy",
+              "clear_hold",
+              "uncertain_hold",
+              "weak_recommendation_to_sell",
+              "medium_recommendation_to_sell",
+              "strong_recommendation_to_sell"
+            ]
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+
+    "document_requests": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["symbol", "reason", "requested_docs", "questions", "priority", "expected_insight_score"],
+        "properties": {
+          "symbol": { "type": "string" },
+          "reason": { "type": "string", "maxLength": 400 },
+          "requested_docs": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["balance_sheet", "income_statement", "cash_flow", "notes", "segment_reporting"] },
+            "minItems": 1
+          },
+          "questions": { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 5 },
+          "priority": { "type": "string", "enum": ["high", "medium"] },
+          "expected_insight_score": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+
+    "constraints": {
+      "type": "object",
+      "required": ["no_web_scraping", "no_new_symbols", "no_new_numbers"],
+      "properties": {
+        "no_web_scraping": { "type": "boolean", "const": true },
+        "no_new_symbols": { "type": "boolean", "const": true },
+        "no_new_numbers": { "type": "boolean", "const": true }
+      }
+    }
+  }
+}

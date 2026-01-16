@@ -1,0 +1,16 @@
+{
+  "name": "NASDAQ 100 (sample)",
+  "provider": "finnhub",
+  "benchmark": "QQQ",
+  "description": "Scaled universe for two-phase pipeline",
+  "version": "2026-01",
+  "selection_rule": "NASDAQ 100 constituents (truncated sample)",
+  "survivorship_bias_note": "Sampled subset for rate-limit safe local runs",
+  "symbols": [
+    "AAPL", "ADBE", "ADI", "ADP", "AMAT", "AMD", "AMGN", "AMZN", "AVGO", "BKNG",
+    "CMCSA", "COST", "CRWD", "CSCO", "DLTR", "EA", "GILD", "GOOG", "GOOGL", "INTC",
+    "INTU", "ISRG", "KLAC", "LRCX", "LULU", "MAR", "META", "MRVL", "MSFT", "MU",
+    "NFLX", "NVDA", "ORLY", "PANW", "PEP", "PYPL", "QCOM", "REGN", "SBUX", "TEAM",
+    "TSLA", "TXN", "VRTX"
+  ]
+}

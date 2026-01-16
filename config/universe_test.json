@@ -1,0 +1,24 @@
+{
+  "name": "universe_test",
+  "description": "Test universe for local debugging and quality/fair-value diagnostics.",
+  "version": "0.1.0",
+  "selection_rule": "static list for debugging",
+  "survivorship_bias_note": "Static list; not point-in-time.",
+  "symbols": [
+    "AAPL",
+    "MSFT",
+    "BA",
+    "LOW",
+    "XOM",
+    "WMT",
+    "JNJ",
+    "CVS",
+    "PG",
+    "MCK",
+    "HCA",
+    "MO",
+    "TSLA",
+    "GOOGL",
+    "AMZN"
+  ]
+}

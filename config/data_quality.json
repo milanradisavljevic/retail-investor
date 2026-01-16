@@ -1,0 +1,24 @@
+{
+  "required_metrics": [
+    "peRatio",
+    "pbRatio",
+    "psRatio",
+    "roe",
+    "debtToEquity",
+    "beta"
+  ],
+  "critical_metrics": [
+    "peRatio",
+    "pbRatio",
+    "debtToEquity",
+    "roe"
+  ],
+  "metric_defaults": {
+    "volatility3Month": 0.3,
+    "debtToEquity": 1.0
+  },
+  "min_samples": {
+    "industry": 5,
+    "sector": 5
+  }
+}

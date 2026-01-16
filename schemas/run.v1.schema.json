@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "run.v1.schema.json",
+  "type": "object",
+  "required": [
+    "run_id",
+    "run_date",
+    "as_of_date",
+    "provider",
+    "universe",
+    "benchmark",
+    "mode",
+    "data_quality_summary",
+    "scores",
+    "selections",
+    "flags"
+  ],
+  "properties": {
+    "run_id": { "type": "string", "description": "Stable ID, e.g. YYYY-MM-DD__hash" },
+    "run_date": { "type": "string", "format": "date" },
+    "as_of_date": { "type": "string", "format": "date", "description": "Last trading day used for prices/scores" },
+
+    "provider": {
+      "type": "object",
+      "required": ["name", "cache_policy"],
+      "properties": {
+        "name": { "type": "string", "enum": ["finnhub", "yfinance", "hybrid"] },
+        "cache_policy": {
+          "type": "object",
+          "required": ["prices_ttl_hours", "fundamentals_ttl_days", "news_ttl_minutes"],
+          "properties": {
+            "prices_ttl_hours": { "type": "number" },
+            "fundamentals_ttl_days": { "type": "number" },
+            "news_ttl_minutes": { "type": "number" }
+          }
+        },
+        "rate_limit_observed": {
+          "type": "object",
+          "properties": {
+            "max_concurrency": { "type": "integer" },
+            "requests_made": { "type": "integer" }
+          }
+        }
+      }
+    },
+
+    "mode": {
+      "type": "object",
+      "required": ["model_version", "label", "score", "confidence", "benchmark", "features"],
+      "properties": {
+        "model_version": { "type": "string" },
+        "label": { "type": "string", "enum": ["RISK_ON", "NEUTRAL", "RISK_OFF"] },
+        "score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "benchmark": { "type": "string" },
+        "features": {
+          "type": "object",
+          "properties": {
+            "ma50": { "type": "number" },
+            "ma200": { "type": ["number", "null"] },
+            "vol20": { "type": ["number", "null"] },
+            "vol60": { "type": ["number", "null"] },
+            "breadth": { "type": ["number", "null"] }
+          }
+        }
+      }
+    },
+
+    "data_quality_summary": {
+      "type": "object",
+      "required": [
+        "avg_data_quality_score",
+        "pct_high",
+        "pct_medium",
+        "pct_low",
+        "tickers_with_critical_fallback",
+        "most_missing_metrics",
+        "generated_at",
+        "universe_name"
+      ],
+      "properties": {
+        "avg_data_quality_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "pct_high": { "type": "number", "minimum": 0, "maximum": 1 },
+        "pct_medium": { "type": "number", "minimum": 0, "maximum": 1 },
+        "pct_low": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tickers_with_critical_fallback": { "type": "array", "items": { "type": "string" } },
+        "most_missing_metrics": { "type": "array", "items": { "type": "string" } },
+        "generated_at": { "type": "string" },
+        "universe_name": { "type": "string" }
+      }
+    },
+
+    "universe": {
+      "type": "object",
+      "required": ["definition", "symbols"],
+      "properties": {
+        "definition": {
+          "type": "object",
+          "required": ["name", "selection_rule"],
+          "properties": {
+            "name": { "type": "string", "description": "e.g. S&P500 rank 50-150" },
+            "selection_rule": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        },
+        "symbols": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
+
+    "benchmark": {
+      "type": "object",
+      "required": ["type", "name", "provider_symbol"],
+      "properties": {
+        "type": { "type": "string", "enum": ["index", "proxy_instrument"] },
+        "name": { "type": "string" },
+        "provider_symbol": { "type": "string", "description": "Finnhub symbol mapping stored in config" },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "pipeline": {
+      "type": "object",
+      "description": "Execution metadata for the scoring pipeline",
+      "properties": {
+        "top_k": { "type": ["number", "null"] },
+        "max_symbols_per_run": { "type": ["number", "null"] },
+        "truncated": { "type": "boolean" },
+        "original_symbol_count": { "type": "number" },
+        "scored_symbol_count": { "type": "number" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "request_budget": {
+          "type": "object",
+          "properties": {
+            "estimated_requests": { "type": "number" },
+            "actual_requests": { "type": "number" },
+            "fundamentals_cache_hit_rate": { "type": "number" },
+            "technical_cache_hit_rate": { "type": "number" },
+            "fundamentals_cache_hits": { "type": "number" },
+            "technical_cache_hits": { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "scores": {
+      "type": "array",
+      "description": "One entry per symbol",
+      "items": {
+        "type": "object",
+        "required": ["symbol", "total_score", "breakdown", "evidence", "data_quality"],
+        "properties": {
+          "symbol": { "type": "string" },
+          "total_score": { "type": "number", "minimum": 0, "maximum": 100 },
+          "is_scan_only": { "type": "boolean" },
+
+          "breakdown": {
+            "type": "object",
+            "required": ["fundamental", "technical"],
+            "properties": {
+              "fundamental": { "type": "number", "minimum": 0, "maximum": 100 },
+              "technical": { "type": "number", "minimum": 0, "maximum": 100 }
+            }
+          },
+
+          "evidence": {
+            "type": "object",
+            "required": ["valuation", "quality", "technical", "risk"],
+            "properties": {
+              "valuation": { "type": "number", "minimum": 0, "maximum": 100 },
+              "quality": { "type": "number", "minimum": 0, "maximum": 100 },
+              "technical": { "type": "number", "minimum": 0, "maximum": 100 },
+              "risk": { "type": "number", "minimum": 0, "maximum": 100 }
+            }
+          },
+
+          "valuation_input_coverage": {
+            "type": ["object", "null"],
+            "description": "Preferred: coverage of valuation inputs (PE/PB/PS) used to compute Value pillar",
+            "properties": {
+              "present": { "type": "array", "items": { "type": "string" } },
+              "missing": { "type": "array", "items": { "type": "string" } },
+              "strategy_used": { "type": "string", "enum": ["full", "partial", "fallback_neutral"] }
+            }
+          },
+
+          "value_input_coverage": {
+            "type": ["object", "null"],
+            "description": "Deprecated alias for valuation_input_coverage",
+            "properties": {
+              "present": { "type": "array", "items": { "type": "string" } },
+              "missing": { "type": "array", "items": { "type": "string" } },
+              "strategy_used": { "type": "string", "enum": ["full", "partial", "fallback_neutral"] }
+            }
+          },
+
+          "data_quality": {
+            "type": "object",
+            "required": [
+              "data_quality_score",
+              "data_quality_confidence",
+              "completeness_ratio",
+              "imputed_ratio",
+              "missing_critical",
+              "metrics"
+            ],
+            "properties": {
+              "data_quality_score": { "type": "number", "minimum": 0, "maximum": 100 },
+              "data_quality_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "completeness_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+              "imputed_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+              "missing_critical": { "type": "array", "items": { "type": "string" } },
+              "metrics": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "value": { "type": ["number", "null"] },
+                    "source": { "type": "string" },
+                    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                    "isImputed": { "type": "boolean" },
+                    "isMissing": { "type": "boolean" },
+                    "notes": { "type": "string" }
+                  }
+                }
+              },
+              "missing_fields": { "type": "array", "items": { "type": "string" } },
+              "assumptions": { "type": "array", "items": { "type": "string" }, "maxItems": 10 },
+              "adjusted_price_mode": { "type": "string", "enum": ["adjusted", "raw", "mixed"], "description": "Must be 'adjusted' for return/indicator consistency" }
+            }
+          },
+
+          "price_target": {
+            "type": ["object", "null"],
+            "description": "Price target calculated from sector-relative multiples",
+            "properties": {
+              "current_price": { "type": "number", "minimum": 0 },
+              "fair_value": { "type": "number", "minimum": 0 },
+              "upside_pct": { "type": "number", "description": "Decimal, e.g. 0.15 for 15%" },
+              "target_buy_price": { "type": "number", "minimum": 0 },
+              "target_sell_price": { "type": "number", "minimum": 0 },
+              "expected_return_pct": { "type": "number" },
+              "holding_period_months": { "type": "integer", "minimum": 1, "maximum": 24 },
+              "target_date": { "type": "string", "format": "date" },
+              "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+              "requires_deep_analysis": { "type": "boolean" },
+              "deep_analysis_reasons": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+
+          "price_target_diagnostics": {
+            "type": ["object", "null"],
+            "description": "Debuggable inputs and component-level details for price targets",
+            "properties": {
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "pe_ratio": { "type": ["number", "null"] },
+                  "pb_ratio": { "type": ["number", "null"] },
+                  "ps_ratio": { "type": ["number", "null"] },
+                  "eps": { "type": ["number", "null"] },
+                  "book_value_per_share": { "type": ["number", "null"] },
+                  "revenue_per_share": { "type": ["number", "null"] },
+                  "sector": { "type": ["string", "null"] },
+                  "industry": { "type": ["string", "null"] }
+                }
+              },
+              "medians": {
+                "type": "object",
+                "properties": {
+                  "source": { "type": "string", "enum": ["sector", "global"] },
+                  "fallback_reason": { "type": ["string", "null"], "enum": ["sector_sample_too_small", "missing_sector", null] },
+                  "sector": {
+                    "type": "object",
+                    "properties": {
+                      "median_pe": { "type": ["number", "null"] },
+                      "median_pb": { "type": ["number", "null"] },
+                      "median_ps": { "type": ["number", "null"] },
+                      "sample_size": { "type": ["number", "null"] }
+                    }
+                  },
+                  "global": {
+                    "type": "object",
+                    "properties": {
+                      "median_pe": { "type": ["number", "null"] },
+                      "median_pb": { "type": ["number", "null"] },
+                      "median_ps": { "type": ["number", "null"] },
+                      "sample_size": { "type": ["number", "null"] }
+                    }
+                  }
+                }
+              },
+              "components": {
+                "type": "object",
+                "properties": {
+                  "pe": {
+                    "type": "object",
+                    "properties": {
+                      "included": { "type": "boolean" },
+                      "weight": { "type": "number" },
+                      "value": { "type": ["number", "null"] },
+                      "clamped": { "type": ["boolean", "null"] },
+                      "reason": { "type": ["string", "null"] }
+                    }
+                  },
+                  "pb": {
+                    "type": "object",
+                    "properties": {
+                      "included": { "type": "boolean" },
+                      "weight": { "type": "number" },
+                      "value": { "type": ["number", "null"] },
+                      "clamped": { "type": ["boolean", "null"] },
+                      "reason": { "type": ["string", "null"] }
+                    }
+                  },
+                  "ps": {
+                    "type": "object",
+                    "properties": {
+                      "included": { "type": "boolean" },
+                      "weight": { "type": "number" },
+                      "value": { "type": ["number", "null"] },
+                      "clamped": { "type": ["boolean", "null"] },
+                      "reason": { "type": ["string", "null"] }
+                    }
+                  }
+                }
+              },
+              "fair_value": {
+                "type": "object",
+                "properties": {
+                  "raw": { "type": ["number", "null"] },
+                  "bounded": { "type": ["number", "null"] },
+                  "min": { "type": "number" },
+                  "max": { "type": "number" },
+                  "was_clamped": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "selections": {
+      "type": "object",
+      "required": ["top5", "top10", "pick_of_the_day"],
+      "properties": {
+        "top5": { "type": "array", "items": { "type": "string" }, "minItems": 5, "maxItems": 5 },
+        "top10": { "type": "array", "items": { "type": "string" }, "minItems": 10, "maxItems": 10 },
+        "pick_of_the_day": { "type": "string", "description": "Deterministic seeded selection" }
+      }
+    },
+
+    "flags": {
+      "type": "object",
+      "required": ["user_documents_missing", "prompt_injection_suspected"],
+      "properties": {
+        "user_documents_missing": { "type": "array", "items": { "type": "string" } },
+        "prompt_injection_suspected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["symbol", "source", "pattern_hit"],
+            "properties": {
+              "symbol": { "type": "string" },
+              "source": { "type": "string", "enum": ["news"] },
+              "pattern_hit": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "integrity": {
+      "type": "object",
+      "required": ["score_version", "config_hash", "inputs_hash"],
+      "properties": {
+        "score_version": { "type": "string" },
+        "config_hash": { "type": "string" },
+        "inputs_hash": { "type": "string", "description": "Hash of normalized provider inputs used for this run" }
+      }
+    }
+  }
+}

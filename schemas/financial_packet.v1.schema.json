@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "financial_packet.v1.schema.json",
+  "type": "object",
+  "required": ["meta", "balance_sheet", "income_statement", "cash_flow"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["symbol", "period_end", "period_type", "currency", "units", "source"],
+      "properties": {
+        "symbol": { "type": "string" },
+        "company_name": { "type": "string" },
+        "period_end": { "type": "string", "format": "date" },
+        "period_type": { "type": "string", "enum": ["annual", "quarterly", "ttm"] },
+        "fiscal_year": { "type": "integer" },
+        "fiscal_quarter": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "currency": { "type": "string", "description": "e.g. USD, EUR" },
+        "units": { "type": "string", "enum": ["ones", "thousands", "millions", "billions"] },
+        "accounting_standard": { "type": "string", "enum": ["gaap", "ifrs", "unknown"] },
+        "source": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "type": "string", "enum": ["user_manual", "user_llm_extracted"] },
+            "original_files": { "type": "array", "items": { "type": "string" } },
+            "notes": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "balance_sheet": {
+      "type": "object",
+      "required": [
+        "total_assets", "total_liabilities", "total_equity",
+        "cash_and_equivalents", "current_assets", "current_liabilities",
+        "short_term_debt", "long_term_debt", "shares_outstanding"
+      ],
+      "properties": {
+        "total_assets": { "type": "number" },
+        "total_liabilities": { "type": "number" },
+        "total_equity": { "type": "number" },
+
+        "cash_and_equivalents": { "type": "number" },
+        "short_term_investments": { "type": "number" },
+        "accounts_receivable": { "type": "number" },
+        "inventory": { "type": "number" },
+
+        "current_assets": { "type": "number" },
+        "current_liabilities": { "type": "number" },
+
+        "short_term_debt": { "type": "number" },
+        "long_term_debt": { "type": "number" },
+
+        "goodwill_and_intangibles": { "type": "number" },
+
+        "shares_outstanding": { "type": "number" },
+
+        "line_items": { "type": "object", "additionalProperties": { "type": "number" } }
+      }
+    },
+
+    "income_statement": {
+      "type": "object",
+      "required": ["revenue", "gross_profit", "operating_income", "net_income"],
+      "properties": {
+        "revenue": { "type": "number" },
+        "gross_profit": { "type": "number" },
+        "operating_income": { "type": "number" },
+        "net_income": { "type": "number" },
+
+        "interest_expense": { "type": "number" },
+        "income_tax_expense": { "type": "number" },
+
+        "eps_basic": { "type": "number" },
+        "eps_diluted": { "type": "number" },
+
+        "line_items": { "type": "object", "additionalProperties": { "type": "number" } }
+      }
+    },
+
+    "cash_flow": {
+      "type": "object",
+      "required": ["operating_cash_flow", "capital_expenditures", "investing_cash_flow", "financing_cash_flow"],
+      "properties": {
+        "operating_cash_flow": { "type": "number" },
+        "capital_expenditures": { "type": "number" },
+        "investing_cash_flow": { "type": "number" },
+        "financing_cash_flow": { "type": "number" },
+
+        "dividends_paid": { "type": "number" },
+        "share_repurchases": { "type": "number" },
+
+        "line_items": { "type": "object", "additionalProperties": { "type": "number" } }
+      }
+    },
+
+    "derived_metrics": {
+      "type": "object",
+      "description": "Optional. If present, must be reproducible from above.",
+      "properties": {
+        "current_ratio": { "type": "number" },
+        "debt_to_equity": { "type": "number" },
+        "net_margin": { "type": "number" },
+        "operating_margin": { "type": "number" },
+        "free_cash_flow": { "type": "number" }
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "default": {
+    "fundamental_thresholds": {
+      "pe": { "low": 15, "high": 30 },
+      "pb": { "low": 1.5, "high": 5 },
+      "ps": { "low": 1, "high": 5 },
+      "roe": { "low": 5, "high": 20 },
+      "debtEquity": { "low": 0.5, "high": 2 }
+    },
+    "pillar_weights": {
+      "valuation": 0.25,
+      "quality": 0.25,
+      "technical": 0.25,
+      "risk": 0.25
+    },
+    "price_target": {
+      "min_sector_sample_size": 12,
+      "default_medians": {
+        "pe": 20,
+        "pb": 3,
+        "ps": 2.5,
+        "sample_size": 100
+      }
+    },
+    "pipeline": {
+      "top_k": 50,
+      "max_symbols_per_run": 150,
+      "max_concurrency": 4,
+      "throttle_ms": 150,
+      "scan_only_price_target": false
+    }
+  },
+  "overrides": {
+    "DAX 40 (Sample)": {},
+    "STOXX Europe (Sample)": {}
+  }
+}

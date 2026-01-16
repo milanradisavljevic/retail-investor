@@ -1,0 +1,6 @@
+{
+  "prices_ttl_hours": 24,
+  "fundamentals_ttl_days": 14,
+  "news_ttl_minutes": 60,
+  "profile_ttl_days": 30
+}

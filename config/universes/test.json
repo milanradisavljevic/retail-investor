@@ -1,0 +1,10 @@
+{
+  "name": "Test",
+  "provider": "finnhub",
+  "benchmark": "SPY",
+  "selection_rule": "Fixed list for tests",
+  "description": "Small test universe",
+  "version": "1",
+  "survivorship_bias_note": "Test-only",
+  "symbols": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+}
