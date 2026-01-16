@@ -54,6 +54,12 @@ export default function RootLayout({
                   >
                     History
                   </a>
+                  <a
+                    href="/backtesting"
+                    className="text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    Backtesting
+                  </a>
                 </nav>
               </div>
             </div>

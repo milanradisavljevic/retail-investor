@@ -79,3 +79,7 @@ data/cache.db
 
 # OS files
 Thumbs.db
+
+# AI/LLM config
+.qwen/
+FeedbackCAQW
