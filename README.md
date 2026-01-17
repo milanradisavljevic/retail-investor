@@ -1,4 +1,6 @@
 # Retail Investor MVP
+<img width="937" height="1267" alt="Bildschirmfoto_20260117_202304" src="https://github.com/user-attachments/assets/d001304d-1d40-442b-a708-c88b73d3fdbf" />
+<img width="910" h<img width="931" height="1254" alt="Bildschirmfoto_20260117_202226" src="https://github.com/user-attachments/assets/834b257a-061e-4557-9adc-4d6570b201c0" />
 
 Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with offline-friendly data pulls and a dark finance dashboard.
 
