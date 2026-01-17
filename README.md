@@ -2,6 +2,12 @@
 
 Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with offline-friendly data pulls and a dark finance dashboard.
 
+## Was das Projekt macht
+- Bewertet Aktien deterministisch: Fundamentals + Technicals → Pillar-Scores + Gesamtscore (Momentum/Hybrid/4-Pillar), keine LLM-Komponenten im Scoring.
+- Universes wählbar: Packs unter `config/universes/*.json` (SP500, Nasdaq100, EuroStoxx50 Samples, Russell2000_full), Benchmark pro Pack; Fetcher lädt YF-Daten lokal.
+- Backtesting: Quartalsweise Rebalance Top 10; Ergebnisse als CSV + JSON, im UI als Equity/Drawdown/Comparison visualisiert.
+- Infrastruktur: Next.js App Router, serverseitiges Laden der Backtest-Daten, Recharts für Charts, Tailwind Dark Finance Theme; Python-Skripte für Historical Fetch und Tests.
+
 ## Quick Start
 - Voraussetzungen: Node 22, npm, Python 3.11, `yfinance` (siehe `requirements.txt`), Finnhub/YF Zugangsdaten per `.env`.
 - Install: `npm install` (Recharts via `--legacy-peer-deps` für React 19).
