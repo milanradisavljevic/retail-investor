@@ -339,17 +339,21 @@
                 }
               }
             }
-          }
+          },
+
+          "company_name": { "type": "string", "description": "Optional company name from provider or mapping" },
+          "industry": { "type": "string", "description": "Optional industry/sector name" }
         }
       }
     },
 
     "selections": {
       "type": "object",
-      "required": ["top5", "top10", "pick_of_the_day"],
+      "required": ["top5", "top10", "top15", "pick_of_the_day"],
       "properties": {
         "top5": { "type": "array", "items": { "type": "string" }, "minItems": 5, "maxItems": 5 },
         "top10": { "type": "array", "items": { "type": "string" }, "minItems": 10, "maxItems": 10 },
+        "top15": { "type": "array", "items": { "type": "string" }, "minItems": 15, "maxItems": 15 },
         "pick_of_the_day": { "type": "string", "description": "Deterministic seeded selection" }
       }
     },

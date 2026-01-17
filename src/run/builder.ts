@@ -10,12 +10,53 @@ import { selectTopSymbols } from '@/selection/selector';
 import { selectPickOfDay } from '@/selection/pick_of_day';
 import type { ScoringResult, SymbolScore } from '@/scoring/engine';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
+import fs from 'fs';
+import path from 'path';
 
 const SCORE_VERSION = '0.1.0';
 
 export interface BuildRunOptions {
   runDate?: Date;
   asOfDate?: Date;
+}
+
+interface NameEntry {
+  name?: string;
+  industry?: string;
+}
+
+function loadNameMap(universeName: string): Map<string, NameEntry> {
+  const map = new Map<string, NameEntry>();
+  const universeKey = process.env.UNIVERSE_CONFIG || process.env.UNIVERSE || '';
+  const namesDir = path.join(process.cwd(), 'data', 'universe_metadata');
+  const candidates = [];
+
+  if (universeKey) {
+    candidates.push(path.join(namesDir, `${universeKey}_names.json`));
+  }
+  const slug = universeName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_');
+  candidates.push(path.join(namesDir, `${slug}_names.json`));
+
+  const filePath = candidates.find((p) => fs.existsSync(p));
+  if (!filePath) {
+    return map;
+  }
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    for (const entry of raw) {
+      if (entry?.symbol) {
+        map.set(String(entry.symbol).toUpperCase(), {
+          name: entry.shortName || entry.longName || entry.name,
+          industry: entry.industry,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load name map', err);
+  }
+
+  return map;
 }
 
 export function buildRunRecord(
@@ -32,6 +73,8 @@ export function buildRunRecord(
   const asOfDateStr = formatDate(asOfDate);
   const symbolsUsed = scoringResult.metadata.symbolsUsed ?? config.universe.symbols;
 
+  const namesMap = loadNameMap(config.universe.name);
+
   // Select top symbols
   const selection = selectTopSymbols(scoringResult.scores);
   const pickOfDay = selectPickOfDay(selection.top5, runDateStr);
@@ -39,6 +82,8 @@ export function buildRunRecord(
   // Build scores array for output
   const scoresOutput = scoringResult.scores.map((s) => ({
     symbol: s.symbol,
+    company_name: namesMap.get(s.symbol)?.name,
+    industry: namesMap.get(s.symbol)?.industry,
     total_score: s.totalScore,
     breakdown: {
       fundamental: s.breakdown.fundamental,

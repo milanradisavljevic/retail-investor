@@ -110,15 +110,13 @@ export interface RunV1SchemaJson {
       risk: number;
     };
     /**
-     * Preferred coverage of valuation inputs (PE/PB/PS)
+     * Preferred: coverage of valuation inputs (PE/PB/PS) used to compute Value pillar
      */
-    valuation_input_coverage?:
-      | {
-          present?: string[];
-          missing?: string[];
-          strategy_used?: 'full' | 'partial' | 'fallback_neutral';
-        }
-      | null;
+    valuation_input_coverage?: {
+      present?: string[];
+      missing?: string[];
+      strategy_used?: 'full' | 'partial' | 'fallback_neutral';
+    } | null;
     /**
      * Deprecated alias for valuation_input_coverage
      */
@@ -168,19 +166,24 @@ export interface RunV1SchemaJson {
      * Price target calculated from sector-relative multiples
      */
     price_target?: {
-      current_price: number;
-      fair_value: number;
-      /** Decimal, e.g. 0.15 for 15% */
-      upside_pct: number;
-      target_buy_price: number;
-      target_sell_price: number;
-      expected_return_pct: number;
-      holding_period_months: number;
-      target_date: string;
-      confidence: 'high' | 'medium' | 'low';
-      requires_deep_analysis: boolean;
-      deep_analysis_reasons: string[];
+      current_price?: number;
+      fair_value?: number;
+      /**
+       * Decimal, e.g. 0.15 for 15%
+       */
+      upside_pct?: number;
+      target_buy_price?: number;
+      target_sell_price?: number;
+      expected_return_pct?: number;
+      holding_period_months?: number;
+      target_date?: string;
+      confidence?: 'high' | 'medium' | 'low';
+      requires_deep_analysis?: boolean;
+      deep_analysis_reasons?: string[];
     } | null;
+    /**
+     * Debuggable inputs and component-level details for price targets
+     */
     price_target_diagnostics?: {
       inputs?: {
         pe_ratio?: number | null;
@@ -239,6 +242,14 @@ export interface RunV1SchemaJson {
         was_clamped?: boolean;
       };
     } | null;
+    /**
+     * Optional company name from provider or mapping
+     */
+    company_name?: string;
+    /**
+     * Optional industry/sector name
+     */
+    industry?: string;
   }[];
   selections: {
     /**
@@ -251,6 +262,27 @@ export interface RunV1SchemaJson {
      * @maxItems 10
      */
     top10: [string, string, string, string, string, string, string, string, string, string];
+    /**
+     * @minItems 15
+     * @maxItems 15
+     */
+    top15: [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string
+    ];
     /**
      * Deterministic seeded selection
      */
