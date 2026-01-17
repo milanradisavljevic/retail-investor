@@ -20,6 +20,8 @@
     "backtest:run": "tsx scripts/backtesting/run-backtest.ts",
     "backtest:momentum": "SCORING_MODE=momentum tsx scripts/backtesting/run-backtest.ts",
     "backtest:hybrid": "SCORING_MODE=hybrid tsx scripts/backtesting/run-backtest.ts",
+    "backtest:russell2000": "python scripts/backtesting/fetch-historical.py russell2000 && SCORING_MODE=momentum tsx scripts/backtesting/run-backtest.ts",
+    "backtest:nasdaq100": "python scripts/backtesting/fetch-historical.py nasdaq100 && SCORING_MODE=momentum tsx scripts/backtesting/run-backtest.ts",
     "stress-test": "tsx scripts/stress-test.ts",
     "stress-test:quick": "tsx scripts/stress-test.ts -- --symbols=50"
   },
@@ -33,6 +35,7 @@
     "pino": "^10.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^2.12.7",
     "technicalindicators": "^3.1.0"
   },
   "devDependencies": {
