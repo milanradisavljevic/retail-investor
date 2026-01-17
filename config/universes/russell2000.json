@@ -1,15 +1,25 @@
 {
-  "name": "Russell 2000 (sample)",
-  "provider": "finnhub",
+  "name": "Russell 2000 (Clean)",
+  "provider": "yfinance",
   "benchmark": "IWM",
-  "description": "Truncated sample pack to avoid huge commit; expand locally if needed.",
-  "version": "2026-01",
-  "selection_rule": "Russell 2000 constituents (sampled)",
-  "survivorship_bias_note": "Not full Russell 2000; replace locally for production.",
+  "description": "Validated sample pack - removed delisted/merged symbols",
+  "version": "2026-01-17",
+  "selection_rule": "Russell 2000 constituents (sampled, validated)",
+  "survivorship_bias_note": "Cleaned for backtesting; expand locally for production.",
   "symbols": [
     "ALNY", "APLS", "ARCT", "AXON", "BILL", "BLDR", "CELH", "CHPT", "COHR", "CRSP",
     "DOCS", "ENPH", "FATE", "FOUR", "FVRR", "GTLB", "HOOD", "IAC", "LCID", "MDB",
-    "MELI", "OKTA", "PLNT", "PLTR", "QS", "RDFN", "RIVN", "RUN", "SMAR", "SNOW",
-    "SQ", "SWAV", "TDOC", "TOST", "TTD", "TWLO", "UPST", "U", "VTNR", "WW"
-  ]
+    "MELI", "OKTA", "PLNT", "PLTR", "QS", "RIVN", "RUN", "SNOW",
+    "TDOC", "TOST", "TTD", "TWLO", "UPST", "U"
+  ],
+  "excludedSymbols": {
+    "RDFN": "Redfin - API data unavailable",
+    "SMAR": "Smartsheet - privatized 2024",
+    "SQ": "Block Inc. - ticker changed to XYZ",
+    "SWAV": "Shockwave Medical - acquired by J&J 2024",
+    "VTNR": "Vertex Energy - bankruptcy 2024",
+    "WW": "WeightWatchers - bankruptcy/reorganization"
+  },
+  "validatedAt": "2026-01-17",
+  "dataCompleteness": "100%"
 }

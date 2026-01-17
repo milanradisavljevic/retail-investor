@@ -2,11 +2,16 @@
 """
 Historical Data Fetcher for Backtesting
 
-Downloads OHLCV data from Yahoo Finance for all symbols in the SP500 universe.
+Downloads OHLCV data from Yahoo Finance for all symbols in a universe.
 Saves to data/backtesting/historical/{SYMBOL}.csv
 
 Usage:
-    python scripts/backtesting/fetch-historical.py
+    python scripts/backtesting/fetch-historical.py [universe-name]
+
+Examples:
+    python scripts/backtesting/fetch-historical.py           # defaults to sp500
+    python scripts/backtesting/fetch-historical.py russell2000
+    python scripts/backtesting/fetch-historical.py nasdaq100
 """
 
 import json
@@ -23,20 +28,29 @@ import pandas as pd
 START_DATE = "2020-01-01"
 END_DATE = "2024-12-31"
 OUTPUT_DIR = Path("data/backtesting/historical")
-UNIVERSE_FILE = Path("config/universes/sp500.json")
 MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds
 
+# Get universe from command line argument or default to sp500
+UNIVERSE_NAME = sys.argv[1] if len(sys.argv) > 1 else "sp500"
+UNIVERSE_FILE = Path(f"config/universes/{UNIVERSE_NAME}.json")
 
-def load_universe() -> list[str]:
+
+def load_universe() -> tuple[list[str], str]:
     """Load symbols from universe config file."""
+    if not UNIVERSE_FILE.exists():
+        print(f"[ERROR] Universe file not found: {UNIVERSE_FILE}")
+        sys.exit(1)
+
     with open(UNIVERSE_FILE, "r") as f:
         data = json.load(f)
     symbols = data.get("symbols", [])
-    # Add SPY for benchmark
-    if "SPY" not in symbols:
-        symbols.append("SPY")
-    return symbols
+    benchmark = data.get("benchmark", "SPY")
+
+    # Add benchmark if not in symbols
+    if benchmark not in symbols:
+        symbols.append(benchmark)
+    return symbols, benchmark
 
 
 def fetch_symbol(symbol: str) -> pd.DataFrame | None:
@@ -83,6 +97,7 @@ def main():
     """Main entry point."""
     print("=" * 60)
     print("Historical Data Fetcher for Backtesting")
+    print(f"Universe: {UNIVERSE_NAME}")
     print(f"Period: {START_DATE} to {END_DATE}")
     print("=" * 60)
 
@@ -90,8 +105,9 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Load universe
-    symbols = load_universe()
+    symbols, benchmark = load_universe()
     print(f"\nLoaded {len(symbols)} symbols from {UNIVERSE_FILE}")
+    print(f"Benchmark: {benchmark}")
 
     # Track stats
     success_count = 0
