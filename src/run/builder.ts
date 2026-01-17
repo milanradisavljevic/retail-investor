@@ -186,6 +186,23 @@ export function buildRunRecord(
         string,
         string
       ],
+      top15: selection.top15 as [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ],
       pick_of_the_day: pickOfDay,
     },
 

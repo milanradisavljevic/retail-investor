@@ -8,6 +8,7 @@ import { sortScoresDeterministic, type SymbolScore } from '@/scoring/engine';
 export interface SelectionResult {
   top10: string[];
   top5: string[];
+  top15: string[];
   sortedScores: SymbolScore[];
 }
 
@@ -15,11 +16,13 @@ export function selectTopSymbols(scores: SymbolScore[]): SelectionResult {
   // Sort deterministically (by score desc, then symbol asc for ties)
   const sorted = sortScoresDeterministic(scores);
 
-  // Select top 10 and top 5
+  // Select top 15/10/5
+  const top15 = sorted.slice(0, 15).map((s) => s.symbol);
   const top10 = sorted.slice(0, 10).map((s) => s.symbol);
   const top5 = sorted.slice(0, 5).map((s) => s.symbol);
 
   return {
+    top15,
     top10,
     top5,
     sortedScores: sorted,
