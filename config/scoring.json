@@ -23,8 +23,8 @@
       }
     },
     "pipeline": {
-      "top_k": 150,
-      "max_symbols_per_run": 150,
+      "top_k": 2000,
+      "max_symbols_per_run": 2000,
       "max_concurrency": 4,
       "throttle_ms": 150,
       "scan_only_price_target": false
