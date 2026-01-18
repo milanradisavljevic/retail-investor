@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import EquityCurveChart from './EquityCurveChart';
 import DrawdownChart from './DrawdownChart';
 import MetricsCards from './MetricsCards';
@@ -24,6 +24,12 @@ interface Props {
   universes: string[];
   comparisonRows: StrategyComparisonRow[];
 }
+
+type ApiBacktestPayload = {
+  summary: BacktestSummary | null;
+  equityCurve: TimeSeriesPoint[];
+  drawdown: TimeSeriesPoint[];
+};
 
 type Currency = 'USD' | 'EUR';
 
@@ -58,14 +64,89 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
   const [selectedUniverse, setSelectedUniverse] = useState<string>(universes[0] || 'russell2000_full');
   const [currency, setCurrency] = useState<Currency>('USD');
   const [eurRate, setEurRate] = useState<number>(0.92);
+  const [chartData, setChartData] = useState<ApiBacktestPayload | null>(null);
+  const [chartError, setChartError] = useState<string | null>(null);
 
   const activeModel = useMemo(
     () => models.find((m) => m.key === activeKey) || models[0],
     [activeKey, models]
   );
 
-  const equitySeries = convertSeries(activeModel?.timeSeries, currency, eurRate);
-  const drawdownSeries = equitySeries;
+  useEffect(() => {
+    // Immediately show server-provided data while API fetch runs
+    setChartData({
+      summary: activeModel?.summary ?? null,
+      equityCurve: activeModel?.timeSeries ?? [],
+      drawdown: activeModel?.timeSeries ?? [],
+    });
+  }, [activeModel]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setChartError(null);
+
+    fetch(`/api/backtest/results?strategy=${activeKey}&universe=${selectedUniverse}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || 'Failed to load backtest results');
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const equityCurve: TimeSeriesPoint[] = Array.isArray(data?.equityCurve)
+          ? data.equityCurve.map((p: any) => ({
+              date: String(p.date),
+              portfolio_value: Number(p.portfolio_value ?? p.value ?? 0),
+              sp500_value: Number(p.sp500_value ?? p.benchmark_value ?? 0),
+              daily_return_pct: Number(p.daily_return_pct ?? 0),
+              drawdown_pct: Number(p.drawdown_pct ?? 0),
+            }))
+          : [];
+
+        const drawdown: TimeSeriesPoint[] = Array.isArray(data?.drawdown)
+          ? data.drawdown.map((p: any, idx: number) => ({
+              date: String(p.date),
+              portfolio_value: equityCurve[idx]?.portfolio_value ?? 0,
+              sp500_value: equityCurve[idx]?.sp500_value ?? 0,
+              daily_return_pct: equityCurve[idx]?.daily_return_pct ?? 0,
+              drawdown_pct: Number(p.drawdown_pct ?? p.value ?? 0),
+            }))
+          : [];
+
+        setChartData({
+          summary: data?.summary ?? null,
+          equityCurve,
+          drawdown,
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error(err);
+        setChartError('Backtest-Daten konnten nicht geladen werden.');
+        setChartData(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeKey, selectedUniverse]);
+
+  const equitySeriesSource =
+    chartData?.equityCurve && chartData.equityCurve.length > 0
+      ? chartData.equityCurve
+      : activeModel?.timeSeries || [];
+
+  const drawdownSeriesSource =
+    chartData?.drawdown && chartData.drawdown.length > 0 ? chartData.drawdown : equitySeriesSource;
+
+  const equitySeries = convertSeries(equitySeriesSource, currency, eurRate);
+  const drawdownSeries = drawdownSeriesSource.map((p, idx) => ({
+    ...p,
+    // Keep drawdown_pct but ensure we have a value for tooltip / ref line
+    drawdown_pct: typeof p.drawdown_pct === 'number' ? p.drawdown_pct : (equitySeriesSource[idx]?.drawdown_pct ?? 0),
+  }));
   const currencySymbol = currency === 'EUR' ? '€' : '$';
   const maxDrawdown = drawdownSeries.length
     ? Math.min(...drawdownSeries.map((d) => d.drawdown_pct))
@@ -186,6 +267,12 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
         ) : (
           <div className="rounded-2xl border border-slate-800 bg-slate-800/40 p-6 text-slate-300">
             Keine Metriken verfügbar für dieses Modell. Bitte Backtest ausführen.
+          </div>
+        )}
+
+        {chartError && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {chartError}
           </div>
         )}
 

@@ -10,10 +10,14 @@ Example:
 """
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
 from typing import Any, Dict
+
+# Disable yfinance caching to avoid readonly DB issues in restricted environments
+os.environ.setdefault("YFINANCE_NO_CACHE", "1")
 
 import yfinance as yf
 

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { PriceTargetCard } from "./components/PriceTargetCard";
 import { BriefingToolbar } from "./components/BriefingToolbar";
 import { DocumentsBanner } from "./components/DocumentsBanner";
+import { RunTriggerButton } from "./components/RunTriggerButton";
 
 // Type for price_target from schema
 type PriceTargetData = NonNullable<RunV1SchemaJson["scores"][0]["price_target"]>;
@@ -276,7 +277,7 @@ export default function Home({
   const sortedScores = buildScoreView(run, query);
   const totalCount = run.scores.length;
   const visibleCount = sortedScores.length;
-  const top5Scores = sortedScores.slice(0, 5).map((score, index) => ({
+  const top20Scores = sortedScores.slice(0, 20).map((score, index) => ({
     symbol: score.symbol,
     score,
     rank: index + 1,
@@ -295,6 +296,9 @@ export default function Home({
             {run.universe.definition.name}
           </span>
           {run.mode && <ModeBadge mode={run.mode} />}
+          <div className="ml-auto">
+            <RunTriggerButton />
+          </div>
         </div>
         <p className="text-text-secondary text-sm">
           Analysis as of{" "}
@@ -325,14 +329,14 @@ export default function Home({
       {/* Documents Warning */}
       <DocumentsBanner symbols={run.flags.user_documents_missing} />
 
-      {/* Top 5 Cards */}
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 mb-10">
-        {top5Scores.length === 0 && (
+      {/* Top 20 Cards */}
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 mb-10">
+        {top20Scores.length === 0 && (
           <div className="col-span-full text-text-muted text-sm bg-navy-800 border border-navy-700 rounded-lg p-4">
             No symbols match the current filters.
           </div>
         )}
-        {top5Scores.map(({ symbol, score, rank, delta }) => (
+        {top20Scores.map(({ symbol, score, rank, delta }) => (
           <ScoreCard
             key={symbol}
             symbol={symbol}

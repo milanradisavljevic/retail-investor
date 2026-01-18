@@ -29,6 +29,13 @@ Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with o
   - Hybrid: `data/backtesting/backtest-summary.json` + `backtest-results.csv`
   - 4-Pillar: aktuell identisch zum letzten Hybrid-Run, abgelegt als `backtest-summary-4pillar.json` + `backtest-results-4pillar.csv`
 
+## Runs & Skripte
+- `npm run run:daily` (`scripts/run_daily.ts`): kompletter 4-Pillar-Scoring-Run inkl. Fair-Value/Price-Target, schreibt `data/runs/<run>.json` (+ LLM-Output) und kappt die Pipeline bei 150 Symbols (`top_k`/`max_symbols_per_run`).
+- Backtests (`scripts/backtesting`): `npm run backtest` (fetch + run), `backtest:momentum|hybrid` (nur Run), Universe per Env/Argument (`UNIVERSE` oder CLI `russell2000`/`nasdaq100`); Strategie: Quarterly Rebalance Top 10 nach Score.
+- Performance-Checks: `npm run stress-test` (Provider-Latency/Error-Check, Universe `config/universes/sp500-full.json`, optional `--symbols`/`--provider`).
+- Diagnose: `scripts/debug-fair-value.ts` (Fair-Value/Median), `scripts/debug-quality-100.ts` (Fundamentals/Quality), `scripts/audit-value.ts` (liest letzten Run und Coverage).
+- Universes (`config/universes/*.json`): Samples `sp500` (72), `nasdaq100` (43), `eurostoxx50` (30), `russell2000` (34), Full `sp500-full` (501), `russell2000_full` (1.943), `test` (5); Default ohne Env: `config/universe.json` (15) oder `config/universes/test.json`.
+
 ## Universes & Benchmarks
 - Universe Files: `config/universes/*.json` (z.B. `sp500`, `nasdaq100`, `eurostoxx50`, `russell2000_full`, `russell2000` Sample). Benchmark wird aus der Datei gelesen (z.B. SPY, IWM).
 - Auswahl: per Env `UNIVERSE`/`UNIVERSE_CONFIG` oder via UI-Select auf `/backtesting` (wirkt auf den Run-Trigger).

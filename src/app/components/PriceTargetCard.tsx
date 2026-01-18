@@ -130,6 +130,7 @@ export function PriceTargetCard(props: PriceTargetProps) {
     current_price,
     fair_value,
     upside_pct,
+    target_buy_price,
     target_sell_price,
     expected_return_pct,
     holding_period_months,
@@ -158,16 +159,11 @@ export function PriceTargetCard(props: PriceTargetProps) {
       </div>
 
       {/* Price Grid */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <PriceBox label="Current" value={current_price} />
-        <PriceBox label="Fair Value (Model)" value={fair_value} delta={upside_pct} />
-        <PriceBox
-          label="Trade Target (Horizon)"
-          value={target_sell_price}
-          delta={expected_return_pct}
-          highlight
-          muted={isNegativeUpside}
-        />
+        <PriceBox label="Entry Target" value={target_buy_price} highlight />
+        <PriceBox label="Exit Target" value={target_sell_price} delta={expected_return_pct} />
+        <PriceBox label="Fair Value" value={fair_value} delta={upside_pct} muted />
       </div>
 
       {isNegativeUpside && (

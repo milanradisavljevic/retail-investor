@@ -120,7 +120,10 @@ function calculateMomentumScore(
   allDates: string[]
 ): number | null {
   const dateIdx = allDates.indexOf(asOfDate);
-  if (dateIdx < 130) return null; // Need 26 weeks of history
+  const MIN_DAYS_13W = 60; // slightly under 13 weeks to allow early 2020 picks
+  const MIN_DAYS_26W = 130;
+
+  if (dateIdx < MIN_DAYS_13W) return null;
 
   const currentPrice = symbolData.prices.get(asOfDate)?.close;
   if (!currentPrice) return null;
@@ -132,10 +135,15 @@ function calculateMomentumScore(
   const price13w = symbolData.prices.get(date13w)?.close;
   const price26w = symbolData.prices.get(date26w)?.close;
 
-  if (!price13w || !price26w) return null;
+  if (!price13w) return null;
 
   const return13w = (currentPrice - price13w) / price13w;
-  const return26w = (currentPrice - price26w) / price26w;
+  const return26w =
+    price26w && dateIdx >= MIN_DAYS_26W ? (currentPrice - price26w) / price26w : null;
+
+  if (return26w === null) {
+    return return13w; // fallback to shorter window when long history is unavailable
+  }
 
   // Combined momentum score (weighted average)
   return return13w * 0.6 + return26w * 0.4;

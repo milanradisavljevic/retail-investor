@@ -31,16 +31,34 @@ function loadNameMap(universeName: string): Map<string, NameEntry> {
   const namesDir = path.join(process.cwd(), 'data', 'universe_metadata');
   const candidates = [];
 
+  // Try env var first
   if (universeKey) {
     candidates.push(path.join(namesDir, `${universeKey}_names.json`));
   }
+
+  // Generate multiple slug variations to handle different formats
   const slug = universeName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_');
+  const slugNoSpaces = universeName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_');
+
+  // Try various patterns:
   candidates.push(path.join(namesDir, `${slug}_names.json`));
+  candidates.push(path.join(namesDir, `${slug.replace(/_+$/, '')}_names.json`)); // trim trailing underscore
+  candidates.push(path.join(namesDir, `${slugNoSpaces}_names.json`));
+
+  // Try common variations (russell2000, russell_2000, etc)
+  if (universeName.toLowerCase().includes('russell')) {
+    candidates.push(path.join(namesDir, 'russell2000_full_names.json'));
+    candidates.push(path.join(namesDir, 'russell_2000_full_names.json'));
+    candidates.push(path.join(namesDir, 'russell2000_full_yf_names.json'));
+  }
 
   const filePath = candidates.find((p) => fs.existsSync(p));
   if (!filePath) {
+    console.warn(`No name map found for "${universeName}". Tried: ${candidates.map(p => path.basename(p)).join(', ')}`);
     return map;
   }
+
+  console.log(`Loading company names from: ${path.basename(filePath)}`);
 
   try {
     const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -232,6 +250,28 @@ export function buildRunRecord(
         string
       ],
       top15: selection.top15 as [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ],
+      top20: selection.top20 as [
+        string,
+        string,
+        string,
+        string,
+        string,
         string,
         string,
         string,

@@ -11,6 +11,80 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ### 2026-01-18
 
 #### Added
+- **Russell 2000 Tracking & GUI Enhancements**:
+  - **Top 20 Selections**: Extended schema, selector, and run builder to support top20 picks
+    - Schema: `schemas/run.v1.schema.json` now requires `top20` in selections
+    - Selector: `src/selection/selector.ts` generates top20 from sorted scores
+    - Builder: `src/run/builder.ts` saves top20 to run JSON outputs
+    - Types: Regenerated TypeScript types with `npm run generate:types`
+  - **Homepage Extended to Top 20**: `src/app/page.tsx` now shows top 20 picks (grid-cols-4)
+    - Changed from top5Scores to top20Scores display
+    - Grid layout updated: `xl:grid-cols-4` for better top 20 layout
+  - **Enhanced Price Target Display**: `src/app/components/PriceTargetCard.tsx`
+    - Added **Entry Target** (target_buy_price) to price grid - highlighted
+    - Shows 4 columns: Current | Entry Target | Exit Target | Fair Value
+    - **Holding Period** already displayed (no changes needed)
+    - Reorganized grid for better UX: Entry/Exit targets prominent
+  - **Manual Run Trigger (GUI)**:
+    - API Route: `src/app/api/run/trigger/route.ts`
+      - POST endpoint triggers Russell 2000 run via background spawn
+      - Returns estimated duration (15-25 minutes for russell2000_full_yf)
+      - Detached process - doesn't block API response
+    - Run Button Component: `src/app/components/RunTriggerButton.tsx`
+      - Modal confirmation with runtime warning
+      - Progress indicator during trigger
+      - Success/error feedback with auto-hide
+      - Integrated in homepage header (`src/app/page.tsx`)
+  - **Universe Configuration**: Uses `russell2000_full_yf.json` (1,943 symbols, yfinance provider)
+
+**Usage Guide - Russell 2000 Tracking:**
+
+CLI Manual Run:
+```bash
+npm run run:daily -- --universe=russell2000_full_yf
+# Estimated runtime: 15-25 minutes (1,943 symbols)
+```
+
+GUI Manual Run:
+1. Navigate to homepage (/)
+2. Click "Run Russell 2000" button in header
+3. Confirm modal (shows estimated 15-25 min runtime)
+4. Run starts in background (detached process)
+5. Refresh page after ~20 minutes to see new briefing
+
+What You'll See (Top 20):
+- Homepage displays Top 20 picks (4-column grid)
+- Each card shows:
+  - Company Name (auto-loaded from metadata)
+  - Entry Target (buy price) - highlighted
+  - Exit Target (sell price) with expected return %
+  - Holding Period in months
+  - Fair Value comparison
+  - All 4 evidence pillars (Value, Quality, Tech, Risk)
+
+Run Output Location:
+- JSON: `data/runs/YYYY-MM-DD__[hash].json`
+- Contains: top5, top10, top15, top20 selections
+- Company names included in each score
+
+- **Company Name Metadata Infrastructure**:
+  - `data/universe_metadata/russell2000_full_names.json`: Vollständiges Name-Mapping für alle 1.943 Russell 2000 Symbole
+    - Quelle: yfinance API (via `scripts/utils/fetch-yf-names.py`)
+    - Format: `{ symbol, shortName, longName, industry, source }`
+    - Coverage: 1.943/1.943 Symbole (100% Success Rate, 1 Symbol ohne yfinance-Daten)
+    - Dateigröße: 343 KB
+    - Enthält Company Names und Industry Classifications für alle Ticker
+  - `data/universe_metadata/russell_2000_full_names.json`: Symlink für slug-kompatible Namensauflösung
+    - Ermöglicht automatisches Laden durch `loadNameMap()` in `src/run/builder.ts`
+  - `src/app/backtesting/utils/companyNames.ts`: Utility-Module für Company-Namen im Dashboard
+    - `loadCompanyNames()`: Lädt Namen aus metadata JSON (mit Caching)
+    - `formatTickerWithName(ticker)`: Formatiert "AAPL" → "AAPL (Apple Inc.)"
+    - `getCompanyName(ticker)`: Extrahiert nur Company-Name
+    - `formatTickersWithNames(tickers[])`: Batch-Formatierung für Arrays
+  - `scripts/test-name-loading.ts`: Test-Script zur Validierung der Name-Loading-Logik
+    - Testet slug-Generierung (`Russell 2000 Full` → `russell_2000_full`)
+    - Verifiziert Datei-Lookup und Symbol-Mapping
+    - Beispiel-Lookups: LUMN, BE, etc.
 - `config/universes/russell2000_full.json`: Aktualisiert auf 1.943 Russell-2000-Titel (IWM Holdings CSV), inkl. `symbol_count`
 - Backtest-Artefakte gesichert/aktualisiert:
   - Momentum-Run (Top 10, 2020-2024) als Kopie abgelegt: `data/backtesting/backtest-summary-momentum.json`, `data/backtesting/backtest-results-momentum.csv`
@@ -104,6 +178,80 @@ if (dateIdx < 130) return null;  // ✅ Nur 6 Monate benötigt
 - ✅ **Für aggressive Investoren**: Momentum-Only (höchste absolute Returns)
 - ✅ **Für Balance**: Blend aus 4-Pillar (60%) + Momentum (40%) für optimales Risk/Return
 - ✅ **4-Pillar mit echten Fundamentals**: Könnte noch besser performen als mit Proxies
+
+#### Technical Details - Company Name Fetching
+
+**Fetch Process (`scripts/utils/fetch-yf-names.py`)**:
+- **Runtime**: ~24 Minuten für 1.943 Symbole (0.15s Rate-Limit pro Symbol)
+- **API**: yfinance `Ticker.get_info()` für `shortName`, `longName`, `industry`
+- **Error Handling**: 1 Symbol (GEFB) nicht gefunden bei yfinance → Error-Entry in JSON (dennoch 100% Coverage)
+- **Output Format**:
+  ```json
+  {
+    "symbol": "LUMN",
+    "shortName": "Lumen Technologies, Inc.",
+    "longName": "Lumen Technologies, Inc.",
+    "industry": "Telecom Services",
+    "source": "yfinance"
+  }
+  ```
+- **Environment**: `YFINANCE_NO_CACHE=1` gesetzt um readonly DB-Errors zu vermeiden
+
+**System Integration**:
+- **Name Loading**: `src/run/builder.ts:loadNameMap()` lädt bei jedem Run automatisch
+- **Slug Matching**: `Russell 2000 Full` → `russell_2000_full` → `russell_2000_full_names.json`
+- **Symlink Strategy**: Original-File + Symlink für Kompatibilität mit verschiedenen Naming-Conventions
+- **Caching**: In-Memory Map pro Run (keine DB-Caching nötig, File-Read ist schnell)
+
+**Testing**:
+- ✅ Verified: 1.943/1.943 Symbole erfolgreich geladen
+- ✅ Tested: LUMN → "Lumen Technologies, Inc." (Telecom Services)
+- ✅ Tested: BE → "Bloom Energy Corporation" (Electrical Equipment & Parts)
+- ✅ Verified: Symlink-Resolution funktioniert korrekt
+
+**Impact & Benefits**:
+1. **User Experience**: Dashboard zeigt jetzt "LUMN (Lumen Technologies)" statt nur "LUMN"
+2. **Professional Output**: Run JSON files enthalten Company-Namen für bessere Lesbarkeit
+3. **Industry Analysis**: Industry-Classifications ermöglichen Sektor-basierte Analysen
+4. **Extensibility**: Infrastructure funktioniert für alle Universes (nicht nur Russell 2000)
+5. **Zero Breaking Changes**: Bestehende Systeme funktionieren weiter, Namen sind optional additive
+
+**Future Usage Examples**:
+```typescript
+// Daily Run Output (data/runs/*.json)
+{
+  "symbol": "LUMN",
+  "company_name": "Lumen Technologies, Inc.",
+  "industry": "Telecom Services",
+  "total_score": 85.3
+}
+
+// Backtesting Console Output
+console.log(`Top Performers:
+  1. LUMN (Lumen Technologies)
+  2. CELH (Celsius Holdings)
+  3. NVDA (NVIDIA Corporation)
+`);
+
+// Dashboard Tooltip
+<Tooltip>LUMN (Lumen Technologies, Inc.)</Tooltip>
+```
+
+#### Changed
+- **`src/run/builder.ts` - Company Name Integration**:
+  - Existierende `loadNameMap()` Funktion (Zeilen 28-60) jetzt voll funktionsfähig mit Russell 2000 Daten
+  - Auto-Slug-Generierung: `universeName.toLowerCase().replace(/[^a-z0-9]+/g, '_')`
+  - Lädt Company-Namen automatisch in Run-Outputs (JSON field: `company_name`, `industry`)
+  - Fallback-Strategie: Sucht erst nach `UNIVERSE_CONFIG` env var, dann nach universe slug
+  - Beispiel-Output: `"symbol": "LUMN", "company_name": "Lumen Technologies, Inc.", "industry": "Telecom Services"`
+- **Company Name Display - System-Wide**:
+  - Zukünftige Daily Runs (`npm run run:daily`) enthalten automatisch Company-Namen in `data/runs/*.json`
+  - Dashboard-Integration vorbereitet: Utility-Functions für "LUMN" → "LUMN (Lumen Technologies)" Formatierung
+  - Backtesting-Outputs können jetzt Top-Performers mit Namen anzeigen
+- API für Backtest-Ergebnisse ergänzt (`src/app/api/backtest/results/route.ts`): liefert Summary/Equity/Drawdown aus `data/backtesting` (Node-Runtime, force-dynamic, unterstützt `*-full` Fallback-Files).
+- Backtesting-Dashboard verbessert (`src/app/backtesting/components/BacktestingClient.tsx`): Charts laden Daten per Fetch nach Strategy/Universe, zeigen sofort serverseitige Time-Series als Fallback, robustere Drawdown-Werte und Fehlermeldung bei fehlenden Daten.
+- Momentum-Backtest gefixt: Lookback-Anforderung auf 60+ Tage reduziert (26W optional), damit Rebalances ab Q2 2020 greifen; Momentum-Run neu gerechnet (Russell2000) → `data/backtesting/backtest-summary-momentum-fixed.json`, `backtest-results-momentum-fixed.csv` (1299.95% Return, Max DD -66.58%).
+- README erweitert um Run-/Skript-Übersicht, Pipeline-Limits (Top-K 150) und Universe-Größen (`config/universes/*.json`).
 
 ### 2026-01-17
 

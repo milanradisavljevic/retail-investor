@@ -284,6 +284,32 @@ export interface RunV1SchemaJson {
       string
     ];
     /**
+     * @minItems 20
+     * @maxItems 20
+     */
+    top20: [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string
+    ];
+    /**
      * Deterministic seeded selection
      */
     pick_of_the_day: string;
