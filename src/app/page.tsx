@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { getRecentRuns } from "@/lib/runLoader";
-import { getCompanyName } from "@/core/company";
 import { computeDeltas, type SymbolDelta } from "@/lib/runDelta";
 import { buildScoreView, parseScoreQuery, type ScoreQuery } from "@/lib/scoreView";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
@@ -104,7 +103,7 @@ function ModeBadge({ mode }: { mode: RunV1SchemaJson["mode"] }) {
 
 function ScoreCard({ symbol, score, isPickOfDay, rank, delta }: ScoreCardProps) {
   const { valuation, quality, technical, risk } = score.evidence;
-  const companyName = getCompanyName(symbol);
+  const companyName = score.company_name || symbol;
   const dqScore = score.data_quality?.data_quality_score ?? 0;
   const priceTarget = score.price_target as PriceTargetData | null;
   const deltaTotal = delta?.deltaTotal ?? null;
@@ -414,7 +413,7 @@ export default function Home({
               <tbody className="divide-y divide-navy-700">
                 {sortedScores.slice(0, 10).map((score, index) => {
                   const symbol = score.symbol;
-                  const companyName = getCompanyName(symbol);
+                  const companyName = score.company_name || symbol;
                   const priceTarget = score.price_target as PriceTargetData | null;
                   const delta = deltaMap.get(symbol);
 
