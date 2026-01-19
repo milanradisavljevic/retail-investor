@@ -14,7 +14,16 @@ function sumWeights(weights: Record<string, number>): number {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { strategy = 'hybrid', weights, universe = 'russell2000_full' } = body || {};
+    const {
+      strategy = 'hybrid',
+      weights,
+      universe = 'russell2000_full',
+      period,
+      rebalancing = 'quarterly',
+      slippage = 'realistic',
+      topK = 10,
+      startingCapital = 100000,
+    } = body || {};
 
     if (!weights || typeof weights !== 'object') {
       return NextResponse.json({ error: 'Missing weights' }, { status: 400 });
@@ -31,6 +40,12 @@ export async function POST(request: NextRequest) {
       SCORING_MODE: strategy,
       CUSTOM_WEIGHTS: JSON.stringify(weights),
       UNIVERSE: universe,
+      BACKTEST_START: period?.startDate,
+      BACKTEST_END: period?.endDate,
+      REBALANCING: rebalancing,
+      SLIPPAGE_MODEL: slippage,
+      TOP_K: String(topK),
+      STARTING_CAPITAL: String(startingCapital),
     };
 
     const { stdout, stderr } = await execAsync(cmd, {
@@ -45,12 +60,25 @@ export async function POST(request: NextRequest) {
     console.log('[backtest run stdout]', stdout);
 
     const summaryPath = path.join(BACKTEST_DIR, 'backtest-summary.json');
-    let summary: any = null;
+    let summary: Record<string, unknown> | null = null;
     if (fs.existsSync(summaryPath)) {
       summary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
     }
 
-    return NextResponse.json({ success: true, summary });
+    return NextResponse.json({
+      success: true,
+      status: 'completed',
+      summary,
+      config: {
+        strategy,
+        universe,
+        period,
+        rebalancing,
+        slippage,
+        topK,
+        startingCapital,
+      },
+    });
   } catch (error) {
     console.error('[backtest run error]', error);
     return NextResponse.json({ error: 'Backtest execution failed' }, { status: 500 });

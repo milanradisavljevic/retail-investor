@@ -8,6 +8,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-01-19
+
+#### Added
+- **Strategy Lab (Live + Backtest UI)**:
+  - New `/strategy-lab` page with dual tabs (Live Run, Backtest) using shared universe selection, strategy radio group, weight editor with presets/validation, and risk/ethical filters
+  - Live Run tab configures top-pick count, shows today’s as-of date, and renders top picks from the latest run (or samples) with pillar breakdowns plus export/watchlist/email actions
+  - Backtest tab adds period picker with presets/validation (2020-2025), rebalancing and slippage controls, top-pick and capital inputs, metrics/placeholder charts, and recent backtests rail
+  - Header navigation now links to Strategy Lab for direct access
+  - API wiring: `POST /api/live-run` returns top picks from the latest run; backtest runner accepts period/rebalancing/slippage/topK/capital and surfaces results via `/api/backtest/results`
+
 ### 2026-01-18
 
 #### Added
@@ -42,15 +52,22 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 CLI Manual Run:
 ```bash
 npm run run:daily -- --universe=russell2000_full_yf
-# Estimated runtime: 15-25 minutes (1,943 symbols)
+# Estimated runtime: 60-90 minutes (1,943 symbols, all with price targets)
+# Previous: 15-25 minutes (only 150 symbols due to pipeline limit)
 ```
 
 GUI Manual Run:
 1. Navigate to homepage (/)
 2. Click "Run Russell 2000" button in header
-3. Confirm modal (shows estimated 15-25 min runtime)
+3. Confirm modal (shows estimated runtime)
 4. Run starts in background (detached process)
-5. Refresh page after ~20 minutes to see new briefing
+5. Refresh page after ~90 minutes to see new briefing with all 1,943 symbols
+
+**Performance Notes:**
+- Pipeline limits erhöht: 150 → 2000 Symbole (siehe `config/scoring.json`)
+- ~5,800 API Requests total (~3 Requests pro Symbol: Fundamentals, Prices, Technical)
+- Cache reduziert tatsächliche Requests erheblich (typisch 60-80% Hit-Rate)
+- Erste Run: ~90 Minuten, Follow-up Runs: ~60 Minuten (bessere Cache-Nutzung)
 
 What You'll See (Top 20):
 - Homepage displays Top 20 picks (4-column grid)
@@ -238,12 +255,39 @@ console.log(`Top Performers:
 ```
 
 #### Changed
-- **`src/run/builder.ts` - Company Name Integration**:
-  - Existierende `loadNameMap()` Funktion (Zeilen 28-60) jetzt voll funktionsfähig mit Russell 2000 Daten
+- **`src/run/builder.ts` - Enhanced Company Name Loading**:
+  - Verbesserte `loadNameMap()` Funktion mit robuster Slug-Matching-Logik (Zeilen 28-77)
+  - Mehrfache Slug-Variationen: `russell_2000_full_yfinance_`, `russell2000full_yfinance_`, etc.
+  - Explizite Russell-Fallbacks: Prüft `russell2000_full_names.json`, `russell_2000_full_names.json`, `russell2000_full_yf_names.json`
+  - Logging hinzugefügt: `console.log()` zeigt welche Datei geladen wurde
+  - Warning bei fehlender Datei mit Liste aller versuchten Pfade
   - Auto-Slug-Generierung: `universeName.toLowerCase().replace(/[^a-z0-9]+/g, '_')`
   - Lädt Company-Namen automatisch in Run-Outputs (JSON field: `company_name`, `industry`)
   - Fallback-Strategie: Sucht erst nach `UNIVERSE_CONFIG` env var, dann nach universe slug
   - Beispiel-Output: `"symbol": "LUMN", "company_name": "Lumen Technologies, Inc.", "industry": "Telecom Services"`
+- **`src/app/page.tsx` - Frontend Company Name Fix**:
+  - Verwendet jetzt `score.company_name` direkt aus Run-Daten (Zeile 107, 417)
+  - Vorher: Ignorierte Run-Daten und rief `getCompanyName(symbol)` auf (suchte in `config/company_names.json`)
+  - Entfernt: Import von `@/core/company` (nicht mehr benötigt)
+  - Resultat: Company-Namen werden korrekt angezeigt wenn sie in Run-Daten vorhanden sind
+  - Fallback: Zeigt Symbol wenn `company_name` null ist
+- **`src/app/layout.tsx` - Page Width Increase**:
+  - `max-w-7xl` (1280px) → `max-w-[1800px]` (1800px) in Header/Main/Footer
+  - Verhindert Preis-Overflow in 4-Spalten Grid bei Top 20 Anzeige
+  - Bietet genug Platz für Entry Target, Exit Target, Fair Value und Current Price
+- **`config/scoring.json` - Pipeline Limits Erhöht**:
+  - `top_k`: 150 → 2000 (Price Targets für alle Russell 2000 Symbole)
+  - `max_symbols_per_run`: 150 → 2000 (Verarbeitet volles Universe)
+  - **Breaking Change**: Vorherige Runs verarbeiteten nur 150/1.943 Symbole (92% abgeschnitten)
+  - **Impact**: Nächster Russell 2000 Run dauert ~60-90 Minuten statt 15-25 Minuten
+  - **API Load**: ~5.800 Requests total (reduziert durch Cache-Hits)
+  - Begründung: User wollte alle 1.943 Symbole sehen, nicht nur Top 150
+- **`data/universe_metadata/russell2000_full_yf_names.json` - Broken File Fixed**:
+  - **Problem**: Datei enthielt nur Error-Einträge: `{"symbol": "AX", "error": "attempt to write a readonly database"}`
+  - **Root Cause**: Alte yfinance-Cache-Fehler vor `YFINANCE_NO_CACHE=1` Fix
+  - **Fix**: Datei gelöscht und als Symlink zu `russell2000_full_names.json` ersetzt
+  - **Resultat**: loadNameMap() findet jetzt korrekte Daten für alle 1.943 Symbole
+  - **Note**: Datei liegt in gitignore, daher nur lokal gefixt (nicht committed)
 - **Company Name Display - System-Wide**:
   - Zukünftige Daily Runs (`npm run run:daily`) enthalten automatisch Company-Namen in `data/runs/*.json`
   - Dashboard-Integration vorbereitet: Utility-Functions für "LUMN" → "LUMN (Lumen Technologies)" Formatierung
@@ -252,6 +296,7 @@ console.log(`Top Performers:
 - Backtesting-Dashboard verbessert (`src/app/backtesting/components/BacktestingClient.tsx`): Charts laden Daten per Fetch nach Strategy/Universe, zeigen sofort serverseitige Time-Series als Fallback, robustere Drawdown-Werte und Fehlermeldung bei fehlenden Daten.
 - Momentum-Backtest gefixt: Lookback-Anforderung auf 60+ Tage reduziert (26W optional), damit Rebalances ab Q2 2020 greifen; Momentum-Run neu gerechnet (Russell2000) → `data/backtesting/backtest-summary-momentum-fixed.json`, `backtest-results-momentum-fixed.csv` (1299.95% Return, Max DD -66.58%).
 - README erweitert um Run-/Skript-Übersicht, Pipeline-Limits (Top-K 150) und Universe-Größen (`config/universes/*.json`).
+- Big-Picture-Dokumentation hinzugefügt: `Big Picture/README.md` mit Projektzweck, Status, jüngsten Backtest-Ergebnissen, Risiken und nächsten Schritten.
 
 ### 2026-01-17
 

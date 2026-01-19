@@ -60,6 +60,12 @@ export default function RootLayout({
                   >
                     Backtesting
                   </a>
+                  <a
+                    href="/strategy-lab"
+                    className="text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    Strategy Lab
+                  </a>
                 </nav>
               </div>
             </div>
