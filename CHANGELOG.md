@@ -8,6 +8,95 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-01-21
+
+#### Added
+- **Monte Carlo Lite Fair Value Distribution (implemented by Claude w/ Codex & Qwen)**:
+  - **Python Formula Module** (`src/scoring/formulas/monte_carlo_lite.py`):
+    - 1000 iterations with Antithetic Variates for variance reduction (~50% variance reduction vs standard Monte Carlo)
+    - Stochastic inputs: revenue growth (±30% std dev), operating margin (±20%), discount rate (±2%)
+    - Outputs: P10/P50/P90 fair value percentiles, probability metrics (prob_value_gt_price, mos_15_prob)
+    - Based on Damodaran "Investment Valuation" Ch.33 (Simulation) and Hilpisch "Python for Finance" (Antithetic Variates)
+    - 5-year projection with terminal value (perpetuity growth or FCF multiple)
+
+#### Changed
+- **UX-Verbesserungen an ScoreCard Komponente** (`src/app/page.tsx`):
+  - **Score Breakdown entfernt**: Entfernt redundante "Fundamental/Technical" Anzeige, da diese bereits in den Evidence Pillars enthalten ist
+  - **Border-Opacity erhöht**: Alle Score-Farben verwenden nun höhere Opacity (von `/30` auf `/50`) für bessere Sichtbarkeit
+  - **Pick-of-Day Badge umbenannt**: Geändert von "PICK" zu "TOP CONVICTION" mit neuem Styling (`bg-slate-600 text-white`)
+  - **Visueller Separator hinzugefügt**: Neue gestrichelte Linie (`border-t border-dashed border-slate-600`) vor Price Target Bereich für bessere visuelle Trennung
+  - **Changelog-Eintrag**: Dieser Eintrag wurde von Qwen hinzugefügt (in Zusammenarbeit mit Claude und Codex)
+  - **CLI Wrapper** (`src/scoring/monte_carlo_cli.py`):
+    - TypeScript-Python bridge via child_process spawn
+    - 30-second timeout with graceful failure (returns null on error)
+    - JSON output to stdout, errors to stderr
+    - Finnhub client adapter for data fetching
+  - **Schema & Types Updates**:
+    - Extended `schemas/run.v1.schema.json` with `monte_carlo_diagnostics` field (nullable object)
+    - Added `top30` to selections (30 symbols required)
+    - TypeScript types auto-generated with new interfaces: `MonteCarloDiagnostics`, `MonteCarloInputAssumption`, `MonteCarloInputAssumptions`
+  - **Integration** (`src/scoring/price-target.ts`, `src/scoring/engine.ts`, `src/selection/selector.ts`):
+    - **Three-Pass Scoring Architecture**: (1) Initial scoring → (2) Deep scoring with price targets → (3) Monte Carlo for Top 30
+    - `calculateMonteCarloFairValue()`: Spawns Python CLI with symbol and parameters
+    - `deriveConfidenceFromMonteCarlo()`: Enhances confidence based on probabilistic validation
+      - Upgrades to "high" if prob_value_gt_price > 70% AND mos_15_prob > 50%
+      - Downgrades to "low" if prob_value_gt_price < 30%
+    - `calculatePriceTargets()`: Now async, conditionally computes Monte Carlo for Top 30 stocks with `requires_deep_analysis=true`
+    - Lower concurrency (2 threads) for Monte Carlo pass to avoid overwhelming CPU
+  - **Performance Characteristics**:
+    - Triggers only for Top 30 stocks that require deep analysis (~10-15 stocks per run)
+    - Additional runtime: ~30-60 seconds per full run
+    - Graceful degradation: Monte Carlo failures don't block pipeline
+  - **Confidence Enhancement Logic**:
+    - High probability (>70%) of undervaluation → upgrade confidence to "high"
+    - Low probability (<30%) → downgrade confidence to "low"
+    - Moderate probability (>60%) with medium base → upgrade to "high"
+  - **Testing**:
+    - Standalone Python formula test: PASSED (mock data with deterministic seed)
+    - CLI wrapper: Working correctly (graceful failure with missing data)
+    - TypeScript compilation: No errors
+    - Schema validation: PASSED
+
+**Usage:**
+```bash
+# Monte Carlo automatically triggers for Top 30 stocks in daily runs
+UNIVERSE=sp500 npm run run:daily
+
+# Check output for monte_carlo_diagnostics field in Top 30 stocks
+# Example output in data/runs/YYYY-MM-DD__[hash].json:
+# "monte_carlo_diagnostics": {
+#   "value_p10": 45.23,
+#   "value_p50": 67.89,
+#   "value_p90": 112.45,
+#   "prob_value_gt_price": 0.85,
+#   "mos_15_prob": 0.62,
+#   "iterations_run": 1000,
+#   ...
+# }
+```
+
+**Key Features:**
+- Probabilistic fair value validation (not just point estimate)
+- Variance reduction via Antithetic Variates
+- Confidence enhancement based on probability metrics
+- Selective computation (Top 30 only) for performance
+- Graceful degradation on failure
+
+#### Changed
+- **Run output schema alignment (by Codex w/ Gemini, Claude, Qwen)**: Added Top30 selection to the run builder so daily runs validate against the schema without manual trimming.
+- **Docs & assets (by Codex w/ Gemini, Claude, Qwen)**: Updated README with Monte Carlo Lite behavior (Top30, Finnhub dependency), analyst estimate/filters pointers, and russell2000_50_test run guidance; added latest UI screenshots for reference.
+
+### 2026-01-20
+
+#### Added
+- **YFinance Analyst Estimates (implemented by Codex w/ Qwen & Claude)**:
+  - Python bridge now fetches/caches analyst price targets, recommendations, and earnings dates via `get_analyst_data` (CLI method exposed) with safe null fallbacks.
+  - Fundamentals surface new analyst fields (mean/low/high target, analyst count, next earnings date); yfinance provider maps them and preserves raw snapshot; Finnhub defaults remain null.
+  - Test fixtures updated for expanded fundamentals shape to keep unit suites green.
+- **Backtest Universe Filters (implemented by Codex w/ Qwen & Claude)**:
+  - New module `src/backtesting/filters/universeFilter.ts` exports `filterBacktestUniverse` and `DEFAULT_FILTER_CONFIG` to exclude crypto/meme/penny/illiquid/small-cap names plus custom blacklist.
+  - Single-reason filtering with category summaries (crypto, marketCap, price, volume, blacklist) and defaults tuned for realistic fills (MCAP ≥ $500M, price ≥ $5, volume ≥ 100k, crypto/meme off by default).
+
 ### 2026-01-19
 
 #### Added

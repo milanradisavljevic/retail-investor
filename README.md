@@ -7,6 +7,7 @@ Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with o
 ## Was das Projekt macht
 - Bewertet Aktien deterministisch: Fundamentals + Technicals → Pillar-Scores + Gesamtscore (Momentum/Hybrid/4-Pillar), keine LLM-Komponenten im Scoring.
 - Universes wählbar: Packs unter `config/universes/*.json` (SP500, Nasdaq100, EuroStoxx50 Samples, Russell2000_full), Benchmark pro Pack; Fetcher lädt YF-Daten lokal.
+- Analystenfelder: yfinance-Bridge zieht Konsens-Targets (Mean/Low/High), Analystenanzahl, nächste Earnings; fehlen die Daten, fallen sie auf `null`.
 - Backtesting: Quartalsweise Rebalance Top 10; Ergebnisse als CSV + JSON, im UI als Equity/Drawdown/Comparison visualisiert.
 - Infrastruktur: Next.js App Router, serverseitiges Laden der Backtest-Daten, Recharts für Charts, Tailwind Dark Finance Theme; Python-Skripte für Historical Fetch und Tests.
 
@@ -31,6 +32,8 @@ Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with o
 
 ## Runs & Skripte
 - `npm run run:daily` (`scripts/run_daily.ts`): kompletter 4-Pillar-Scoring-Run inkl. Fair-Value/Price-Target, schreibt `data/runs/<run>.json` (+ LLM-Output) und kappt die Pipeline bei 150 Symbols (`top_k`/`max_symbols_per_run`).
+- Monte Carlo Lite: wird in `run:daily` für Top 30 mit `requires_deep_analysis=true` angestoßen (Python CLI, Finnhub-Dependence für Revenue/Series). Falls Fundamentals fehlen, wird die Monte-Carlo-Komponente übersprungen; Price-Target bleibt gültig.
+- Test-Run mit 50 Small Caps (yfinance): `TSX_DISABLE_RPC=1 UNIVERSE=russell2000_50_test npm run run:daily -- --universe=russell2000_50_test` (benutzt Name-Map `russell_2000_50_test_names.json`).
 - Backtests (`scripts/backtesting`): `npm run backtest` (fetch + run), `backtest:momentum|hybrid` (nur Run), Universe per Env/Argument (`UNIVERSE` oder CLI `russell2000`/`nasdaq100`); Strategie: Quarterly Rebalance Top 10 nach Score.
 - Performance-Checks: `npm run stress-test` (Provider-Latency/Error-Check, Universe `config/universes/sp500-full.json`, optional `--symbols`/`--provider`).
 - Diagnose: `scripts/debug-fair-value.ts` (Fair-Value/Median), `scripts/debug-quality-100.ts` (Fundamentals/Quality), `scripts/audit-value.ts` (liest letzten Run und Coverage).
@@ -51,9 +54,12 @@ Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with o
 - Datenlader: `src/app/backtesting/utils/loadBacktestData.ts`
 - Backtest-Skripte: `scripts/backtesting/run-backtest.ts`, `scripts/backtesting/fetch-historical.py`
 - Strategy Comparison: `data/backtesting/strategy-comparison.json`
+- Universum-Filter: `src/backtesting/filters/universeFilter.ts` (MarketCap/Preis/Volumen/Crypto/Meme + Blacklist Defaults)
+- Analystendaten (yfinance): `src/data_py/yfinance_adapter.py` + `src/providers/yfinance_provider.ts`
 
 ## Offene Punkte / ToDo
 - Fehlende 51 Russell2000_full Ticker nachladen oder ausschließen.
+- Monte Carlo deterministischer machen (Seed/Assumptions loggen) und optional per Feature-Flag deaktivierbar für Full-Runs.
 - Eigener 4-Pillar-Run mit echter 4-Pillar-Logik (nicht nur Hybrid-Run-Kopie) und Zeitreihe ablegen.
 - Pending Modelle rechnen: Momentum + Market-Cap-Filter (>500M), Momentum + Vol-Cap (<50%).
 - README_no_push.md enthält das alte README (nicht pushen).
