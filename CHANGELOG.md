@@ -85,6 +85,7 @@ UNIVERSE=sp500 npm run run:daily
 #### Changed
 - **Run output schema alignment (by Codex w/ Gemini, Claude, Qwen)**: Added Top30 selection to the run builder so daily runs validate against the schema without manual trimming.
 - **Docs & assets (by Codex w/ Gemini, Claude, Qwen)**: Updated README with Monte Carlo Lite behavior (Top30, Finnhub dependency), analyst estimate/filters pointers, and russell2000_50_test run guidance; added latest UI screenshots for reference.
+- **Quality thresholds and soft-cap (by Codex w/ Gemini, Claude, Qwen)**: Raised ROE/DE thresholds (ROE 8→35%, D/E 0.2→1.5) and soft-capped normalized scores at 95 to prevent quality saturation and keep spread across small caps.
 
 ### 2026-01-20
 

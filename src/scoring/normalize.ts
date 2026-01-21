@@ -45,17 +45,30 @@ export function normalizeToRange(
 
   const { low, high } = thresholds;
 
+  let rawScore: number;
+
   if (invert) {
     // Lower is better (e.g., P/E, Debt/Equity)
-    if (value <= low) return 100;
-    if (value >= high) return 0;
-    return inverseLinearScale(value, low, high);
+    if (value <= low) {
+      rawScore = 100;
+    } else if (value >= high) {
+      rawScore = 0;
+    } else {
+      rawScore = inverseLinearScale(value, low, high);
+    }
   } else {
     // Higher is better (e.g., ROE, Margin)
-    if (value <= low) return 0;
-    if (value >= high) return 100;
-    return linearScale(value, low, high);
+    if (value <= low) {
+      rawScore = 0;
+    } else if (value >= high) {
+      rawScore = 100;
+    } else {
+      rawScore = linearScale(value, low, high);
+    }
   }
+
+  // Soft-cap prevents saturated 100 scores to keep differentiation (esp. quality metrics).
+  return Math.min(rawScore, 95);
 }
 
 export function percentileScore(

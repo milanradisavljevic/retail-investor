@@ -35,8 +35,11 @@ export const DEFAULT_THRESHOLDS: FundamentalThresholds = {
   pe: { low: 15, high: 30 }, // Lower is better
   pb: { low: 1.5, high: 5 }, // Lower is better
   ps: { low: 1, high: 5 }, // Lower is better
-  roe: { low: 5, high: 20 }, // Higher is better (%)
-  debtEquity: { low: 0.5, high: 2 }, // Lower is better
+  // Quality thresholds calibrated for Russell 2000 Small Caps (Jan 2026)
+  // ROE: Top quartile ~25-30%, so high=35% for differentiation
+  // D/E: Most profitable small caps have <0.3, so low=0.2 for spread
+  roe: { low: 8, high: 35 }, // Higher is better (%)
+  debtEquity: { low: 0.2, high: 1.5 }, // Lower is better
 };
 
 export function calculateFundamentalScore(
