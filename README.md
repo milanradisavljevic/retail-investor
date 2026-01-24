@@ -1,8 +1,10 @@
 # Retail Investor MVP
-<img width="937" height="1267" alt="Bildschirmfoto_20260117_202304" src="https://github.com/user-attachments/assets/d001304d-1d40-442b-a708-c88b73d3fdbf" />
-<img width="910" h<img width="931" height="1254" alt="Bildschirmfoto_20260117_202226" src="https://github.com/user-attachments/assets/834b257a-061e-4557-9adc-4d6570b201c0" />
+<img width="2915" height="653" alt="BPMN" src="https://github.com/user-attachments/assets/764f4a83-c890-47e2-a107-baab94f2d6ee" />
+<img width="2155" height="5297" alt="Screenshot 2026-01-24 at 18-32-26 Privatinvestor MVP" src="https://github.com/user-attachments/assets/56612ca1-c339-4f56-ad86-275ddb7533b3" />
+<img width="2155" height="3301" alt="Screenshot 2026-01-24 at 18-32-41 Privatinvestor MVP" src="https://github.com/user-attachments/assets/6de201fc-a80d-4b50-ae1c-c91d31479e0a" />
 
-Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with offline-friendly data pulls and a dark finance dashboard.
+
+Scoring and backtesting toolkit (Next.js + TypeScript + Python) with offline-friendly data pulls and a dark finance dashboard.
 
 ## Für Endanwender (Kurzfassung)
 - Universes wählen, Scores berechnen, Backtests ansehen (Equity/Drawdown/Comparison).
