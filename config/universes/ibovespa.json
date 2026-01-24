@@ -1,0 +1,14 @@
+{
+  "name": "Ibovespa (Seed)",
+  "description": "Seed pack for Ibovespa with benchmark candles via yfinance.",
+  "benchmark": "^BVSP",
+  "snapshot_file": "data/universes/snapshots/ibovespa/2026-01-23.json",
+  "snapshot_date": "2026-01-23",
+  "symbols": [
+    "PETR4.SA",
+    "VALE3.SA",
+    "ITUB4.SA",
+    "BBDC4.SA",
+    "ABEV3.SA"
+  ]
+}

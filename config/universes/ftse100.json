@@ -1,0 +1,14 @@
+{
+  "name": "FTSE 100 (Seed)",
+  "description": "Seed pack for FTSE 100 with benchmark candles via yfinance.",
+  "benchmark": "^FTSE",
+  "snapshot_file": "data/universes/snapshots/ftse100/2026-01-22.json",
+  "snapshot_date": "2026-01-22",
+  "symbols": [
+    "HSBA.L",
+    "GSK.L",
+    "BP.L",
+    "AZN.L",
+    "ULVR.L"
+  ]
+}

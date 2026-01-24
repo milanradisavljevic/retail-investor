@@ -54,6 +54,11 @@ function makeFundamentals(): FundamentalsData {
     enterpriseValue: null,
     revenueGrowth: null,
     earningsGrowth: null,
+    analystTargetMean: null,
+    analystTargetLow: null,
+    analystTargetHigh: null,
+    analystCount: null,
+    nextEarningsDate: null,
     beta: null,
     raw: {},
   };

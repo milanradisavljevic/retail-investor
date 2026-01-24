@@ -1,0 +1,27 @@
+{
+  "name": "Rocket (GARP/Momentum)",
+  "description": "Growth At Reasonable Price with strong momentum. Targets high-growth companies with positive technical trends and reasonable valuations.",
+  "pillar_weights": {
+    "valuation": 0.20,
+    "quality": 0.25,
+    "technical": 0.40,
+    "risk": 0.15
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 15, "high": 40 },
+    "pb": { "low": 2, "high": 8 },
+    "ps": { "low": 1, "high": 6 },
+    "roe": { "low": 10, "high": 35 },
+    "debtEquity": { "low": 0.3, "high": 3 }
+  },
+  "filters": {
+    "min_technical_score": 65,
+    "min_momentum": 0.10,
+    "max_pe": 50
+  },
+  "diversification": {
+    "enabled": true,
+    "max_per_sector": 3,
+    "max_per_industry": 2
+  }
+}

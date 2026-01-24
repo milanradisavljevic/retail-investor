@@ -1,5 +1,7 @@
 "use client";
 
+import { formatPercent } from "@/lib/percent";
+
 type ConfidenceLevel = "high" | "medium" | "low";
 
 interface PriceTargetProps {
@@ -72,8 +74,7 @@ function PriceBox({
       </div>
       {delta !== undefined && (
         <div className={`text-xs ${getDeltaColor(delta)}`}>
-          {delta >= 0 ? "+" : ""}
-          {(delta * 100).toFixed(1)}%
+          {formatPercent(delta, { signed: true })}
         </div>
       )}
     </div>
@@ -180,8 +181,7 @@ export function PriceTargetCard(props: PriceTargetProps) {
           <div className="flex flex-wrap gap-3 text-xs text-text-secondary">
             {hasReturnDelta && (
               <span className={`font-semibold ${getDeltaColor(returnDelta ?? 0)}`}>
-                Δ Return {returnDelta! >= 0 ? "+" : ""}
-                {(returnDelta! * 100).toFixed(1)}%
+                Δ Return {formatPercent(returnDelta, { signed: true })}
               </span>
             )}
             {confidenceChange && (
@@ -262,7 +262,7 @@ export function PriceTargetCompact({
         ${target_sell_price.toFixed(2)}
       </span>
       <span className={getReturnColor(expected_return_pct)}>
-        +{(expected_return_pct * 100).toFixed(1)}%
+        {formatPercent(expected_return_pct, { signed: true })}
       </span>
       <span className="text-text-muted">{holding_period_months}m</span>
       <ConfidenceBadge level={confidence} />

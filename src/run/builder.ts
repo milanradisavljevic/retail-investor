@@ -101,7 +101,7 @@ export function buildRunRecord(
   const scoresOutput = scoringResult.scores.map((s) => ({
     symbol: s.symbol,
     company_name: namesMap.get(s.symbol)?.name,
-    industry: namesMap.get(s.symbol)?.industry,
+    industry: s.industry ?? namesMap.get(s.symbol)?.industry,
     total_score: s.totalScore,
     breakdown: {
       fundamental: s.breakdown.fundamental,
@@ -321,6 +321,8 @@ export function buildRunRecord(
         string
       ],
       pick_of_the_day: pickOfDay,
+      diversification_applied: selection.diversificationApplied ?? false,
+      skipped_for_diversity: selection.skippedForDiversity ?? [],
     },
 
     flags: {

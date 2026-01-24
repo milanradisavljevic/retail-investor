@@ -25,14 +25,31 @@ import yfinance as yf
 import pandas as pd
 
 # Configuration
-START_DATE = "2020-01-01"
-END_DATE = "2024-12-31"
+# Extended period for comprehensive backtesting (10+ years)
+START_DATE = os.environ.get("BACKTEST_START", "2015-01-01")
+END_DATE = os.environ.get("BACKTEST_END", "2025-12-31")
 OUTPUT_DIR = Path("data/backtesting/historical")
 MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds
+YAHOO_ALIASES: dict[str, str] = {
+    # S&P 500 renames/share classes
+    "ABC": "COR",  # AmerisourceBergen -> Cencora
+    "BF.B": "BF-B",
+    "BRK.B": "BRK-B",
+    "CDAY": "DAY",  # Ceridian -> Dayforce
+    "FLT": "CPAY",  # FLEETCOR -> Corpay
+    "PEAK": "DOC",  # Healthpeak -> Physicians Realty/Healthpeak merger
+    "PKI": "RVTY",  # PerkinElmer -> Revvity
+    # Russell 2000 share classes/aliases
+    "MOGA": "MOG-A",
+    "GEFB": "GEF-B",
+    "CRDA": "CRD-A",
+}
 
-# Get universe from command line argument or default to sp500
-UNIVERSE_NAME = sys.argv[1] if len(sys.argv) > 1 else "sp500"
+# Get universe from CLI arg, env var, or default to sp500
+# - CLI arg wins for explicit runs
+# - Env var enables `UNIVERSE=... npm run backtest`
+UNIVERSE_NAME = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("UNIVERSE", "sp500")
 UNIVERSE_FILE = Path(f"config/universes/{UNIVERSE_NAME}.json")
 
 
@@ -117,6 +134,8 @@ def main():
     # Fetch each symbol
     for i, symbol in enumerate(symbols, 1):
         output_file = OUTPUT_DIR / f"{symbol}.csv"
+        fetch_symbol_name = YAHOO_ALIASES.get(symbol, symbol)
+        alias_note = f" (alias {fetch_symbol_name})" if fetch_symbol_name != symbol else ""
 
         # Skip if already exists (incremental mode)
         if output_file.exists():
@@ -124,9 +143,9 @@ def main():
             print(f"[{i}/{len(symbols)}] {symbol}: Skipped (already exists)")
             continue
 
-        print(f"[{i}/{len(symbols)}] {symbol}: Fetching...")
+        print(f"[{i}/{len(symbols)}] {symbol}: Fetching...{alias_note}")
 
-        df = fetch_symbol(symbol)
+        df = fetch_symbol(fetch_symbol_name)
 
         if df is not None and not df.empty:
             df.to_csv(output_file, index=False)
@@ -150,9 +169,13 @@ def main():
 
     if fail_count > 0:
         print(f"\n[WARN] {fail_count} symbols failed. Check logs above.")
-        sys.exit(1)
-
-    print("\n[OK] All data fetched successfully!")
+        # Do not fail the pipeline for large universes where some symbols
+        # (delisted/illiquid/invalid tickers) are expected to fail.
+        if success_count == 0:
+            sys.exit(1)
+        print("[WARN] Continuing with partial dataset.")
+    else:
+        print("\n[OK] All data fetched successfully!")
 
 
 if __name__ == "__main__":

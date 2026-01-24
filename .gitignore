@@ -83,3 +83,14 @@ Thumbs.db
 # AI/LLM config
 .qwen/
 FeedbackCAQW
+CWCL.md
+QWF.md
+.tmp/
+
+# Local artifacts not for commit
+GIT IGNORE/
+AGENTS.md
+GEMINI.md
+CLAUDE.md
+QWEN.md
+.directory

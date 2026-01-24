@@ -1,0 +1,14 @@
+{
+  "name": "SENSEX (Seed)",
+  "description": "Seed pack for BSE SENSEX with benchmark candles via yfinance.",
+  "benchmark": "^BSESN",
+  "snapshot_file": "data/universes/snapshots/sensex/2026-01-22.json",
+  "snapshot_date": "2026-01-22",
+  "symbols": [
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS"
+  ]
+}

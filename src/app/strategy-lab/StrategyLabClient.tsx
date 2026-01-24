@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import MarketContextBar from "@/app/components/MarketContextBar";
+import { formatPercent } from "@/lib/percent";
+import type { MarketContextResponse } from "@/lib/marketContext";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
+import type { UniverseWithMetadata, PresetConfig } from "./loaders";
+import { SectorExposure } from "@/app/components/SectorExposure";
 
 type PillarWeights = {
   valuation: number;
@@ -65,12 +70,7 @@ type BacktestResultResponse = {
   drawdown?: Array<{ date: string; drawdown_pct: number }>;
 };
 
-const UNIVERSES = [
-  { id: "russell2000_full", name: "Russell 2000", stocks: 1943, status: "READY" },
-  { id: "sp500", name: "S&P 500", stocks: 503, status: "READY" },
-  { id: "nasdaq100", name: "NASDAQ 100", stocks: 100, status: "WIP" },
-  { id: "dax40", name: "DAX 40", stocks: 40, status: "COMING" },
-];
+// Universes are now loaded server-side and passed as props
 
 const WEIGHT_PRESETS: Record<
   string,
@@ -99,12 +99,15 @@ const WEIGHT_PRESETS: Record<
 };
 
 const PERIOD_PRESETS = {
-  full: { start: "2020-01-01", end: "2025-12-31", label: "Full Period (2020-2025)" },
-  recent4y: { start: "2020-01-01", end: "2024-12-31", label: "2020-2024" },
-  recent5y: { start: "2021-01-01", end: "2025-12-31", label: "2021-2025" },
-  last3y: { start: "2023-01-01", end: "2025-12-31", label: "Last 3 Years" },
+  full: { start: "2015-01-01", end: "2025-12-31", label: "Full Period (2015-2025)" },
+  decade: { start: "2015-01-01", end: "2025-12-31", label: "Last 10 Years" },
+  fiveYear: { start: "2020-01-01", end: "2025-12-31", label: "Last 5 Years (2020-2025)" },
+  threeYear: { start: "2023-01-01", end: "2025-12-31", label: "Last 3 Years" },
+  preCovid: { start: "2015-01-01", end: "2019-12-31", label: "Pre-COVID (2015-2019)" },
   covid: { start: "2020-01-01", end: "2021-12-31", label: "COVID Era (2020-2021)" },
   postCovid: { start: "2022-01-01", end: "2025-12-31", label: "Post-COVID (2022-2025)" },
+  bear2022: { start: "2022-01-01", end: "2022-12-31", label: "2022 Bear Market" },
+  bull2023: { start: "2023-01-01", end: "2023-12-31", label: "2023 Bull Market" },
 };
 
 const SAMPLE_LIVE_PICKS: LivePick[] = [
@@ -155,16 +158,6 @@ const SAMPLE_RECENT_BACKTESTS = [
     metrics: "86.36% Return | -13.72% DD",
   },
 ];
-
-function formatPercent(value: number | null | undefined, opts?: { signed?: boolean }) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
-  const pct = `${Math.abs(value * 100).toFixed(1)}%`;
-  if (opts?.signed) {
-    const prefix = value > 0 ? "+" : value < 0 ? "-" : "";
-    return `${prefix}${pct}`;
-  }
-  return `${value.toFixed(1)}%`;
-}
 
 function classNames(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -260,44 +253,152 @@ function SectionCard({
 function UniverseSelector({
   value,
   onChange,
+  universes,
 }: {
   value: string;
   onChange: (id: string) => void;
+  universes: UniverseWithMetadata[];
 }) {
+  // Group by region
+  const grouped = useMemo(() => {
+    const groups: Record<string, UniverseWithMetadata[]> = {
+      US: [],
+      Europe: [],
+      Asia: [],
+      LatAm: [],
+    };
+
+    universes.forEach(u => {
+      if (groups[u.region]) {
+        groups[u.region].push(u);
+      }
+    });
+
+    return groups;
+  }, [universes]);
+
+  const statusColor = (status: string) => {
+    if (status === "FULL") return "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/40";
+    if (status === "SAMPLE") return "text-[#F59E0B] bg-[#F59E0B]/10 border-[#F59E0B]/40";
+    return "text-[#94A3B8] bg-[#94A3B8]/10 border-[#94A3B8]/30";
+  };
+
+  const formatRuntime = (min: number) => {
+    if (min === 0) return "~15 sec";
+    if (min < 1) return "~1 min";
+    if (min >= 60) {
+      const hours = Math.floor(min / 60);
+      const mins = min % 60;
+      return mins > 0 ? `~${hours}h ${mins}m` : `~${hours}h`;
+    }
+    return `~${min} min`;
+  };
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {UNIVERSES.map((universe) => {
-        const statusColor =
-          universe.status === "READY"
-            ? "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/40"
-            : universe.status === "WIP"
-              ? "text-[#F59E0B] bg-[#F59E0B]/10 border-[#F59E0B]/40"
-              : "text-[#94A3B8] bg-[#94A3B8]/10 border-[#94A3B8]/30";
+    <div className="space-y-4">
+      {Object.entries(grouped).map(([region, items]) => {
+        if (items.length === 0) return null;
+
         return (
-          <button
-            key={universe.id}
-            onClick={() => onChange(universe.id)}
-            className={classNames(
-              "rounded-xl border px-4 py-3 text-left transition-all",
-              "bg-[#0F172A] hover:border-[#334155] hover:-translate-y-[1px]",
-              value === universe.id ? "border-[#3B82F6] shadow-[0_0_0_1px_rgba(59,130,246,0.3)]" : "border-[#1F2937]"
-            )}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-[#E2E8F0]">{universe.name}</p>
-              <span
-                className={classNames(
-                  "text-[10px] px-2 py-0.5 rounded-full border",
-                  statusColor
-                )}
-              >
-                {universe.status}
-              </span>
+          <div key={region}>
+            <p className="text-xs uppercase tracking-wide text-[#94A3B8] mb-2 font-semibold">
+              {region === 'US' && '🇺🇸 United States'}
+              {region === 'Europe' && '🇪🇺 Europe'}
+              {region === 'Asia' && '🌏 Asia'}
+              {region === 'LatAm' && '🌎 Latin America'}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {items.map((universe) => (
+                <button
+                  key={universe.id}
+                  onClick={() => onChange(universe.id)}
+                  className={classNames(
+                    "rounded-xl border px-3 py-2.5 text-left transition-all",
+                    "bg-[#0F172A] hover:border-[#334155] hover:-translate-y-[1px]",
+                    value === universe.id
+                      ? "border-[#3B82F6] shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
+                      : "border-[#1F2937]"
+                  )}
+                >
+                  <div className="flex items-start justify-between mb-1.5 gap-2">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      <span className="text-sm">{universe.flag}</span>
+                      <p className="text-xs font-semibold text-[#E2E8F0] truncate">
+                        {universe.name}
+                      </p>
+                    </div>
+                    <span
+                      className={classNames(
+                        "text-[9px] px-1.5 py-0.5 rounded-full border uppercase tracking-wide flex-shrink-0",
+                        statusColor(universe.status)
+                      )}
+                    >
+                      {universe.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-[#94A3B8]">
+                    <span>{universe.symbol_count} stocks</span>
+                    <span className="font-mono">{formatRuntime(universe.estimatedRuntimeMin)}</span>
+                  </div>
+                </button>
+              ))}
             </div>
-            <p className="text-xs text-[#94A3B8]">{universe.stocks} stocks</p>
-          </button>
+          </div>
         );
       })}
+    </div>
+  );
+}
+
+function PresetSelector({
+  value,
+  onChange,
+  presets,
+}: {
+  value: string | null;
+  onChange: (id: string | null, weights?: PillarWeights) => void;
+  presets: PresetConfig[];
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-[#E2E8F0] font-semibold">Strategy Presets</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <button
+          onClick={() => onChange(null)}
+          className={classNames(
+            "rounded-xl border px-4 py-3 text-left transition-all",
+            "bg-[#0F172A] hover:border-[#334155]",
+            value === null
+              ? "border-[#3B82F6] shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
+              : "border-[#1F2937]"
+          )}
+        >
+          <p className="text-sm font-semibold text-[#E2E8F0] mb-1">Custom</p>
+          <p className="text-xs text-[#94A3B8]">Manual weight configuration</p>
+        </button>
+        {presets.map((preset) => (
+          <button
+            key={preset.id}
+            onClick={() => onChange(preset.id, preset.pillar_weights)}
+            className={classNames(
+              "rounded-xl border px-4 py-3 text-left transition-all",
+              "bg-[#0F172A] hover:border-[#334155]",
+              value === preset.id
+                ? "border-[#3B82F6] shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
+                : "border-[#1F2937]"
+            )}
+          >
+            <p className="text-sm font-semibold text-[#E2E8F0] mb-1">{preset.name}</p>
+            <p className="text-xs text-[#94A3B8] line-clamp-2">{preset.description}</p>
+            <div className="flex items-center gap-2 mt-2 text-[10px] text-[#64748B]">
+              <span>V:{(preset.pillar_weights.valuation * 100).toFixed(0)}%</span>
+              <span>Q:{(preset.pillar_weights.quality * 100).toFixed(0)}%</span>
+              <span>T:{(preset.pillar_weights.technical * 100).toFixed(0)}%</span>
+              <span>R:{(preset.pillar_weights.risk * 100).toFixed(0)}%</span>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -638,9 +739,22 @@ function CompactChart({ title, points }: { title: string; points?: number }) {
   );
 }
 
-export default function StrategyLabClient({ latestRun }: { latestRun: RunV1SchemaJson | null }) {
+export default function StrategyLabClient({
+  latestRun,
+  universes,
+  presets,
+  marketContext,
+}: {
+  latestRun: RunV1SchemaJson | null;
+  universes: UniverseWithMetadata[];
+  presets: PresetConfig[];
+  marketContext?: MarketContextResponse | null;
+}) {
   const [activeTab, setActiveTab] = useState<"live" | "backtest">("live");
-  const [selectedUniverse, setSelectedUniverse] = useState<string>("russell2000_full");
+  const [selectedUniverse, setSelectedUniverse] = useState<string>(
+    universes.find(u => u.id === "russell2000_full")?.id || universes[0]?.id || "test"
+  );
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [strategy, setStrategy] = useState<string>("4-pillar");
   const [weights, setWeights] = useState<PillarWeights>({
     valuation: 25,
@@ -656,8 +770,8 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
     excludeFossil: false,
   });
   const [topK, setTopK] = useState<number>(10);
-  const [startDate, setStartDate] = useState<string>(PERIOD_PRESETS.full.start);
-  const [endDate, setEndDate] = useState<string>(PERIOD_PRESETS.full.end);
+  const [startDate, setStartDate] = useState<string>(PERIOD_PRESETS.fiveYear.start);
+  const [endDate, setEndDate] = useState<string>(PERIOD_PRESETS.fiveYear.end);
   const [rebalancing, setRebalancing] = useState<"monthly" | "quarterly" | "annually">("quarterly");
   const [slippage, setSlippage] = useState<"optimistic" | "realistic" | "conservative">("realistic");
   const [startingCapital, setStartingCapital] = useState<number>(100000);
@@ -674,6 +788,38 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
   const [equityCurve, setEquityCurve] = useState<Array<{ date: string; portfolio_value: number; sp500_value: number }>>([]);
   const [drawdown, setDrawdown] = useState<Array<{ date: string; drawdown_pct: number }>>([]);
   const weightTotal = weights.valuation + weights.quality + weights.technical + weights.risk;
+
+  // Get selected universe metadata
+  const selectedUniverseMeta = useMemo(
+    () => universes.find(u => u.id === selectedUniverse),
+    [universes, selectedUniverse]
+  );
+
+  // Format runtime display
+  const formatRuntime = (min: number) => {
+    if (min === 0) return "~15 seconds";
+    if (min < 1) return "~1 minute";
+    if (min >= 60) {
+      const hours = Math.floor(min / 60);
+      const mins = min % 60;
+      return mins > 0 ? `~${hours}h ${mins}m` : `~${hours}h`;
+    }
+    return `~${min} minutes`;
+  };
+
+  // Handle preset selection
+  const handlePresetChange = (presetId: string | null, presetWeights?: PillarWeights) => {
+    setSelectedPreset(presetId);
+    if (presetWeights) {
+      // Convert decimal weights (0.30) to percentage (30) for UI sliders
+      setWeights({
+        valuation: Math.round(presetWeights.valuation * 100),
+        quality: Math.round(presetWeights.quality * 100),
+        technical: Math.round(presetWeights.technical * 100),
+        risk: Math.round(presetWeights.risk * 100),
+      });
+    }
+  };
 
   const periodValid =
     new Date(endDate).getTime() > new Date(startDate).getTime() &&
@@ -696,6 +842,7 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           universe: selectedUniverse,
+          preset: selectedPreset,
           strategy,
           weights,
           filters,
@@ -752,6 +899,7 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           universe: selectedUniverse,
+          preset: selectedPreset,
           strategy,
           weights,
           period: { startDate, endDate },
@@ -812,62 +960,74 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
           </div>
         </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-[#94A3B8]">
+            {selectedUniverseMeta && (
+              <>
+                <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] flex items-center gap-1.5">
+                  <span>{selectedUniverseMeta.flag}</span>
+                  <span>{selectedUniverseMeta.name}</span>
+                  <span className="text-[#64748B]">({selectedUniverseMeta.symbol_count} stocks)</span>
+                </span>
+                <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] font-mono">
+                  Runtime: {formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)}
+                </span>
+              </>
+            )}
+            {selectedPreset && (
+              <span className="px-3 py-1 rounded-full border border-[#3B82F6]/30 bg-[#0B1220] text-[#E2E8F0]">
+                Preset: {presets.find(p => p.id === selectedPreset)?.name || selectedPreset}
+              </span>
+            )}
             <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220]">
-              Universe: {selectedUniverse.replace(/_/g, " ")}
+              Weight total: {weightTotal}%
             </span>
-            <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220]">
-            Strategy: {strategy}
-          </span>
-          <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220]">
-            Weight total: {weightTotal}%
-          </span>
-          {latestRun && (
-            <span className="px-3 py-1 rounded-full border border-[#3B82F6]/30 bg-[#0B1220] text-[#E2E8F0]">
-              Latest run: {latestRun.run_id} | {latestRun.as_of_date}
-            </span>
-          )}
-        </div>
+            {latestRun && (
+              <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
+                Latest: {latestRun.as_of_date}
+              </span>
+            )}
+          </div>
       </header>
+
+      <MarketContextBar initialData={marketContext ?? undefined} />
 
       <SectionCard
         title="Shared Configuration"
         subtitle="Universe selection, strategy weights, and filters apply to both modes."
       >
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="space-y-3">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
               <p className="text-sm text-[#94A3B8] uppercase tracking-wide">Universe Selection</p>
-              <UniverseSelector value={selectedUniverse} onChange={setSelectedUniverse} />
+              {selectedUniverseMeta && (
+                <div className="flex items-center gap-3 text-xs text-[#94A3B8]">
+                  <span className="px-2 py-1 rounded bg-[#0F172A] border border-[#1F2937]">
+                    {selectedUniverseMeta.symbol_count} stocks
+                  </span>
+                  <span className="px-2 py-1 rounded bg-[#0F172A] border border-[#1F2937] font-mono">
+                    {formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)}
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                {["Momentum-Only", "4-Pillar", "Hybrid", "Custom"].map((label) => {
-                  const key = label.toLowerCase().replace(" ", "-");
-                  return (
-                    <label
-                      key={label}
-                      className={classNames(
-                        "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all",
-                        strategy === key
-                          ? "border-[#3B82F6] bg-[#3B82F6]/10"
-                          : "border-[#1F2937] bg-[#0F172A]"
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="strategy"
-                        checked={strategy === key}
-                        onChange={() => setStrategy(key)}
-                        className="accent-[#3B82F6]"
-                      />
-                      <span className="text-sm text-[#E2E8F0]">{label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              <WeightEditor weights={weights} onChange={setWeights} />
-            </div>
+            <UniverseSelector
+              value={selectedUniverse}
+              onChange={setSelectedUniverse}
+              universes={universes}
+            />
           </div>
+
+          <div className="space-y-3">
+            <PresetSelector
+              value={selectedPreset}
+              onChange={handlePresetChange}
+              presets={presets}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <WeightEditor weights={weights} onChange={setWeights} />
+          </div>
+
           <FilterPanel filters={filters} onChange={setFilters} />
         </div>
       </SectionCard>
@@ -875,11 +1035,22 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
       {activeTab === "live" && (
         <div className="space-y-6">
           <SectionCard title="Run Configuration" subtitle="Generate picks as of today.">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
                 <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">As of Date</p>
                 <p className="text-lg text-[#E2E8F0] font-semibold">{liveAsOfDate}</p>
                 <p className="text-xs text-[#64748B]">Live runs always use today.</p>
+              </div>
+              <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
+                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Estimated Runtime</p>
+                <p className="text-lg text-[#E2E8F0] font-semibold font-mono">
+                  {selectedUniverseMeta ? formatRuntime(selectedUniverseMeta.estimatedRuntimeMin) : '--'}
+                </p>
+                <p className="text-xs text-[#64748B]">
+                  {selectedUniverseMeta?.status === 'TEST' && '⚡ Quick test run'}
+                  {selectedUniverseMeta?.status === 'SAMPLE' && '📊 Medium-sized test'}
+                  {selectedUniverseMeta?.status === 'FULL' && '🏭 Full production run'}
+                </p>
               </div>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
                 <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Top Picks</p>
@@ -934,6 +1105,12 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
             title={`Top ${topK} Stock Picks`}
             subtitle={latestRun ? `As of ${liveAsOfDate}` : "Sample output until a run is available"}
           >
+            <SectorExposure 
+              picks={visiblePicks.map(p => ({ 
+                symbol: p.symbol, 
+                industry: p.sector || "Unknown" 
+              }))} 
+            />
             <LiveRunOutput picks={visiblePicks} />
           </SectionCard>
         </div>
@@ -949,7 +1126,7 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
                   <input
                     type="date"
                     value={startDate}
-                    min="2020-01-01"
+                    min="2015-01-01"
                     max={endDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     className="bg-[#0B1220] border border-[#1F2937] rounded px-3 py-2 text-sm text-[#E2E8F0]"
@@ -959,7 +1136,7 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
                     type="date"
                     value={endDate}
                     min={startDate}
-                    max="2025-12-31"
+                    max="2026-01-31"
                     onChange={(e) => setEndDate(e.target.value)}
                     className="bg-[#0B1220] border border-[#1F2937] rounded px-3 py-2 text-sm text-[#E2E8F0]"
                   />
@@ -980,7 +1157,7 @@ export default function StrategyLabClient({ latestRun }: { latestRun: RunV1Schem
                 </div>
                 {!periodValid && (
                   <p className="text-xs text-[#EF4444]">
-                    Min. period is 1 year. Ensure start &lt; end and within 2020-01-01 to 2025-12-31.
+                    Min. period is 1 year. Ensure start &lt; end and within 2015-01-01 to 2026-01-31.
                   </p>
                 )}
               </div>

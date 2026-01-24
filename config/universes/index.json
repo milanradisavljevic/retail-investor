@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-01-24",
+  "universes": {
+    "us": [
+      {"id": "sp500-full", "name": "S&P 500", "symbolCount": 501},
+      {"id": "nasdaq100", "name": "NASDAQ 100", "symbolCount": 100},
+      {"id": "russell2000_full", "name": "Russell 2000", "symbolCount": 1943}
+    ],
+    "europe": [
+      {"id": "dax_full", "name": "DAX 40", "symbolCount": 40},
+      {"id": "cac40_full", "name": "CAC 40", "symbolCount": 40},
+      {"id": "ftse100_full", "name": "FTSE 100", "symbolCount": 100},
+      {"id": "eurostoxx50", "name": "Euro Stoxx 50", "symbolCount": 50}
+    ],
+    "asia": [
+      {"id": "nikkei225_full", "name": "Nikkei 225", "symbolCount": 225},
+      {"id": "sensex_full", "name": "SENSEX", "symbolCount": 30},
+      {"id": "shanghai_comp", "name": "Shanghai Composite", "symbolCount": 50}
+    ],
+    "latam": [
+      {"id": "ibovespa_full", "name": "Ibovespa", "symbolCount": 86}
+    ]
+  }
+}

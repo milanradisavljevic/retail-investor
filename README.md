@@ -4,6 +4,13 @@
 
 Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with offline-friendly data pulls and a dark finance dashboard.
 
+## Für Endanwender (Kurzfassung)
+- Universes wählen, Scores berechnen, Backtests ansehen (Equity/Drawdown/Comparison).
+- Daten lokal: yfinance Fetcher (2015–2025), aktuell S&P 500 Full 490/501, Russell 2000 Full 1941/1943 CSVs.
+- Scoring-Modi: Hybrid, Momentum, 4-Pillar (gewichtbar via UI/CLI).
+- Strategie-Lab UI: Universe/Preset Auswahl, Runtime-Anzeige, Region/Flaggen.
+- Läuft offline nach Daten-Fetch; keine LLMs im Scoring-Pfad.
+
 ## Was das Projekt macht
 - Bewertet Aktien deterministisch: Fundamentals + Technicals → Pillar-Scores + Gesamtscore (Momentum/Hybrid/4-Pillar), keine LLM-Komponenten im Scoring.
 - Universes wählbar: Packs unter `config/universes/*.json` (SP500, Nasdaq100, EuroStoxx50 Samples, Russell2000_full), Benchmark pro Pack; Fetcher lädt YF-Daten lokal.
@@ -19,7 +26,7 @@ Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with o
   - Hybrid (aktuell): `SCORING_MODE=hybrid npx tsx scripts/backtesting/run-backtest.ts`
   - Momentum: `SCORING_MODE=momentum npx tsx scripts/backtesting/run-backtest.ts`
   - Ergebnisse liegen unter `data/backtesting/` (CSV + summary JSON). Kopien: `*-momentum.*`, `*-4pillar.*`
-- Historische Daten laden: `python scripts/backtesting/fetch-historical.py russell2000_full` (1,944 Symbole; 51 fehlen aktuell).
+- Historische Daten laden: `python scripts/backtesting/fetch-historical.py russell2000_full` (1,944 Symbole; 2 fehlen aktuell) oder `... sp500-full` (11 fehlen aktuell). Zeitraum: 2015-01-01 bis 2025-12-31.
 
 ## Backtesting Dashboard (/backtesting)
 - Tabs für Modelle: Momentum-Only, Hybrid, 4-Pillar (Time-Series jetzt hinterlegt), plus Pending-Slots für Momentum+Market-Cap und Momentum+Vol-Cap.
@@ -42,7 +49,7 @@ Small-cap scoring and backtesting toolkit (Next.js + TypeScript + Python) with o
 ## Universes & Benchmarks
 - Universe Files: `config/universes/*.json` (z.B. `sp500`, `nasdaq100`, `eurostoxx50`, `russell2000_full`, `russell2000` Sample). Benchmark wird aus der Datei gelesen (z.B. SPY, IWM).
 - Auswahl: per Env `UNIVERSE`/`UNIVERSE_CONFIG` oder via UI-Select auf `/backtesting` (wirkt auf den Run-Trigger).
-- Datenlücken: Beim Russell2000_full fehlen derzeit 51 Ticker (Download-Fehler). Momentum/Hybrid/4-Pillar Runs basieren auf 1,892/1,943 Symbolen.
+- Datenlücken: S&P 500 Full fehlen 11 CSVs (ABMD, ANSS, CTLT, DFS, HES, JNPR, MRO, PARA, PXD, WBA, WRK). Russell2000_full fehlen 2 CSVs (AKE, THRD).
 
 ## API Trigger
 - Endpoint: `POST /api/backtest/run`

@@ -341,6 +341,62 @@
             }
           },
 
+          "monte_carlo_diagnostics": {
+            "type": ["object", "null"],
+            "description": "Monte Carlo fair value distribution for deep analysis (Top 30 stocks only)",
+            "properties": {
+              "value_p10": { "type": "number", "description": "10th percentile fair value" },
+              "value_p50": { "type": "number", "description": "50th percentile (median) fair value" },
+              "value_p90": { "type": "number", "description": "90th percentile fair value" },
+              "prob_value_gt_price": { "type": "number", "minimum": 0, "maximum": 1, "description": "Probability that fair value > current price" },
+              "mos_15_prob": { "type": "number", "minimum": 0, "maximum": 1, "description": "Probability of 15%+ margin of safety" },
+              "iterations_run": { "type": "integer", "minimum": 100, "description": "Number of Monte Carlo iterations" },
+              "input_assumptions": {
+                "type": "object",
+                "description": "Stochastic input parameters used in simulation",
+                "properties": {
+                  "revenue_growth": {
+                    "type": "object",
+                    "properties": {
+                      "base": { "type": "number" },
+                      "std_dev": { "type": "number" },
+                      "distribution": { "type": "string" },
+                      "source": { "type": "string" }
+                    }
+                  },
+                  "operating_margin": {
+                    "type": "object",
+                    "properties": {
+                      "base": { "type": "number" },
+                      "std_dev": { "type": "number" },
+                      "distribution": { "type": "string" },
+                      "source": { "type": "string" }
+                    }
+                  },
+                  "discount_rate": {
+                    "type": "object",
+                    "properties": {
+                      "base": { "type": "number" },
+                      "std_dev": { "type": "number" },
+                      "distribution": { "type": "string" },
+                      "source": { "type": "string" }
+                    }
+                  }
+                }
+              },
+              "data_quality": {
+                "type": "object",
+                "description": "Monte Carlo specific data quality metrics"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Confidence in Monte Carlo results based on data quality and distribution"
+              }
+            }
+          },
+
           "company_name": { "type": "string", "description": "Optional company name from provider or mapping" },
           "industry": { "type": "string", "description": "Optional industry/sector name" }
         }
@@ -349,13 +405,23 @@
 
     "selections": {
       "type": "object",
-      "required": ["top5", "top10", "top15", "top20", "pick_of_the_day"],
+      "required": ["top5", "top10", "top15", "top20", "top30", "pick_of_the_day"],
       "properties": {
         "top5": { "type": "array", "items": { "type": "string" }, "minItems": 5, "maxItems": 5 },
         "top10": { "type": "array", "items": { "type": "string" }, "minItems": 10, "maxItems": 10 },
         "top15": { "type": "array", "items": { "type": "string" }, "minItems": 15, "maxItems": 15 },
         "top20": { "type": "array", "items": { "type": "string" }, "minItems": 20, "maxItems": 20 },
-        "pick_of_the_day": { "type": "string", "description": "Deterministic seeded selection" }
+        "top30": { "type": "array", "items": { "type": "string" }, "minItems": 30, "maxItems": 30 },
+        "pick_of_the_day": { "type": "string", "description": "Deterministic seeded selection" },
+        "diversification_applied": {
+          "type": "boolean",
+          "description": "True when diversification safety net capped sector/industry counts in selections"
+        },
+        "skipped_for_diversity": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Symbols skipped due to diversification caps"
+        }
       }
     },
 

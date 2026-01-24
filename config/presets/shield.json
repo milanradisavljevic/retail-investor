@@ -1,0 +1,28 @@
+{
+  "name": "Shield (Defensive/Low Vol)",
+  "description": "Defensive strategy prioritizing low volatility, high quality, and stable businesses. Ideal for risk-averse investors seeking capital preservation.",
+  "pillar_weights": {
+    "valuation": 0.20,
+    "quality": 0.30,
+    "technical": 0.10,
+    "risk": 0.40
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 8, "high": 20 },
+    "pb": { "low": 0.8, "high": 3 },
+    "ps": { "low": 0.5, "high": 2.5 },
+    "roe": { "low": 8, "high": 25 },
+    "debtEquity": { "low": 0.1, "high": 1.2 }
+  },
+  "filters": {
+    "max_beta": 1.0,
+    "min_quality_score": 65,
+    "max_volatility": 0.30,
+    "min_risk_score": 60
+  },
+  "diversification": {
+    "enabled": true,
+    "max_per_sector": 2,
+    "max_per_industry": 2
+  }
+}

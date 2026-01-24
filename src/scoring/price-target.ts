@@ -124,9 +124,35 @@ export interface PriceTargetDiagnostics {
   };
 }
 
+export interface MonteCarloInputAssumption {
+  base: number;
+  std_dev: number;
+  distribution: string;
+  source: string;
+}
+
+export interface MonteCarloInputAssumptions {
+  revenue_growth: MonteCarloInputAssumption;
+  operating_margin: MonteCarloInputAssumption;
+  discount_rate: MonteCarloInputAssumption;
+}
+
+export interface MonteCarloDiagnostics {
+  value_p10: number;
+  value_p50: number;
+  value_p90: number;
+  prob_value_gt_price: number;
+  mos_15_prob: number;
+  iterations_run: number;
+  input_assumptions: MonteCarloInputAssumptions;
+  data_quality: Record<string, any>;
+  confidence: number;
+}
+
 export interface PriceTargetResult {
   target: PriceTarget | null;
   diagnostics: PriceTargetDiagnostics | null;
+  monteCarlo: MonteCarloDiagnostics | null;
 }
 
 export interface ScoringContext {
@@ -404,20 +430,24 @@ export function requiresDeepAnalysis(
 
 /**
  * Calculate complete price target for a stock.
+ *
+ * @param options.computeMonteCarlo - Enable Monte Carlo fair value calculation
+ * @param options.isTop30 - Whether this stock is in Top 30 (required for Monte Carlo)
  */
-export function calculatePriceTargets(
+export async function calculatePriceTargets(
   metrics: StockMetrics,
   mediansSelection: MedianSelection,
   context: ScoringContext,
-  config: PriceTargetConfig
-): PriceTargetResult {
+  config: PriceTargetConfig,
+  options?: { computeMonteCarlo?: boolean; isTop30?: boolean }
+): Promise<PriceTargetResult> {
   const { currentPrice } = metrics;
   const { totalScore, volatilityScore, dataQualityScore, pillarSpread } = context;
   const sectorMedians = mediansSelection.medians;
 
   if (!currentPrice || currentPrice <= 0) {
     logger.warn({ symbol: metrics.symbol }, 'Invalid current price');
-    return { target: null, diagnostics: null };
+    return { target: null, diagnostics: null, monteCarlo: null };
   }
 
   // Calculate fair value
@@ -439,6 +469,7 @@ export function calculatePriceTargets(
           was_clamped: false,
         },
       },
+      monteCarlo: null,
     };
   }
 
@@ -539,6 +570,40 @@ export function calculatePriceTargets(
     'Calculated price target'
   );
 
+  // Monte Carlo fair value distribution (Top 30 stocks with deep analysis only)
+  let monteCarlo: MonteCarloDiagnostics | null = null;
+  if (
+    options?.computeMonteCarlo !== false &&
+    priceTarget.requiresDeepAnalysis &&
+    options?.isTop30
+  ) {
+    logger.debug({ symbol: metrics.symbol }, 'Computing Monte Carlo fair value distribution');
+    monteCarlo = await calculateMonteCarloFairValue(metrics.symbol);
+
+    // Enhance confidence with Monte Carlo probability metrics
+    if (monteCarlo && monteCarlo.confidence >= 0.6) {
+      const enhancedConfidence = deriveConfidenceFromMonteCarlo(
+        priceTarget.confidence,
+        monteCarlo.prob_value_gt_price,
+        monteCarlo.mos_15_prob
+      );
+
+      if (enhancedConfidence !== priceTarget.confidence) {
+        logger.debug(
+          {
+            symbol: metrics.symbol,
+            baseConfidence: priceTarget.confidence,
+            enhancedConfidence,
+            probValueGtPrice: monteCarlo.prob_value_gt_price,
+            mos15Prob: monteCarlo.mos_15_prob,
+          },
+          'Confidence enhanced from Monte Carlo'
+        );
+        priceTarget.confidence = enhancedConfidence;
+      }
+    }
+  }
+
   return {
     target: priceTarget,
     diagnostics: {
@@ -553,6 +618,7 @@ export function calculatePriceTargets(
         was_clamped: outOfBounds,
       },
     },
+    monteCarlo,
   };
 }
 
@@ -852,4 +918,146 @@ function downgradeConfidence(level: PriceTarget['confidence']): PriceTarget['con
   if (level === 'high') return 'medium';
   if (level === 'medium') return 'low';
   return 'low';
+}
+
+// ============================================================================
+// Monte Carlo Fair Value (Deep Analysis Enhancement)
+// ============================================================================
+
+/**
+ * Calculate Monte Carlo fair value distribution using Python CLI.
+ *
+ * This function spawns the Python monte_carlo_cli.py script to perform
+ * Monte Carlo simulation with Antithetic Variates for variance reduction.
+ *
+ * Used only for Top 30 stocks that require deep analysis.
+ *
+ * @param symbol Stock symbol
+ * @param iterations Number of Monte Carlo iterations (default: 1000)
+ * @param riskFreeRate Risk-free rate (default: 0.04)
+ * @param marketRiskPremium Market risk premium (default: 0.055)
+ * @returns MonteCarloDiagnostics or null if calculation fails
+ */
+async function calculateMonteCarloFairValue(
+  symbol: string,
+  iterations: number = 1000,
+  riskFreeRate: number = 0.04,
+  marketRiskPremium: number = 0.055
+): Promise<MonteCarloDiagnostics | null> {
+  const { spawn } = await import('child_process');
+  const path = await import('path');
+
+  return new Promise((resolve) => {
+    const timeout = 30000; // 30 second timeout
+    const scriptPath = path.join(process.cwd(), 'src', 'scoring', 'monte_carlo_cli.py');
+
+    const args = [
+      scriptPath,
+      '--symbol', symbol,
+      '--iterations', String(iterations),
+      '--risk_free_rate', String(riskFreeRate),
+      '--market_risk_premium', String(marketRiskPremium),
+    ];
+
+    const pythonProcess = spawn('python3', args, {
+      timeout,
+      env: process.env,
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code === 0 && stdout.trim()) {
+        try {
+          const result = JSON.parse(stdout);
+
+          // Validate required fields
+          if (
+            typeof result.value_p10 === 'number' &&
+            typeof result.value_p50 === 'number' &&
+            typeof result.value_p90 === 'number' &&
+            typeof result.prob_value_gt_price === 'number' &&
+            typeof result.mos_15_prob === 'number' &&
+            typeof result.iterations_run === 'number' &&
+            result.input_assumptions &&
+            typeof result.confidence === 'number'
+          ) {
+            resolve(result as MonteCarloDiagnostics);
+          } else {
+            logger.warn(`Monte Carlo result for ${symbol} missing required fields`);
+            resolve(null);
+          }
+        } catch (err) {
+          logger.error(`Failed to parse Monte Carlo JSON for ${symbol}: ${err}`);
+          resolve(null);
+        }
+      } else {
+        if (stderr.trim()) {
+          logger.error(`Monte Carlo CLI error for ${symbol}: ${stderr}`);
+        }
+        logger.warn(`Monte Carlo calculation failed for ${symbol} (exit code: ${code})`);
+        resolve(null);
+      }
+    });
+
+    pythonProcess.on('error', (err) => {
+      logger.error(`Failed to spawn Monte Carlo CLI for ${symbol}: ${err}`);
+      resolve(null);
+    });
+
+    // Handle timeout
+    setTimeout(() => {
+      if (!pythonProcess.killed) {
+        pythonProcess.kill('SIGTERM');
+        logger.warn(`Monte Carlo calculation timed out for ${symbol}`);
+        resolve(null);
+      }
+    }, timeout);
+  });
+}
+
+/**
+ * Derive confidence level from Monte Carlo probability metrics.
+ *
+ * Enhances base confidence using probabilistic validation:
+ * - High probability (>70%) of undervaluation → upgrade to "high"
+ * - Low probability (<30%) → downgrade to "low"
+ * - Moderate probability (>60%) with medium base → upgrade to "high"
+ *
+ * @param baseConfidence Base confidence level from fair value calculation
+ * @param probValueGtPrice Probability that fair value > current price
+ * @param mos15Prob Probability of 15%+ margin of safety
+ * @returns Enhanced confidence level
+ */
+function deriveConfidenceFromMonteCarlo(
+  baseConfidence: PriceTarget['confidence'],
+  probValueGtPrice: number,
+  mos15Prob: number
+): PriceTarget['confidence'] {
+  // Strong undervaluation signal
+  if (probValueGtPrice > 0.7 && mos15Prob > 0.5) {
+    return 'high';
+  }
+
+  // Weak undervaluation signal
+  if (probValueGtPrice < 0.3) {
+    return 'low';
+  }
+
+  // Moderate upgrade for medium confidence
+  if (baseConfidence === 'medium' && probValueGtPrice > 0.6) {
+    return 'high';
+  }
+
+  // Keep base confidence
+  return baseConfidence;
 }

@@ -1,0 +1,28 @@
+{
+  "name": "Deep Value (Graham Style)",
+  "description": "Pure value investing targeting deeply discounted stocks with strong balance sheets. Based on Benjamin Graham's margin of safety principle.",
+  "pillar_weights": {
+    "valuation": 0.50,
+    "quality": 0.25,
+    "technical": 0.10,
+    "risk": 0.15
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 5, "high": 15 },
+    "pb": { "low": 0.5, "high": 2 },
+    "ps": { "low": 0.3, "high": 1.5 },
+    "roe": { "low": 5, "high": 20 },
+    "debtEquity": { "low": 0.1, "high": 1.5 }
+  },
+  "filters": {
+    "max_pe": 12,
+    "max_pb": 1.5,
+    "min_valuation_score": 70,
+    "max_debt_equity": 2.0
+  },
+  "diversification": {
+    "enabled": true,
+    "max_per_sector": 3,
+    "max_per_industry": 2
+  }
+}

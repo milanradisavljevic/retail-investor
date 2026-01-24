@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getRunById } from "@/lib/runLoader";
 import { getCompanyName } from "@/core/company";
 import { buildScoreView, parseScoreQuery } from "@/lib/scoreView";
+import { formatPercent } from "@/lib/percent";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import { BriefingToolbar } from "@/app/components/BriefingToolbar";
 import { RunExportButtons, type CsvRow } from "@/app/components/RunExportButtons";
@@ -169,7 +170,7 @@ export default function RunDetailPage({ params, searchParams }: Params) {
                 const symbol = score.symbol;
                 const priceTarget = score.price_target;
                 const returnLabel = priceTarget
-                  ? `${(priceTarget.expected_return_pct * 100).toFixed(1)}%`
+                  ? formatPercent(priceTarget.expected_return_pct, { signed: true })
                   : "—";
                 const returnColor =
                   priceTarget && priceTarget.expected_return_pct >= 0.15

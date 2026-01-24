@@ -3,6 +3,8 @@
   "provider": "finnhub",
   "benchmark": "SX5E",
   "description": "Scaled universe for two-phase pipeline",
+  "snapshot_file": "data/universes/snapshots/eurostoxx50/2026-01-22.json",
+  "snapshot_date": "2026-01-22",
   "version": "2026-01",
   "selection_rule": "EURO STOXX 50 constituents (truncated ADR-friendly sample)",
   "survivorship_bias_note": "Sampled ADR-heavy subset for offline friendliness",

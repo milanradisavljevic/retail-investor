@@ -30,6 +30,7 @@ def main():
             "get_quote",
             "get_company_profile",
             "get_candles",
+            "get_analyst_data",
         ],
     )
     parser.add_argument(
@@ -52,6 +53,8 @@ def main():
             result = client.get_company_profile(args.symbol)
         elif args.method == "get_candles":
             result = client.get_candles(args.symbol, days_back=args.days_back)
+        elif args.method == "get_analyst_data":
+            result = client.get_analyst_data(args.symbol)
         else:
             raise ValueError(f"Unsupported method: {args.method}")
 

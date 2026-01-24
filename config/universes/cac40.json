@@ -1,0 +1,14 @@
+{
+  "name": "CAC 40 (Seed)",
+  "description": "Seed pack for CAC 40 with benchmark candles via yfinance.",
+  "benchmark": "^FCHI",
+  "snapshot_file": "data/universes/snapshots/cac40/2026-01-22.json",
+  "snapshot_date": "2026-01-22",
+  "symbols": [
+    "MC.PA",
+    "OR.PA",
+    "AI.PA",
+    "AIR.PA",
+    "SAN.PA"
+  ]
+}

@@ -19,6 +19,15 @@ interface CandlePoint {
   volume: number | null;
 }
 
+interface AnalystData {
+  target_mean: number | null;
+  target_low: number | null;
+  target_high: number | null;
+  num_analysts: number | null;
+  recommendation: string | null;
+  next_earnings_date: string | null;
+}
+
 export class YFinanceProvider implements MarketDataProvider {
   private readonly pythonPath = 'python3';
   private readonly scriptPath = path.join(
@@ -32,10 +41,14 @@ export class YFinanceProvider implements MarketDataProvider {
   private basicFinancialsCache = new Map<string, Promise<BasicFinancials>>();
   private quoteCache = new Map<string, Promise<Quote>>();
   private candlesCache = new Map<string, Promise<Candles>>();
+  private analystDataCache = new Map<string, Promise<AnalystData>>();
 
   async getFundamentals(symbol: string): Promise<FundamentalsData | null> {
-    const basicFinancials = await this.getBasicFinancials(symbol);
-    return this.mapFundamentals(basicFinancials);
+    const [basicFinancials, analystData] = await Promise.all([
+      this.getBasicFinancials(symbol),
+      this.getAnalystData(symbol).catch(() => null),
+    ]);
+    return this.mapFundamentals(basicFinancials, analystData);
   }
 
   async getTechnicalMetrics(symbol: string): Promise<TechnicalMetrics | null> {
@@ -104,6 +117,19 @@ export class YFinanceProvider implements MarketDataProvider {
       this.candlesCache.set(cacheKey, promise);
     }
     return this.candlesCache.get(cacheKey)!;
+  }
+
+  private getAnalystData(symbol: string): Promise<AnalystData> {
+    if (!this.analystDataCache.has(symbol)) {
+      const promise = this.callPython<AnalystData>(symbol, 'get_analyst_data').catch(
+        (error) => {
+          this.analystDataCache.delete(symbol);
+          throw error;
+        }
+      );
+      this.analystDataCache.set(symbol, promise);
+    }
+    return this.analystDataCache.get(symbol)!;
   }
 
   private callPython<T>(
@@ -200,7 +226,8 @@ export class YFinanceProvider implements MarketDataProvider {
   }
 
   private mapFundamentals(
-    basicFinancials: BasicFinancials | null
+    basicFinancials: BasicFinancials | null,
+    analystData: AnalystData | null
   ): FundamentalsData | null {
     if (!basicFinancials || !basicFinancials.metric) {
       return null;
@@ -262,8 +289,13 @@ export class YFinanceProvider implements MarketDataProvider {
       enterpriseValue: metrics.enterpriseValue ?? null,
       revenueGrowth: this.decimalToPercent(metrics.revenueGrowthTTM),
       earningsGrowth: this.decimalToPercent(metrics.earningsGrowthTTM),
+      analystTargetMean: this.toNumberOrNull(analystData?.target_mean),
+      analystTargetLow: this.toNumberOrNull(analystData?.target_low),
+      analystTargetHigh: this.toNumberOrNull(analystData?.target_high),
+      analystCount: this.toNumberOrNull(analystData?.num_analysts),
+      nextEarningsDate: analystData?.next_earnings_date ?? null,
       beta: metrics.beta ?? null,
-      raw: metrics as unknown as Record<string, unknown>,
+      raw: this.buildRawMetrics(metrics, analystData),
     };
 
     return data;
@@ -523,6 +555,24 @@ export class YFinanceProvider implements MarketDataProvider {
       return null;
     }
     return numerator / denominator;
+  }
+
+  private toNumberOrNull(value: number | null | undefined): number | null {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+      return null;
+    }
+    return Number(value);
+  }
+
+  private buildRawMetrics(
+    metrics: Record<string, number | null>,
+    analystData: AnalystData | null
+  ): Record<string, unknown> {
+    const raw: Record<string, unknown> = { ...metrics };
+    if (analystData) {
+      raw.analyst = analystData;
+    }
+    return raw;
   }
 
   private safeMax(values: Array<number | null>): number | null {

@@ -32,6 +32,11 @@ export interface FundamentalsData {
   enterpriseValue: number | null;
   revenueGrowth: number | null;
   earningsGrowth: number | null;
+  analystTargetMean: number | null;
+  analystTargetLow: number | null;
+  analystTargetHigh: number | null;
+  analystCount: number | null;
+  nextEarningsDate: string | null;
   beta: number | null;
   // Raw API response for debugging
   raw?: Record<string, unknown>;

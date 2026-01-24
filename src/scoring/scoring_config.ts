@@ -45,6 +45,11 @@ export interface ScoringConfig {
     throttleMs?: number;
     scanOnlyPriceTarget?: boolean;
   };
+  diversification?: {
+    enabled?: boolean;
+    maxPerSector?: number;
+    maxPerIndustry?: number;
+  };
 }
 
 const DEFAULT_PRICE_TARGET = {
@@ -77,6 +82,11 @@ interface RawScoringConfig {
       throttle_ms?: number;
       scan_only_price_target?: boolean;
     };
+    diversification?: {
+      enabled?: boolean;
+      max_per_sector?: number;
+      max_per_industry?: number;
+    };
   };
   overrides?: Record<
     string,
@@ -99,8 +109,25 @@ interface RawScoringConfig {
         throttle_ms?: number;
         scan_only_price_target?: boolean;
       };
+      diversification?: {
+        enabled?: boolean;
+        max_per_sector?: number;
+        max_per_industry?: number;
+      };
     }>
   >;
+}
+
+interface RawPresetConfig {
+  name?: string;
+  description?: string;
+  pillar_weights?: Partial<PillarWeights>;
+  fundamental_thresholds?: Partial<FundamentalThresholds>;
+  diversification?: {
+    enabled?: boolean;
+    max_per_sector?: number;
+    max_per_industry?: number;
+  };
 }
 
 const DEFAULT_CONFIG: ScoringConfig = {
@@ -125,6 +152,11 @@ const DEFAULT_CONFIG: ScoringConfig = {
     throttleMs: 150,
     scanOnlyPriceTarget: false,
   },
+  diversification: {
+    enabled: true,
+    maxPerSector: 2,
+    maxPerIndustry: 3,
+  },
 };
 
 function loadRawConfig(): RawScoringConfig | null {
@@ -138,6 +170,27 @@ function loadRawConfig(): RawScoringConfig | null {
     const json = readFileSync(path, 'utf-8');
     return JSON.parse(json) as RawScoringConfig;
   } catch {
+    return null;
+  }
+}
+
+function loadPresetConfig(projectRoot: string): RawPresetConfig | null {
+  const presetName = (process.env.SCORING_PRESET || process.env.PRESET || '').trim();
+  if (!presetName) return null;
+
+  const presetPath = join(projectRoot, 'config', 'presets', `${presetName}.json`);
+  if (!existsSync(presetPath)) {
+    // eslint-disable-next-line no-console
+    console.warn(`Preset not found: ${presetPath}`);
+    return null;
+  }
+
+  try {
+    const json = readFileSync(presetPath, 'utf-8');
+    return JSON.parse(json) as RawPresetConfig;
+  } catch {
+    // eslint-disable-next-line no-console
+    console.warn(`Failed to load preset: ${presetPath}`);
     return null;
   }
 }
@@ -196,6 +249,30 @@ function mergePipeline(
   };
 }
 
+function mergeDiversification(
+  base: NonNullable<ScoringConfig['diversification']>,
+  override?: RawScoringConfig['default']['diversification']
+) {
+  if (!override) return base;
+  return {
+    enabled: override.enabled ?? base.enabled,
+    maxPerSector: override.max_per_sector ?? base.maxPerSector,
+    maxPerIndustry: override.max_per_industry ?? base.maxPerIndustry,
+  };
+}
+
+function mergeDiversificationFromPreset(
+  base: NonNullable<ScoringConfig['diversification']>,
+  preset?: RawPresetConfig['diversification']
+) {
+  if (!preset) return base;
+  return {
+    enabled: preset.enabled ?? base.enabled,
+    maxPerSector: preset.max_per_sector ?? base.maxPerSector,
+    maxPerIndustry: preset.max_per_industry ?? base.maxPerIndustry,
+  };
+}
+
 function normalizeWeights(weights: PillarWeights): PillarWeights {
   const total = weights.valuation + weights.quality + weights.technical + weights.risk;
   if (total <= 0) {
@@ -210,9 +287,25 @@ function normalizeWeights(weights: PillarWeights): PillarWeights {
 }
 
 export function getScoringConfig(): ScoringConfig {
+  const projectRoot = process.cwd();
   const raw = loadRawConfig();
+  const preset = loadPresetConfig(projectRoot);
   if (!raw) {
-    return DEFAULT_CONFIG;
+    const withPreset: ScoringConfig = { ...DEFAULT_CONFIG };
+    if (preset) {
+      withPreset.fundamentalThresholds = mergeThresholds(
+        withPreset.fundamentalThresholds,
+        preset.fundamental_thresholds
+      );
+      withPreset.pillarWeights = normalizeWeights(
+        mergeWeights(withPreset.pillarWeights, preset.pillar_weights)
+      );
+      withPreset.diversification = mergeDiversificationFromPreset(
+        withPreset.diversification!,
+        preset.diversification
+      );
+    }
+    return withPreset;
   }
 
   const universeName = getConfig().universe.name;
@@ -220,6 +313,7 @@ export function getScoringConfig(): ScoringConfig {
   const baseWeights = raw.default.pillar_weights ?? DEFAULT_CONFIG.pillarWeights;
   const basePriceTarget = mergePriceTarget(DEFAULT_PRICE_TARGET, raw.default.price_target);
   const basePipeline = mergePipeline(DEFAULT_CONFIG.pipeline!, (raw.default as any).pipeline);
+  const baseDiversification = mergeDiversification(DEFAULT_CONFIG.diversification!, raw.default.diversification);
 
   const override = raw.overrides?.[universeName];
 
@@ -235,11 +329,23 @@ export function getScoringConfig(): ScoringConfig {
 
   const mergedPriceTarget = mergePriceTarget(basePriceTarget, override?.price_target);
   const mergedPipeline = mergePipeline(basePipeline, (override as any)?.pipeline);
+  const mergedDiversification = mergeDiversification(baseDiversification, override?.diversification);
 
-  return {
+  const config: ScoringConfig = {
     fundamentalThresholds: mergedThresholds,
     pillarWeights: normalizeWeights(mergedWeights),
     priceTarget: mergedPriceTarget,
     pipeline: mergedPipeline,
+    diversification: mergedDiversification,
   };
+
+  if (preset) {
+    config.fundamentalThresholds = mergeThresholds(config.fundamentalThresholds, preset.fundamental_thresholds);
+    config.pillarWeights = normalizeWeights(mergeWeights(config.pillarWeights, preset.pillar_weights));
+    if (config.diversification) {
+      config.diversification = mergeDiversificationFromPreset(config.diversification, preset.diversification);
+    }
+  }
+
+  return config;
 }

@@ -243,6 +243,66 @@ export interface RunV1SchemaJson {
       };
     } | null;
     /**
+     * Monte Carlo fair value distribution for deep analysis (Top 30 stocks only)
+     */
+    monte_carlo_diagnostics?: {
+      /**
+       * 10th percentile fair value
+       */
+      value_p10?: number;
+      /**
+       * 50th percentile (median) fair value
+       */
+      value_p50?: number;
+      /**
+       * 90th percentile fair value
+       */
+      value_p90?: number;
+      /**
+       * Probability that fair value > current price
+       */
+      prob_value_gt_price?: number;
+      /**
+       * Probability of 15%+ margin of safety
+       */
+      mos_15_prob?: number;
+      /**
+       * Number of Monte Carlo iterations
+       */
+      iterations_run?: number;
+      /**
+       * Stochastic input parameters used in simulation
+       */
+      input_assumptions?: {
+        revenue_growth?: {
+          base?: number;
+          std_dev?: number;
+          distribution?: string;
+          source?: string;
+        };
+        operating_margin?: {
+          base?: number;
+          std_dev?: number;
+          distribution?: string;
+          source?: string;
+        };
+        discount_rate?: {
+          base?: number;
+          std_dev?: number;
+          distribution?: string;
+          source?: string;
+        };
+      };
+      /**
+       * Monte Carlo specific data quality metrics
+       */
+      data_quality?: {};
+      /**
+       * Confidence in Monte Carlo results based on data quality and distribution
+       */
+      confidence?: number;
+    } | null;
+    /**
      * Optional company name from provider or mapping
      */
     company_name?: string;
@@ -310,9 +370,53 @@ export interface RunV1SchemaJson {
       string
     ];
     /**
+     * @minItems 30
+     * @maxItems 30
+     */
+    top30: [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string
+    ];
+    /**
      * Deterministic seeded selection
      */
     pick_of_the_day: string;
+    /**
+     * True when diversification safety net capped sector/industry counts in selections
+     */
+    diversification_applied?: boolean;
+    /**
+     * Symbols skipped due to diversification caps
+     */
+    skipped_for_diversity?: string[];
   };
   flags: {
     user_documents_missing: string[];

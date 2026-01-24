@@ -1,0 +1,25 @@
+{
+  "name": "Quant (Balanced Hybrid)",
+  "description": "Quantitative balanced approach with equal weight across all pillars. Data-driven strategy without bias toward any single factor.",
+  "pillar_weights": {
+    "valuation": 0.25,
+    "quality": 0.25,
+    "technical": 0.25,
+    "risk": 0.25
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 10, "high": 30 },
+    "pb": { "low": 1, "high": 5 },
+    "ps": { "low": 0.8, "high": 4 },
+    "roe": { "low": 8, "high": 30 },
+    "debtEquity": { "low": 0.2, "high": 2 }
+  },
+  "filters": {
+    "min_total_score": 50
+  },
+  "diversification": {
+    "enabled": true,
+    "max_per_sector": 2,
+    "max_per_industry": 2
+  }
+}

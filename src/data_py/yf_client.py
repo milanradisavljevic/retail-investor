@@ -6,6 +6,7 @@ Fetches annual financial statements, balance sheet data, and historical prices.
 
 import logging
 import time
+from datetime import datetime
 from typing import Any, Dict, Optional
 import pandas as pd
 
@@ -357,6 +358,76 @@ def fetch_info(
     result = _retry_call(_fetch)
 
     # Cache result
+    if use_cache:
+        cache.set(symbol, cache_key, result)
+
+    return result
+
+
+def fetch_analyst_data(
+    symbol: str,
+    *,
+    use_cache: bool = True,
+    cache_ttl_hours: int = 24
+) -> Dict[str, Any]:
+    """
+    Fetch analyst-related data: price targets, recommendations, earnings dates.
+
+    Returns JSON-friendly dicts keyed by index (usually dates).
+    """
+    if yf is None:
+        raise RuntimeError("yfinance is not installed. Run: pip install yfinance")
+
+    cache_key = "analyst_data"
+    cache = SQLiteCache(ttl_hours=cache_ttl_hours)
+
+    if use_cache:
+        cached = cache.get(symbol, cache_key)
+        if cached is not None:
+            logger.debug(f"Cache hit for {symbol} {cache_key}")
+            return cached
+
+    def _df_to_index_dict(df: Any) -> Dict[str, Any]:
+        if df is None or (hasattr(df, "empty") and getattr(df, "empty")):
+            return {}
+
+        df_copy = df.copy()
+
+        def normalize_value(value: Any) -> Any:
+            if isinstance(value, (pd.Timestamp, datetime)):
+                return value.strftime("%Y-%m-%d")
+            return value
+
+        # Normalize index
+        if hasattr(df_copy.index, "strftime"):
+            df_copy.index = df_copy.index.map(
+                lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x)
+            )
+        else:
+            df_copy.index = [str(idx) for idx in df_copy.index]
+
+        # Normalize columns
+        if hasattr(df_copy.columns, "strftime"):
+            df_copy.columns = df_copy.columns.strftime("%Y-%m-%d")
+        else:
+            df_copy.columns = [str(col) for col in df_copy.columns]
+
+        df_copy = df_copy.applymap(normalize_value)
+
+        return df_copy.to_dict(orient="index")
+
+    def _fetch():
+        ticker = yf.Ticker(normalize_symbol(symbol))
+
+        return {
+            "symbol": normalize_symbol(symbol),
+            "price_targets": _df_to_index_dict(getattr(ticker, "analyst_price_targets", None)),
+            "earnings_dates": _df_to_index_dict(getattr(ticker, "earnings_dates", None)),
+            "recommendations": _df_to_index_dict(getattr(ticker, "recommendations", None)),
+        }
+
+    result = _retry_call(_fetch)
+
     if use_cache:
         cache.set(symbol, cache_key, result)
 

@@ -50,15 +50,24 @@ import {
   type PriceTargetDiagnostics,
   type PriceTarget,
   type StockMetrics,
+  type MonteCarloDiagnostics,
 } from './price-target';
 import { fetchSymbolDataWithCache, type RequestStats } from './fetch';
 import { RequestThrottler } from '@/utils/throttler';
+import { selectTopSymbols } from '@/selection/selector';
+import {
+  filterSymbolsBeforeScoring,
+  type LiveRunFilterConfig,
+  type FilteredSymbolsResult,
+} from './filters';
 
 const logger = createChildLogger('scoring_engine');
 
 export interface SymbolScore {
   symbol: string;
   totalScore: number;
+  industry?: string | null;
+  sector?: string | null;
   breakdown: {
     fundamental: number;
     technical: number;
@@ -67,6 +76,7 @@ export interface SymbolScore {
   dataQuality: DataQuality;
   priceTarget: PriceTarget | null;
   priceTargetDiagnostics: PriceTargetDiagnostics | null;
+  monteCarloDiagnostics?: MonteCarloDiagnostics | null;
   isScanOnly?: boolean;
   valuationInputCoverage?: FundamentalScoreResult['valuationInputCoverage'];
   raw: {
@@ -102,6 +112,11 @@ export interface ScoringResult {
       };
     };
     symbolsUsed?: string[];
+    filtersApplied?: {
+      config: LiveRunFilterConfig;
+      removedCount: number;
+      removedByReason: FilteredSymbolsResult['removedByReason'];
+    };
   };
 }
 
@@ -117,7 +132,7 @@ export async function scoreSymbol(
   dataQuality: DataQuality,
   scoringConfig = getScoringConfig(),
   context?: ScoreSymbolContext,
-  options?: { computePriceTarget?: boolean }
+  options?: { computePriceTarget?: boolean; isTop30?: boolean }
 ): Promise<SymbolScore> {
   // Calculate scores
   const fundamentalResult = calculateFundamentalScore(
@@ -145,6 +160,7 @@ export async function scoreSymbol(
   // Calculate price target if we have the context
   let priceTarget: PriceTarget | null = null;
   let priceTargetDiagnostics: PriceTargetDiagnostics | null = null;
+  let monteCarloDiagnostics: MonteCarloDiagnostics | null = null;
   if (options?.computePriceTarget !== false && context && technicalMetrics?.currentPrice) {
     const stockMetrics = extractStockMetrics(
       symbol,
@@ -160,7 +176,7 @@ export async function scoreSymbol(
     );
     const pillarSpread = calculatePillarSpread(evidence);
 
-    const priceTargetResult = calculatePriceTargets(
+    const priceTargetResult = await calculatePriceTargets(
       stockMetrics,
       sectorMedians,
       {
@@ -169,15 +185,22 @@ export async function scoreSymbol(
         dataQualityScore: dataQuality.dataQualityScore,
         pillarSpread,
       },
-      scoringConfig.priceTarget
+      scoringConfig.priceTarget,
+      {
+        computeMonteCarlo: true,
+        isTop30: options?.isTop30,
+      }
     );
     priceTarget = priceTargetResult.target;
     priceTargetDiagnostics = priceTargetResult.diagnostics;
+    monteCarloDiagnostics = priceTargetResult.monteCarlo;
   }
 
   return {
     symbol,
     totalScore,
+    industry: context?.profile?.industry ?? null,
+    sector: context?.profile?.sector ?? null,
     breakdown: {
       fundamental: fundamentalResult.total,
       technical: technicalResult.total,
@@ -191,6 +214,7 @@ export async function scoreSymbol(
     },
     priceTarget,
     priceTargetDiagnostics,
+    monteCarloDiagnostics,
     isScanOnly: options?.computePriceTarget === false,
     valuationInputCoverage: fundamentalResult.valuationInputCoverage,
     raw: {
@@ -200,7 +224,9 @@ export async function scoreSymbol(
   };
 }
 
-export async function scoreUniverse(): Promise<ScoringResult> {
+export async function scoreUniverse(
+  filterConfig?: Partial<LiveRunFilterConfig>
+): Promise<ScoringResult> {
   const symbols = getUniverse();
   const appConfig = getConfig();
   const errors: string[] = [];
@@ -212,7 +238,31 @@ export async function scoreUniverse(): Promise<ScoringResult> {
   const maxSymbolsPerRun = pipelineCfg.maxSymbolsPerRun;
   const throttler = new RequestThrottler(pipelineCfg.throttleMs ?? 0);
   const MAX_CONCURRENCY = pipelineCfg.maxConcurrency ?? 4;
-  const { symbolsToScore, truncated } = applySymbolLimit(symbols, maxSymbolsPerRun);
+
+  // Apply filters BEFORE scoring to save API calls
+  let filteredResult: FilteredSymbolsResult | null = null;
+  let symbolsAfterFiltering = symbols;
+
+  if (filterConfig) {
+    filteredResult = filterSymbolsBeforeScoring(symbols, filterConfig);
+    symbolsAfterFiltering = filteredResult.passedSymbols;
+
+    if (filteredResult.removedCount > 0) {
+      logger.info(
+        {
+          originalCount: symbols.length,
+          filteredCount: filteredResult.removedCount,
+          remainingCount: symbolsAfterFiltering.length,
+          crypto: filteredResult.removedByReason.crypto_mining.length,
+          defense: filteredResult.removedByReason.defense.length,
+          fossilFuel: filteredResult.removedByReason.fossil_fuel.length,
+        },
+        'Filtered symbols before scoring'
+      );
+    }
+  }
+
+  const { symbolsToScore, truncated } = applySymbolLimit(symbolsAfterFiltering, maxSymbolsPerRun);
   if (pipelineCfg.scanOnlyPriceTarget) {
     logger.warn('pipeline.scan_only_price_target is enabled in config but scan phase will skip price targets by design');
   }
@@ -454,6 +504,88 @@ export async function scoreUniverse(): Promise<ScoringResult> {
       scores.push({ ...deepScore, isScanOnly: false });
     }
 
+    // Pass 3: Monte Carlo for Top 30 stocks with deep analysis
+    const selections = selectTopSymbols(scores);
+    const top30Symbols = selections.top30;
+
+    logger.info(
+      { top30Count: top30Symbols.length },
+      'Re-scoring Top 30 stocks with Monte Carlo analysis'
+    );
+
+    await runWithConcurrency(
+      top30Symbols,
+      async (symbol) => {
+        try {
+          const scoreIndex = scores.findIndex((s) => s.symbol === symbol);
+          if (scoreIndex === -1) {
+            logger.warn({ symbol }, 'Top 30 symbol not found in scores');
+            return;
+          }
+
+          const existingScore = scores[scoreIndex];
+
+          // Only re-score if the stock requires deep analysis
+          if (!existingScore.priceTarget?.requiresDeepAnalysis) {
+            logger.debug(
+              { symbol },
+              'Skipping Monte Carlo: does not require deep analysis'
+            );
+            return;
+          }
+
+          const raw = rawDataMap[symbol];
+          if (!raw) {
+            logger.warn({ symbol }, 'No raw data for Top 30 symbol');
+            return;
+          }
+
+          const resolved = resolveSymbolMetrics(
+            symbol,
+            raw,
+            medians,
+            fallbackFundamentalsMap[symbol] ?? null,
+            fallbackProfileMap[symbol] ?? null
+          );
+
+          const scoreContext: ScoreSymbolContext = {
+            profile: raw.profile,
+            sectorMedians,
+          };
+
+          const monteCarloScore = await scoreSymbol(
+            symbol,
+            resolved.fundamentals,
+            resolved.technical,
+            resolved.dataQuality,
+            scoringConfig,
+            scoreContext,
+            { computePriceTarget: true, isTop30: true }
+          );
+
+          // Update the score with Monte Carlo diagnostics
+          scores[scoreIndex] = {
+            ...monteCarloScore,
+            isScanOnly: false,
+          };
+
+          logger.debug(
+            {
+              symbol,
+              hasMonteCarlo: !!monteCarloScore.monteCarloDiagnostics,
+            },
+            'Monte Carlo analysis complete'
+          );
+        } catch (err) {
+          logger.error(
+            { symbol, error: err },
+            'Error re-scoring Top 30 stock with Monte Carlo'
+          );
+        }
+      },
+      2 // Lower concurrency for expensive Monte Carlo calculations
+    );
+
     const actualRequests =
       provider.getRequestCount() + (fallbackProvider ? fallbackProvider.getRequestCount() : 0);
     const estimatedRequests = symbolsToScore.length * 3;
@@ -518,6 +650,18 @@ export async function scoreUniverse(): Promise<ScoringResult> {
           requestBudget,
         },
         symbolsUsed: symbolsToScore,
+        filtersApplied: filteredResult ? {
+          config: {
+            excludeCryptoMining: filterConfig?.excludeCryptoMining ?? false,
+            excludeDefense: filterConfig?.excludeDefense ?? false,
+            excludeFossilFuels: filterConfig?.excludeFossilFuels ?? false,
+            minMarketCap: filterConfig?.minMarketCap ?? null,
+            minLiquidity: filterConfig?.minLiquidity ?? null,
+            maxVolatility: filterConfig?.maxVolatility ?? null,
+          },
+          removedCount: filteredResult.removedCount,
+          removedByReason: filteredResult.removedByReason,
+        } : undefined,
       },
     };
   } finally {

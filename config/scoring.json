@@ -28,6 +28,11 @@
       "max_concurrency": 4,
       "throttle_ms": 150,
       "scan_only_price_target": false
+    },
+    "diversification": {
+      "enabled": true,
+      "max_per_sector": 2,
+      "max_per_industry": 3
     }
   },
   "overrides": {

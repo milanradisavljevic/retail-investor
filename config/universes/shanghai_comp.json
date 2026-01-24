@@ -1,0 +1,14 @@
+{
+  "name": "Shanghai Composite (Seed)",
+  "description": "Seed pack for Shanghai Composite with benchmark candles via yfinance.",
+  "benchmark": "000001.SS",
+  "snapshot_file": "data/universes/snapshots/shanghai_comp/2026-01-23.json",
+  "snapshot_date": "2026-01-23",
+  "symbols": [
+    "600519.SS",
+    "601398.SS",
+    "601318.SS",
+    "600036.SS",
+    "600000.SS"
+  ]
+}

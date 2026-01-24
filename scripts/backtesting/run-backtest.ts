@@ -23,6 +23,45 @@ const TOP_N = 10;
 // Scoring mode: 'momentum' (legacy) or 'hybrid' (new)
 const SCORING_MODE = process.env.SCORING_MODE === 'momentum' ? 'momentum' : 'hybrid';
 
+type UniverseConfig = {
+  benchmark?: string;
+  symbols?: string[];
+};
+
+function resolveUniversePath(): { universeName: string; universePath: string } {
+  const universeName = (process.env.UNIVERSE || 'sp500').trim();
+  const configPath = process.env.UNIVERSE_CONFIG?.trim();
+
+  if (configPath) {
+    return {
+      universeName,
+      universePath: path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath),
+    };
+  }
+
+  return {
+    universeName,
+    universePath: path.join(process.cwd(), 'config', 'universes', `${universeName}.json`),
+  };
+}
+
+function loadUniverseConfig(): { universeName: string; symbols: string[]; benchmark: string } {
+  const { universeName, universePath } = resolveUniversePath();
+  if (!fs.existsSync(universePath)) {
+    throw new Error(`Universe file not found: ${universePath}`);
+  }
+
+  const parsed = JSON.parse(fs.readFileSync(universePath, 'utf-8')) as UniverseConfig;
+  const symbols = (parsed.symbols ?? []).map((s) => String(s).toUpperCase());
+  const benchmark = String(parsed.benchmark ?? 'SPY').toUpperCase();
+
+  if (!symbols.includes(benchmark)) {
+    symbols.push(benchmark);
+  }
+
+  return { universeName, symbols, benchmark };
+}
+
 // Quarter start dates (first trading day approximation)
 const QUARTER_STARTS = [
   '2020-01-02', '2020-04-01', '2020-07-01', '2020-10-01',
@@ -61,8 +100,9 @@ interface Portfolio {
 /**
  * Load historical price data for all symbols
  */
-function loadHistoricalData(): Map<string, SymbolData> {
+function loadHistoricalData(symbols: string[]): Map<string, SymbolData> {
   const dataMap = new Map<string, SymbolData>();
+  const targetSymbols = new Set(symbols.map((s) => s.toUpperCase()));
 
   if (!fs.existsSync(HISTORICAL_DIR)) {
     console.error(`Historical data directory not found: ${HISTORICAL_DIR}`);
@@ -70,8 +110,23 @@ function loadHistoricalData(): Map<string, SymbolData> {
     process.exit(1);
   }
 
-  const files = fs.readdirSync(HISTORICAL_DIR).filter((f) => f.endsWith('.csv'));
-  console.log(`Loading ${files.length} symbol files...`);
+  const files = fs
+    .readdirSync(HISTORICAL_DIR)
+    .filter((f) => f.endsWith('.csv'))
+    .filter((f) => targetSymbols.has(f.replace('.csv', '').toUpperCase()));
+
+  const missing = symbols.filter(
+    (symbol) => !fs.existsSync(path.join(HISTORICAL_DIR, `${symbol}.csv`))
+  );
+
+  console.log(`Loading ${files.length} symbol files for this universe...`);
+  if (missing.length > 0) {
+    console.warn(
+      `Missing ${missing.length} historical files (backtest will treat these as unavailable/delisted): ${missing
+        .slice(0, 20)
+        .join(', ')}${missing.length > 20 ? ', ...' : ''}`
+    );
+  }
 
   for (const file of files) {
     const symbol = file.replace('.csv', '');
@@ -203,12 +258,13 @@ function selectTopStocks(
   dataMap: Map<string, SymbolData>,
   asOfDate: string,
   allDates: string[],
-  n: number
+  n: number,
+  benchmarkSymbol: string
 ): string[] {
   const scores: Array<{ symbol: string; score: number }> = [];
 
   for (const [symbol, data] of dataMap) {
-    if (symbol === 'SPY') continue; // Exclude benchmark
+    if (symbol === benchmarkSymbol) continue; // Exclude benchmark
 
     const score = SCORING_MODE === 'hybrid'
       ? calculateHybridScoreForDate(data, asOfDate, allDates)
@@ -243,21 +299,22 @@ function findNearestTradingDay(date: string, allDates: string[]): string | null 
 /**
  * Run the backtest simulation
  */
-function runBacktest(dataMap: Map<string, SymbolData>): DailyRecord[] {
+function runBacktest(dataMap: Map<string, SymbolData>, benchmarkSymbol: string): DailyRecord[] {
   console.log('\nRunning backtest simulation...');
   console.log(`Period: ${START_DATE} to ${END_DATE}`);
   console.log(`Initial capital: $${INITIAL_CAPITAL.toLocaleString()}`);
   console.log(`Strategy: Quarterly rebalance, Top ${TOP_N} stocks`);
   console.log(`Scoring mode: ${SCORING_MODE.toUpperCase()}`);
+  console.log(`Benchmark: ${benchmarkSymbol}`);
 
-  // Get all trading dates from SPY
-  const spyData = dataMap.get('SPY');
-  if (!spyData) {
-    console.error('SPY data not found. Cannot run backtest.');
+  // Get all trading dates from benchmark
+  const benchmarkData = dataMap.get(benchmarkSymbol);
+  if (!benchmarkData) {
+    console.error(`${benchmarkSymbol} data not found. Cannot run backtest.`);
     process.exit(1);
   }
 
-  const allDates = spyData.sortedDates.filter((d) => d >= START_DATE && d <= END_DATE);
+  const allDates = benchmarkData.sortedDates.filter((d) => d >= START_DATE && d <= END_DATE);
   console.log(`Trading days in period: ${allDates.length}`);
 
   // Initialize portfolio
@@ -268,8 +325,8 @@ function runBacktest(dataMap: Map<string, SymbolData>): DailyRecord[] {
   let currentQuarterIdx = 0;
   let nextRebalanceDate = findNearestTradingDay(QUARTER_STARTS[0], allDates);
 
-  // Initial SPY value for benchmark
-  const spyStartPrice = spyData.prices.get(allDates[0])?.close || 1;
+  // Initial benchmark value
+  const benchmarkStartPrice = benchmarkData.prices.get(allDates[0])?.close || 1;
 
   for (const date of allDates) {
     // Check if rebalance needed
@@ -285,7 +342,7 @@ function runBacktest(dataMap: Map<string, SymbolData>): DailyRecord[] {
       portfolio.positions = [];
 
       // Select new top stocks
-      const topStocks = selectTopStocks(dataMap, date, allDates, TOP_N);
+      const topStocks = selectTopStocks(dataMap, date, allDates, TOP_N, benchmarkSymbol);
       console.log(`\n${date}: Rebalancing to ${topStocks.length} stocks`);
       console.log(`  Top 5: ${topStocks.slice(0, 5).join(', ')}`);
 
@@ -320,9 +377,9 @@ function runBacktest(dataMap: Map<string, SymbolData>): DailyRecord[] {
       // Delisted stocks contribute 0
     }
 
-    // Calculate SPY value (benchmark)
-    const spyPrice = spyData.prices.get(date)?.close || spyStartPrice;
-    const spyValue = (spyPrice / spyStartPrice) * INITIAL_CAPITAL;
+    // Calculate benchmark value
+    const benchmarkPrice = benchmarkData.prices.get(date)?.close || benchmarkStartPrice;
+    const benchmarkValue = (benchmarkPrice / benchmarkStartPrice) * INITIAL_CAPITAL;
 
     // Calculate daily return
     const prevValue = dailyRecords.length > 0 ? dailyRecords[dailyRecords.length - 1].portfolio_value : INITIAL_CAPITAL;
@@ -335,7 +392,7 @@ function runBacktest(dataMap: Map<string, SymbolData>): DailyRecord[] {
     dailyRecords.push({
       date,
       portfolio_value: Math.round(portfolioValue * 100) / 100,
-      sp500_value: Math.round(spyValue * 100) / 100,
+      sp500_value: Math.round(benchmarkValue * 100) / 100,
       daily_return_pct: Math.round(dailyReturn * 10000) / 100,
       drawdown_pct: Math.round(drawdown * 10000) / 100,
     });
@@ -353,19 +410,31 @@ function writeResults(dailyRecords: DailyRecord[], summary: BacktestSummary): vo
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
+  const csvContent = (() => {
+    const csvHeader = 'date,portfolio_value,sp500_value,daily_return_pct,drawdown_pct\n';
+    const csvRows = dailyRecords
+      .map((r) => `${r.date},${r.portfolio_value},${r.sp500_value},${r.daily_return_pct},${r.drawdown_pct}`)
+      .join('\n');
+    return csvHeader + csvRows;
+  })();
+
   // Write CSV
   const csvPath = path.join(OUTPUT_DIR, 'backtest-results.csv');
-  const csvHeader = 'date,portfolio_value,sp500_value,daily_return_pct,drawdown_pct\n';
-  const csvRows = dailyRecords
-    .map((r) => `${r.date},${r.portfolio_value},${r.sp500_value},${r.daily_return_pct},${r.drawdown_pct}`)
-    .join('\n');
-  fs.writeFileSync(csvPath, csvHeader + csvRows);
+  fs.writeFileSync(csvPath, csvContent);
   console.log(`\nCSV written: ${csvPath}`);
+
+  const csvModePath = path.join(OUTPUT_DIR, `backtest-results-${SCORING_MODE}.csv`);
+  fs.writeFileSync(csvModePath, csvContent);
+  console.log(`CSV written: ${csvModePath}`);
 
   // Write JSON summary
   const jsonPath = path.join(OUTPUT_DIR, 'backtest-summary.json');
   fs.writeFileSync(jsonPath, JSON.stringify(summary, null, 2));
   console.log(`JSON written: ${jsonPath}`);
+
+  const jsonModePath = path.join(OUTPUT_DIR, `backtest-summary-${SCORING_MODE}.json`);
+  fs.writeFileSync(jsonModePath, JSON.stringify(summary, null, 2));
+  console.log(`JSON written: ${jsonModePath}`);
 }
 
 /**
@@ -376,12 +445,15 @@ async function main(): Promise<void> {
   console.log('Backtesting Runner - Retail Investor MVP');
   console.log('='.repeat(60));
 
+  const universe = loadUniverseConfig();
+  console.log(`Universe: ${universe.universeName}`);
+
   // Load data
-  const dataMap = loadHistoricalData();
+  const dataMap = loadHistoricalData(universe.symbols);
   console.log(`Loaded data for ${dataMap.size} symbols`);
 
   // Run backtest
-  const dailyRecords = runBacktest(dataMap);
+  const dailyRecords = runBacktest(dataMap, universe.benchmark);
 
   // Calculate metrics
   const summary = calculateMetrics(dailyRecords, START_DATE, END_DATE);

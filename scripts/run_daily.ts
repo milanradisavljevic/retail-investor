@@ -20,10 +20,11 @@ import { generateLlmOutput } from '../src/llm/adapter';
 import { createChildLogger } from '../src/utils/logger';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import type { LiveRunFilterConfig } from '../src/scoring/filters';
 
 const logger = createChildLogger('run_daily');
 
-function applyCliArgs() {
+function applyCliArgs(): { filters: Partial<LiveRunFilterConfig> | undefined } {
   const universeArg = process.argv.find((arg) => arg.startsWith('--universe='));
   if (universeArg) {
     const value = universeArg.split('=')[1];
@@ -33,6 +34,31 @@ function applyCliArgs() {
       logger.info({ universe: value }, 'Using universe from CLI flag');
     }
   }
+
+  const presetArg = process.argv.find((arg) => arg.startsWith('--preset='));
+  if (presetArg) {
+    const value = presetArg.split('=')[1];
+    if (value) {
+      process.env.SCORING_PRESET = value;
+      logger.info({ preset: value }, 'Using scoring preset from CLI flag');
+    }
+  }
+
+  const filtersArg = process.argv.find((arg) => arg.startsWith('--filters='));
+  let filters: Partial<LiveRunFilterConfig> | undefined = undefined;
+  if (filtersArg) {
+    try {
+      const value = filtersArg.split('=')[1];
+      if (value) {
+        filters = JSON.parse(value) as Partial<LiveRunFilterConfig>;
+        logger.info({ filters }, 'Using filters from CLI flag');
+      }
+    } catch (err) {
+      logger.warn({ error: err }, 'Failed to parse filters arg, ignoring');
+    }
+  }
+
+  return { filters };
 }
 
 async function main() {
@@ -40,14 +66,14 @@ async function main() {
   logger.info('Starting daily run');
 
   try {
-    applyCliArgs();
+    const { filters } = applyCliArgs();
 
     // Initialize database
     initializeDatabase();
 
     // Score the universe
     logger.info('Scoring universe...');
-    const scoringResult = await scoreUniverse();
+    const scoringResult = await scoreUniverse(filters);
 
     logger.info(
       {
@@ -104,6 +130,16 @@ async function main() {
     console.log(`Requests:      ${scoringResult.metadata.requestsMade}`);
     console.log(`Duration:      ${duration.toFixed(1)}s`);
     console.log(`Pick of Day:   ${runRecord.selections.pick_of_the_day}`);
+
+    if (scoringResult.metadata.filtersApplied) {
+      const fa = scoringResult.metadata.filtersApplied;
+      console.log(`\nFilters Applied:`);
+      if (fa.config.excludeCryptoMining) console.log(`  - Crypto Mining: ${fa.removedByReason.crypto_mining.length} excluded`);
+      if (fa.config.excludeDefense) console.log(`  - Defense: ${fa.removedByReason.defense.length} excluded`);
+      if (fa.config.excludeFossilFuels) console.log(`  - Fossil Fuels: ${fa.removedByReason.fossil_fuel.length} excluded`);
+      console.log(`  - Total Filtered: ${fa.removedCount} symbols`);
+    }
+
     console.log('\nTop 5:');
     runRecord.selections.top5.forEach((symbol, i) => {
       const score = runRecord.scores.find((s) => s.symbol === symbol);

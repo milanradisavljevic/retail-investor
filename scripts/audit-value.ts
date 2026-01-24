@@ -83,7 +83,7 @@ function main() {
         fmtNum(score.evidence.valuation).padEnd(6),
         fmtNum(pt?.current_price, 2).padEnd(8),
         fmtNum(pt?.fair_value, 2).padEnd(8),
-        pt ? `${(pt.upside_pct * 100).toFixed(1)}`.padEnd(8) : 'n/a'.padEnd(8),
+        pt && pt.upside_pct !== undefined ? `${(pt.upside_pct * 100).toFixed(1)}`.padEnd(8) : 'n/a'.padEnd(8),
         coverageLabel.padEnd(24),
         issues,
       ].join(' | ')

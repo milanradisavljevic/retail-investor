@@ -28,6 +28,7 @@ from .yf_client import (
     fetch_financials,
     fetch_balance_sheet,
     fetch_info,
+    fetch_analyst_data,
     normalize_symbol
 )
 
@@ -190,6 +191,70 @@ class YFinanceClient:
         except Exception as e:
             logger.error(f"{symbol}: Failed to fetch profile: {e}")
             return {}
+
+    def get_analyst_data(self, symbol: str) -> Dict[str, Any]:
+        """
+        Fetch analyst consensus targets, recommendation, and next earnings date.
+
+        Returns:
+            {
+                "target_mean": float | None,
+                "target_low": float | None,
+                "target_high": float | None,
+                "num_analysts": int | None,
+                "recommendation": str | None,
+                "next_earnings_date": str | None
+            }
+        """
+        empty = {
+            "target_mean": None,
+            "target_low": None,
+            "target_high": None,
+            "num_analysts": None,
+            "recommendation": None,
+            "next_earnings_date": None,
+        }
+
+        try:
+            analyst_data = fetch_analyst_data(
+                symbol, cache_ttl_hours=self.cache_ttl_hours
+            )
+
+            targets_row = self._latest_row(analyst_data.get("price_targets"))
+            rec_row = self._latest_row(analyst_data.get("recommendations"))
+            next_earnings_date = self._extract_next_earnings_date(
+                analyst_data.get("earnings_dates")
+            )
+
+            result = {
+                "target_mean": self._get_float_from_row(
+                    targets_row,
+                    ["targetMean", "targetMeanPrice", "target_mean", "mean", "avg", "averagePriceTarget", "targetMedianPrice"],
+                ),
+                "target_low": self._get_float_from_row(
+                    targets_row, ["targetLow", "targetLowPrice", "low"]
+                ),
+                "target_high": self._get_float_from_row(
+                    targets_row, ["targetHigh", "targetHighPrice", "high"]
+                ),
+                "num_analysts": self._get_int_from_row(
+                    targets_row,
+                    [
+                        "numberOfAnalysts",
+                        "numberOfAnalystOpinions",
+                        "numAnalysts",
+                        "num_analysts",
+                    ],
+                ),
+                "recommendation": self._map_recommendation(rec_row),
+                "next_earnings_date": next_earnings_date,
+            }
+
+            return result
+
+        except Exception as e:
+            logger.error(f"{symbol}: Failed to fetch analyst data: {e}")
+            return empty
 
     def get_candles(
         self,
@@ -476,6 +541,92 @@ class YFinanceClient:
                     return series
 
         return []
+
+    def _latest_row(self, rows: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if not rows or not isinstance(rows, dict):
+            return None
+
+        try:
+            sorted_keys = sorted(
+                rows.keys(),
+                reverse=True,
+                key=lambda x: pd.Timestamp(x) if not isinstance(x, pd.Timestamp) else x,
+            )
+        except Exception:
+            sorted_keys = list(rows.keys())
+
+        for key in sorted_keys:
+            row = rows.get(key)
+            if isinstance(row, dict) and row:
+                return row
+
+        return None
+
+    def _get_float_from_row(self, row: Optional[Dict[str, Any]], keys: List[str]) -> Optional[float]:
+        if not row:
+            return None
+        for key in keys:
+            if key in row and row[key] is not None and not pd.isna(row[key]):
+                try:
+                    return float(row[key])
+                except (TypeError, ValueError):
+                    continue
+        return None
+
+    def _get_int_from_row(self, row: Optional[Dict[str, Any]], keys: List[str]) -> Optional[int]:
+        value = self._get_float_from_row(row, keys)
+        return int(value) if value is not None else None
+
+    def _map_recommendation(self, row: Optional[Dict[str, Any]]) -> Optional[str]:
+        if not row:
+            return None
+
+        grade = row.get("To Grade") or row.get("toGrade") or row.get("Action") or row.get("action")
+        if not grade:
+            return None
+
+        grade_lower = str(grade).lower()
+        if any(word in grade_lower for word in ["strong buy", "buy", "outperform", "overweight", "accumulate", "positive"]):
+            return "buy"
+        if any(word in grade_lower for word in ["hold", "neutral", "market perform", "equal-weight", "equal weight"]):
+            return "hold"
+        if any(word in grade_lower for word in ["sell", "underperform", "reduce", "negative", "underweight"]):
+            return "sell"
+
+        return None
+
+    def _extract_next_earnings_date(self, rows: Optional[Dict[str, Any]]) -> Optional[str]:
+        if not rows or not isinstance(rows, dict):
+            return None
+
+        today = datetime.utcnow().date()
+        parsed_dates = []
+
+        for key in rows.keys():
+            row = rows.get(key) if isinstance(rows, dict) else None
+            dt = self._parse_date(key) or (row and self._parse_date(row.get("Earnings Date")))
+            if dt:
+                parsed_dates.append(dt.date())
+
+        if not parsed_dates:
+            return None
+
+        future = sorted([d for d in parsed_dates if d >= today])
+        if future:
+            return future[0].isoformat()
+
+        # Fallback to the most recent past date
+        parsed_dates.sort()
+        return parsed_dates[-1].isoformat()
+
+    def _parse_date(self, value: Any) -> Optional[datetime]:
+        try:
+            ts = pd.to_datetime(value)
+            if pd.isna(ts):
+                return None
+            return ts.to_pydatetime()
+        except Exception:
+            return None
 
     def close(self):
         """Close client (no-op for yfinance, kept for API compatibility)."""

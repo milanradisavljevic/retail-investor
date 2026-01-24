@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getRecentRuns } from "@/lib/runLoader";
 import { computeDeltas, type SymbolDelta } from "@/lib/runDelta";
 import { buildScoreView, parseScoreQuery, type ScoreQuery } from "@/lib/scoreView";
+import { formatPercent } from "@/lib/percent";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import Link from "next/link";
 import { PriceTargetCard } from "./components/PriceTargetCard";
@@ -27,9 +28,9 @@ function getScoreColor(value: number): string {
 }
 
 function getScoreBgColor(value: number): string {
-  if (value >= 70) return "bg-accent-green/10 border-accent-green/30";
-  if (value >= 50) return "bg-accent-gold/10 border-accent-gold/30";
-  return "bg-accent-red/10 border-accent-red/30";
+  if (value >= 70) return "bg-accent-green/10 border-accent-green/50";
+  if (value >= 50) return "bg-accent-gold/10 border-accent-gold/50";
+  return "bg-accent-red/10 border-accent-red/50";
 }
 
 function DeltaLabel({
@@ -46,14 +47,12 @@ function DeltaLabel({
   const color =
     value > 0 ? "text-accent-green" : value < 0 ? "text-accent-red" : "text-text-secondary";
   const formatted = isPercent
-    ? `${(value * 100).toFixed(1)}%`
-    : value.toFixed(1);
-  const prefix = value >= 0 ? "+" : "";
+    ? formatPercent(value, { signed: true })
+    : `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
 
   return (
     <span className={`text-[11px] font-semibold ${color}`}>
-      Δ {prefix}
-      {formatted}
+      Δ {formatted}
     </span>
   );
 }
@@ -62,10 +61,10 @@ function DataQualityBadge({ score }: { score: number }) {
   const label = score >= 80 ? "High" : score >= 60 ? "Medium" : "Low";
   const colors =
     label === "High"
-      ? "border-accent-green/30 bg-accent-green/10 text-accent-green"
+      ? "border-accent-green/50 bg-accent-green/10 text-accent-green"
       : label === "Medium"
-        ? "border-accent-gold/30 bg-accent-gold/10 text-accent-gold"
-        : "border-accent-red/30 bg-accent-red/10 text-accent-red";
+        ? "border-accent-gold/50 bg-accent-gold/10 text-accent-gold"
+        : "border-accent-red/50 bg-accent-red/10 text-accent-red";
 
   return (
     <span
@@ -80,9 +79,9 @@ function DataQualityBadge({ score }: { score: number }) {
 function ModeBadge({ mode }: { mode: RunV1SchemaJson["mode"] }) {
   const colors =
     mode.label === "RISK_ON"
-      ? "border-accent-green/30 bg-accent-green/10 text-accent-green"
+      ? "border-accent-green/50 bg-accent-green/10 text-accent-green"
       : mode.label === "RISK_OFF"
-        ? "border-accent-red/30 bg-accent-red/10 text-accent-red"
+        ? "border-accent-red/50 bg-accent-red/10 text-accent-red"
         : "border-navy-500 bg-navy-700 text-text-secondary";
 
   return (
@@ -127,8 +126,8 @@ function ScoreCard({ symbol, score, isPickOfDay, rank, delta }: ScoreCardProps) 
               {symbol}
             </h3>
             {isPickOfDay && (
-              <span className="text-[10px] bg-accent-blue/20 text-accent-blue border border-accent-blue/30 px-2 py-0.5 rounded">
-                PICK
+              <span className="text-[10px] bg-slate-600 text-white border border-slate-500 px-2 py-0.5 rounded">
+                TOP CONVICTION
               </span>
             )}
             <DataQualityBadge score={dqScore} />
@@ -146,30 +145,6 @@ function ScoreCard({ symbol, score, isPickOfDay, rank, delta }: ScoreCardProps) 
           <div className="flex items-center justify-end gap-2 text-[10px] text-text-muted uppercase tracking-wider">
             <span>Total</span>
             <DeltaLabel value={deltaTotal} />
-          </div>
-        </div>
-      </div>
-
-      {/* Score Breakdown */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-navy-700/50 rounded-lg p-3">
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-            Fundamental
-          </div>
-          <div
-            className={`text-xl font-semibold ${getScoreColor(score.breakdown.fundamental)}`}
-          >
-            {score.breakdown.fundamental.toFixed(1)}
-          </div>
-        </div>
-        <div className="bg-navy-700/50 rounded-lg p-3">
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-            Technical
-          </div>
-          <div
-            className={`text-xl font-semibold ${getScoreColor(score.breakdown.technical)}`}
-          >
-            {score.breakdown.technical.toFixed(1)}
           </div>
         </div>
       </div>
@@ -201,7 +176,7 @@ function ScoreCard({ symbol, score, isPickOfDay, rank, delta }: ScoreCardProps) 
 
       {/* Price Target */}
       {priceTarget && (
-        <div className="border-t border-navy-700 pt-4">
+        <div className="border-t border-dashed border-slate-600 pt-3 mt-4">
           <PriceTargetCard
             {...priceTarget}
             returnDelta={deltaReturn}
@@ -295,7 +270,13 @@ export default function Home({
             {run.universe.definition.name}
           </span>
           {run.mode && <ModeBadge mode={run.mode} />}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/new-ux-lab"
+              className="rounded-lg border border-navy-700 bg-navy-800 px-3 py-2 text-xs font-semibold text-text-secondary transition hover:border-navy-500 hover:text-text-primary"
+            >
+              New UX Lab
+            </Link>
             <RunTriggerButton />
           </div>
         </div>
@@ -473,7 +454,7 @@ export default function Home({
                       >
                         <div>
                           {priceTarget
-                            ? `+${(priceTarget.expected_return_pct * 100).toFixed(1)}%`
+                            ? formatPercent(priceTarget.expected_return_pct, { signed: true })
                             : "—"}
                         </div>
                         <div className="mt-0.5">

@@ -254,6 +254,11 @@ export class FinnhubClient {
         enterpriseValue: null, // Not directly available
         revenueGrowth: m.revenueGrowthTTMYoy ?? m.revenueGrowth3Y ?? null,
         earningsGrowth: m.epsGrowthTTMYoy ?? m.epsGrowth3Y ?? null,
+        analystTargetMean: null,
+        analystTargetLow: null,
+        analystTargetHigh: null,
+        analystCount: null,
+        nextEarningsDate: null,
         beta: m.beta ?? null,
         raw: m as unknown as Record<string, unknown>,
       };
