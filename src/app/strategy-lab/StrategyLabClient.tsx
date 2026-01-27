@@ -421,7 +421,7 @@ function PresetSelector({
           name="Custom"
           subtitle="Manuelle Gewichtung"
           description="Passe Pillar-Gewichte frei an oder nutze eigene Vorgaben."
-          icon={<Play className="w-5 h-5 text-emerald-400" />}
+          icon="⚙️"
           riskLevel="medium"
           weights={{ v: 25, q: 25, t: 25, r: 25 }}
           selected={value === null}
