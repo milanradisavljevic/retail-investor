@@ -5,20 +5,20 @@ import { formatPercent } from "@/lib/percent";
 type ConfidenceLevel = "high" | "medium" | "low";
 
 interface PriceTargetProps {
-  current_price: number;
-  fair_value: number;
-  upside_pct: number;
-  target_buy_price: number;
-  target_sell_price: number;
-  expected_return_pct: number;
-  holding_period_months: number;
-  target_date: string;
-  confidence: ConfidenceLevel;
-  requires_deep_analysis: boolean;
-  deep_analysis_reasons: string[];
+  current_price?: number;
+  fair_value?: number;
+  upside_pct?: number;
+  target_buy_price?: number;
+  target_sell_price?: number;
+  expected_return_pct?: number;
+  holding_period_months?: number;
+  target_date?: string;
+  confidence?: ConfidenceLevel;
+  requires_deep_analysis?: boolean;
+  deep_analysis_reasons?: string[];
   returnDelta?: number | null;
-  confidenceChange?: { from: ConfidenceLevel | null; to: ConfidenceLevel | null } | null;
-  deepAnalysisChange?: { from: boolean | null; to: boolean | null } | null;
+  confidenceChange?: { from: "high" | "medium" | "low" | null | undefined; to: "high" | "medium" | "low" | null | undefined } | null;
+  deepAnalysisChange?: { from: boolean | null | undefined; to: boolean | null | undefined } | null;
 }
 
 function getDeltaColor(value: number): string {
@@ -128,17 +128,17 @@ function formatDate(dateStr: string): string {
 
 export function PriceTargetCard(props: PriceTargetProps) {
   const {
-    current_price,
-    fair_value,
-    upside_pct,
-    target_buy_price,
-    target_sell_price,
-    expected_return_pct,
-    holding_period_months,
-    target_date,
-    confidence,
-    requires_deep_analysis,
-    deep_analysis_reasons,
+    current_price = 0,
+    fair_value = 0,
+    upside_pct = 0,
+    target_buy_price = 0,
+    target_sell_price = 0,
+    expected_return_pct = 0,
+    holding_period_months = 0,
+    target_date = "",
+    confidence = "medium",
+    requires_deep_analysis = false,
+    deep_analysis_reasons = [],
     returnDelta,
     confidenceChange,
     deepAnalysisChange,
@@ -239,10 +239,10 @@ export function PriceTargetCard(props: PriceTargetProps) {
 }
 
 export function PriceTargetCompact({
-  target_sell_price,
-  expected_return_pct,
-  holding_period_months,
-  confidence,
+  target_sell_price = 0,
+  expected_return_pct = 0,
+  holding_period_months = 0,
+  confidence = "medium",
 }: Pick<
   PriceTargetProps,
   | "target_sell_price"

@@ -784,10 +784,10 @@ export default function StrategyLabClient({
     [universes, selectedUniverse]
   );
 
-  // Fetch backtest results when component mounts
+  // Fetch backtest results when component mounts or strategy changes
   useEffect(() => {
     fetchBacktestResults(strategy);
-  }, []);
+  }, [strategy]);
 
   // Format runtime display
   const formatRuntime = (min: number) => {

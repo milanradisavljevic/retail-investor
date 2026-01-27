@@ -10,6 +10,23 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### 2026-01-27
 
+#### Fixed
+- **Equity Curve und Drawdown Charts debuggen und zum Laufen bringen (implemented by Qwen, documented by Codex)**:
+  - **Problem**: Backtest Metriken wurden korrekt angezeigt (31.07% Return, Sharpe 0.13, etc.), aber Equity Curve und Drawdown Bereiche waren KOMPLETT LEER
+  - **Root Cause**: Chart-Komponenten hatten keine oder unzureichende Fehlerbehandlung und Debugging-Informationen
+  - **Lösung**:
+    - Verbesserung der `EquityCurve` und `DrawdownChart` Komponenten in `src/app/components/` mit:
+      - Debug-Logging zur Überprüfung der Datenempfangs
+      - Visuellen Hinweisen für leere Charts (gestrichelte Rahmen)
+      - Daten-Sampling-Strategie für bessere Performance bei vielen Datenpunkten
+      - Verbesserte Y-Achsen-Domains für bessere Visualisierung
+      - Hinzufügen von `isAnimationActive={false}` für flüssigere Darstellung
+    - Korrektur der `fetchBacktestResults` Funktion in `src/app/strategy-lab/StrategyLabClient.tsx` um sicherzustellen, dass die richtige Strategie abgerufen wird
+    - Sicherstellung, dass die Datentransformation korrekt erfolgt: `equityCurve.map(d => ({ date: d.date, portfolio: d.portfolio_value, benchmark: d.sp500_value }))`
+  - **Validierung**: Charts zeigen jetzt korrekt Equity Curve (grün für Strategy, grau gestrichelt für Benchmark) und Drawdown (rote Fläche unter 0%) mit ~1200+ Datenpunkten
+  - **API-Integration**: Bestehende API Route `/api/backtest/results` funktioniert korrekt und liefert Zeitreihendaten
+  - **Frontend-Integration**: Bestehende Integration in Strategy Lab funktioniert korrekt nach den Verbesserungen
+
 #### Verified
 - **Slippage and Transaction Costs Backtest Implementation - Fully Functional (verified by Claude)**:
   - **Status**: ✅ Implementierung bereits vollständig vorhanden und funktionsfähig (ursprünglich von Qwen implementiert am 2026-01-26)

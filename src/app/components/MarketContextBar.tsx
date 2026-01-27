@@ -62,7 +62,7 @@ export default function MarketContextBar({ initialData }: MarketContextBarProps)
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3">
           <p className="text-sm text-slate-400">Market data unavailable.</p>
           <button
-            onClick={loadMarketContext}
+            onClick={() => loadMarketContext()}
             className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-100 hover:border-emerald-400/60 hover:text-emerald-300 transition-colors"
           >
             Retry
