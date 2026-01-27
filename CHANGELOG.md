@@ -8,6 +8,92 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-01-27
+
+#### Verified
+- **Slippage and Transaction Costs Backtest Implementation - Fully Functional (verified by Claude)**:
+  - **Status**: ✅ Implementierung bereits vollständig vorhanden und funktionsfähig (ursprünglich von Qwen implementiert am 2026-01-26)
+  - **Verification**: Test-Backtests mit verschiedenen Slippage-Modellen durchgeführt
+  - **Slippage-Modelle**:
+    - Optimistic (0.1% buy/sell): Beste Performance, minimale Kosten
+    - Realistic (0.5% buy/sell): Balanced, Standard-Default
+    - Conservative (1.5% buy/sell): Worst-Case, höchste Kosten
+  - **Test-Ergebnisse (Test Universe, Quarterly Rebalancing, 2020-2024)**:
+    - **Optimistic**: 131.88% Total Return, $4,715 Slippage Cost, $28.58 Avg/Trade
+    - **Conservative**: 46.05% Total Return, $55,703 Slippage Cost, $337.59 Avg/Trade
+    - **Impact**: Conservative Slippage reduziert Returns um 85.83 Prozentpunkte (-65% relativer Verlust)
+  - **Komponenten**:
+    - `executeBuy()`: Kaufpreis = Marktpreis × (1 + buySlippage) + Transaction Cost (0.1%)
+    - `executeSell()`: Verkaufspreis = Marktpreis × (1 - sellSlippage) - Transaction Cost (0.1%)
+    - Cost Tracking: totalSlippageCost, totalTransactionCost, totalTrades, avgSlippagePerTrade
+  - **API-Integration**:
+    - UI → `/api/backtest/run` (POST) → `SLIPPAGE_MODEL` Environment Variable
+    - Backtest-Skript liest `SLIPPAGE_MODEL` (default: 'realistic')
+    - Summary enthält `costs` Object mit vollständiger Kostenaufschlüsselung
+  - **CLI-Usage**:
+    ```bash
+    # Optimistic (beste Performance)
+    SLIPPAGE_MODEL=optimistic npx tsx scripts/backtesting/run-backtest.ts
+
+    # Realistic (Default)
+    SLIPPAGE_MODEL=realistic npx tsx scripts/backtesting/run-backtest.ts
+
+    # Conservative (worst-case)
+    SLIPPAGE_MODEL=conservative npx tsx scripts/backtesting/run-backtest.ts
+    ```
+  - **Console-Output**: Zeigt "Slippage Model: [optimistic|realistic|conservative]" und vollständige Cost Breakdown
+  - **Validation**: UI-Slippage-Parameter werden korrekt durch API-Route → Environment → Backtest-Skript durchgereicht
+  - **Realismus**: Bei quarterly Rebalancing über 5 Jahre (165 Trades) entsprechen Conservative Costs ~55% des Starting Capital ($55k von $100k) - extrem realistisch für High-Turnover Small-Cap Strategies
+
+#### Added
+- **Studio Workspace UX Design Specification (implemented by Claude)**:
+  - **Zweck**: Alternative UX-Layout für das Investor Briefing + Strategy Lab, mit professionellem Notion/Linear-ähnlichem Design
+  - **Dokumentation**: Vollständige UX-Spezifikation in `ux.md` (27KB) mit 9 Haupt-Sektionen
+  - **Konzept-Evaluation**: 3 Konzepte bewertet (Studio Workspace, Command-First Terminal, Editorial Brief) → Studio Workspace empfohlen
+  - **Layout-Design**: Drei-Panel-Layout (Left Rail + Central Canvas + Right Inspector)
+  - **Progressive Disclosure System**:
+    - Trigger-basierte Regel-Engine: Controls erscheinen nur wenn benötigt
+    - Preset-Auswahl → Read-only Weights + "Customize" Button
+    - Custom Mode → Sliders + Dirty State Tracking
+    - Ghost Row Click → Diversification Inspector Mode
+    - Stock Row Click → Stock Detail Inspector Mode
+  - **Diversification Ghost Rows** (Notion-style inline callouts):
+    - Erscheinen exakt an der Stelle, wo der erste geskippte Pick gerankt wäre
+    - Subtiles blaues Gradient-Design, low-noise Informational State
+    - Summary: "3 picks skipped • Diversification caps (Technology sector cap)"
+    - Click → Inspector zeigt gruppierte Breakdown nach Skip-Reason
+    - Injection-Logik: `findFirstSkipIndex()` Utility berechnet Position
+    - Gruppierung: `groupSkippedReasons()` aggregiert nach Sektor/Industry Caps
+  - **Draft + Dirty State Management** (Kein Auto-Run):
+    - Client-Side Draft Config in localStorage: `studio:draft:${universe}:${preset|'custom'}`
+    - Dirty Indicator zeigt exakte Änderungen: "Weights (Val 40→45%) • Div caps (Tech 30→35%)"
+    - "Run Analysis" Button zeigt Estimated Cost: `~1,943 symbols • yfinance • 8-12 min`
+    - "Reset to current run" Secondary Action
+    - Draft/Current Config Diff-Logik mit `compareConfig()` Utility
+  - **Visual Design System**:
+    - Dark-First Color Tokens (HSL-basiert): surface-0 bis surface-3, border-subtle/default/emphasis
+    - Typography Scale: Inter Variable (sans), JetBrains Mono (mono)
+    - Flat Design: Keine Shadows, nur Borders + Background-Shifts
+    - Accent Colors: Blue (#3B82F6) für Actions, Orange (#FB923C) für Warnings
+    - Ghost Row Styling: `hsl(199 40% 12%)` Background, `hsl(199 40% 22%)` Border
+  - **Component-Architektur**:
+    - Server Components: `StudioLayout`, `LeftRail`, `CentralCanvas`
+    - Client Components: `Inspector`, `ConfigInspector`, `GhostRow`, `DiversificationInspector`
+    - Custom Hooks: `useDraft` (localStorage + dirty detection), `compareConfig` (diff utility)
+    - Data Fetching: 3 Patterns dokumentiert (Server Direct Read, API Route, Server Utility)
+  - **Implementation Milestones**:
+    - Milestone 1 (1-2 Tage): Core Workspace Shell mit Read-Only Results Display
+    - Milestone 2 (2-3 Tage): Configuration + Draft State mit Inspector
+    - Milestone 3 (2-3 Tage): Diversification Ghost Rows + Contextual Inspector Modes
+  - **ASCII Wireframes**: 3 detaillierte Wireframes (Default State, Dirty State, Ghost Row Clicked)
+  - **Routes**: `/studio`, `/studio/[universe]`, `/studio/[universe]/run/[runId]`, `/studio/[universe]/compare`
+  - **State Model**: Client-Side Draft (localStorage), Server-Derived Current Config (Run JSON), Comparison Diff Logic
+  - **Rationale**: Premium/calm/editorial Design, "less but better", macht es "designed, not generated"
+- **\"Why this score?\" Breakdown Modal (implemented by Codex)**:
+  - Score-Klick öffnet ein Overlay mit Pillar-Gewichten, Komponenten (PE/PB/PS, ROE, Debt/Equity, Beta, Volatilität) und Interpretation.
+  - Neuer Client-Flow `ScoreBoardClient` + `ScoreBreakdownModal` nutzt `buildScoreBreakdown` für Pillar-/Metric-Details, ohne die Karten-Navigation zu verlassen.
+  - Fallbacks für fehlende Kennzahlen (neutral 50), Default-Gewichte 25% pro Pillar; sowohl Card- als auch Top-10-Tabellen-Scores sind klickbar.
+
 ### 2026-01-26
 
 #### Added
