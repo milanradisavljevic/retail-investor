@@ -113,6 +113,11 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Score-Klick öffnet ein Overlay mit Pillar-Gewichten, Komponenten (PE/PB/PS, ROE, Debt/Equity, Beta, Volatilität) und Interpretation.
   - Neuer Client-Flow `ScoreBoardClient` + `ScoreBreakdownModal` nutzt `buildScoreBreakdown` für Pillar-/Metric-Details, ohne die Karten-Navigation zu verlassen.
   - Fallbacks für fehlende Kennzahlen (neutral 50), Default-Gewichte 25% pro Pillar; sowohl Card- als auch Top-10-Tabellen-Scores sind klickbar.
+- **Strategy Lab Guided UX (implemented by Codex)**:
+  - Klarer 3-Schritte-Flow mit nummerierten Labels (1 Universum wählen, 2 Strategie wählen, 3 Filter optional).
+  - Mode-Karten statt Tabs (Live-Analyse vs. Backtest) + kontextabhängiger Haupt-CTA.
+  - Neue PresetCards mit Risiko-Badge, Icon und visuellen Weight-Balken; FilterCheckboxes mit Tooltips & empfohlen-Badge.
+  - Laufzeit-/Universe-Badges bleiben sichtbar; Filter-Presets „Institutional Safe“ und „Liquidity First“ präzisiert.
 
 ### 2026-01-26
 

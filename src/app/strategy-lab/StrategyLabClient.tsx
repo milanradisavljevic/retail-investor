@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Zap, History, Play, TrendingUp, Shield, Rocket } from "lucide-react";
 import MarketContextBar from "@/app/components/MarketContextBar";
 import { formatPercent } from "@/lib/percent";
 import type { MarketContextResponse } from "@/lib/marketContext";
@@ -9,6 +10,8 @@ import type { UniverseWithMetadata, PresetConfig } from "./loaders";
 import { SectorExposure } from "@/app/components/SectorExposure";
 import { EquityCurve } from "@/app/components/EquityCurve";
 import { DrawdownChart } from "@/app/components/DrawdownChart";
+import { PresetCard } from "@/app/components/PresetCard";
+import { FilterCheckbox } from "@/app/components/FilterCheckbox";
 
 type PillarWeights = {
   valuation: number;
@@ -186,6 +189,23 @@ function classNames(...classes: Array<string | false | undefined>) {
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function StepLabel({ step, children }: { step: number; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold">
+        {step}
+      </span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function runtimeEstimate(symbolCount: number, mode: "live" | "backtest") {
+  const minutes =
+    mode === "live" ? Math.max(1, Math.ceil(symbolCount / 20)) : Math.max(1, Math.ceil(symbolCount / 100));
+  return { minutes, label: minutes < 1 ? "< 1 Minute" : `~${minutes} Minute${minutes === 1 ? "" : "n"}` };
 }
 
 function buildLivePicksFromRun(run: RunV1SchemaJson | null, topK: number): LivePick[] {
@@ -380,44 +400,51 @@ function PresetSelector({
   onChange: (id: string | null, weights?: PillarWeights) => void;
   presets: PresetConfig[];
 }) {
+  const riskMap: Record<string, "low" | "medium" | "high"> = {
+    shield: "low",
+    deep-value: "medium",
+    compounder: "medium",
+    quant: "medium",
+    rocket: "high",
+  };
+
+  const iconFor = (id: string) => {
+    if (id.includes("shield")) return <Shield className="w-5 h-5" />;
+    if (id.includes("rocket")) return <Rocket className="w-5 h-5" />;
+    return <TrendingUp className="w-5 h-5" />;
+  };
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-[#E2E8F0] font-semibold">Strategy Presets</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <button
+        <PresetCard
+          name="Custom"
+          subtitle="Manuelle Gewichtung"
+          description="Passe Pillar-Gewichte frei an oder nutze eigene Vorgaben."
+          icon={<Play className="w-5 h-5 text-emerald-400" />}
+          riskLevel="medium"
+          weights={{ v: 25, q: 25, t: 25, r: 25 }}
+          selected={value === null}
           onClick={() => onChange(null)}
-          className={classNames(
-            "rounded-xl border px-4 py-3 text-left transition-all",
-            "bg-[#0F172A] hover:border-[#334155]",
-            value === null
-              ? "border-[#3B82F6] shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
-              : "border-[#1F2937]"
-          )}
-        >
-          <p className="text-sm font-semibold text-[#E2E8F0] mb-1">Custom</p>
-          <p className="text-xs text-[#94A3B8]">Manual weight configuration</p>
-        </button>
+        />
         {presets.map((preset) => (
-          <button
+          <PresetCard
             key={preset.id}
+            name={preset.name}
+            subtitle={preset.id}
+            description={preset.description}
+            icon={iconFor(preset.id)}
+            riskLevel={riskMap[preset.id] ?? "medium"}
+            weights={{
+              v: Math.round(preset.pillar_weights.valuation * 100),
+              q: Math.round(preset.pillar_weights.quality * 100),
+              t: Math.round(preset.pillar_weights.technical * 100),
+              r: Math.round(preset.pillar_weights.risk * 100),
+            }}
+            selected={value === preset.id}
             onClick={() => onChange(preset.id, preset.pillar_weights)}
-            className={classNames(
-              "rounded-xl border px-4 py-3 text-left transition-all",
-              "bg-[#0F172A] hover:border-[#334155]",
-              value === preset.id
-                ? "border-[#3B82F6] shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
-                : "border-[#1F2937]"
-            )}
-          >
-            <p className="text-sm font-semibold text-[#E2E8F0] mb-1">{preset.name}</p>
-            <p className="text-xs text-[#94A3B8] line-clamp-2">{preset.description}</p>
-            <div className="flex items-center gap-2 mt-2 text-[10px] text-[#64748B]">
-              <span>V:{(preset.pillar_weights.valuation * 100).toFixed(0)}%</span>
-              <span>Q:{(preset.pillar_weights.quality * 100).toFixed(0)}%</span>
-              <span>T:{(preset.pillar_weights.technical * 100).toFixed(0)}%</span>
-              <span>R:{(preset.pillar_weights.risk * 100).toFixed(0)}%</span>
-            </div>
-          </button>
+          />
         ))}
       </div>
     </div>
@@ -506,116 +533,110 @@ function WeightEditor({
 function FilterPanel({ filters, onChange }: { filters: FilterState; onChange: (f: FilterState) => void }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-        <p className="text-sm font-semibold text-[#E2E8F0] mb-3">Risk Management</p>
-        <label className="flex items-center gap-3 text-sm text-[#E2E8F0] mb-2">
-          <input
-            type="checkbox"
-            checked={filters.excludeCrypto}
-            onChange={(e) => onChange({ ...filters, excludeCrypto: e.target.checked })}
-            className="accent-[#3B82F6]"
-          />
-          Exclude Crypto Mining Stocks
-        </label>
-        <div className="flex items-center gap-2 mb-2">
-          <input
-            type="checkbox"
-            checked={filters.marketCapMin > 0}
-            onChange={(e) =>
-              onChange({
-                ...filters,
-                marketCapMin: e.target.checked ? filters.marketCapMin || 500 : 0,
-              })
-            }
-            className="accent-[#3B82F6]"
-          />
-          <div className="flex items-center gap-2 text-sm text-[#E2E8F0] flex-1">
-            <span>Market Cap Min</span>
-            <input
-              type="number"
-              value={filters.marketCapMin}
-              onChange={(e) => onChange({ ...filters, marketCapMin: Number(e.target.value) })}
-              className="w-24 bg-[#0B1220] border border-[#1F2937] rounded px-2 py-1 text-sm text-[#E2E8F0]"
-            />
-            <span className="text-xs text-[#94A3B8]">M USD</span>
+      <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 space-y-3">
+        <p className="text-sm font-semibold text-[#E2E8F0]">Risiko & Exklusion</p>
+        <FilterCheckbox
+          label="Crypto-Mining-Aktien ausschließen"
+          tooltip="Entfernt MARA, RIOT, HUT, COIN & Co. (sehr hohe Volatilität)."
+          checked={filters.excludeCrypto}
+          recommended
+          onChange={(v) => onChange({ ...filters, excludeCrypto: v })}
+        />
+        <FilterCheckbox
+          label="Rüstungsunternehmen ausschließen"
+          tooltip="Entfernt LMT, RTX, NOC, GD, BA und weitere Defense-Namen (ESG)."
+          checked={filters.excludeDefense}
+          onChange={(v) => onChange({ ...filters, excludeDefense: v })}
+        />
+        <FilterCheckbox
+          label="Fossil-Fuel-Unternehmen ausschließen"
+          tooltip="Entfernt Öl- und Gasproduzenten (XOM, CVX, COP ...)."
+          checked={filters.excludeFossil}
+          onChange={(v) => onChange({ ...filters, excludeFossil: v })}
+        />
+      </div>
+
+      <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 space-y-3">
+        <p className="text-sm font-semibold text-[#E2E8F0]">Größen- & Liquiditätsfilter</p>
+        <div className="space-y-2">
+          <p className="text-xs text-slate-400">Mindest-Marktkapitalisierung</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "Alle", value: 0 },
+              { label: "> 500M (Mid Cap)", value: 500 },
+              { label: "> 2B (Large Cap)", value: 2000 },
+              { label: "> 10B (Mega Cap)", value: 10000 },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onChange({ ...filters, marketCapMin: opt.value })}
+                className={classNames(
+                  "px-3 py-1.5 text-xs rounded-full transition-all",
+                  filters.marketCapMin === opt.value
+                    ? "bg-emerald-500 text-white"
+                    : "bg-slate-700 text-slate-200 hover:bg-slate-600"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={filters.liquidityMin > 0}
-            onChange={(e) =>
-              onChange({
-                ...filters,
-                liquidityMin: e.target.checked ? filters.liquidityMin || 10 : 0,
-              })
-            }
-            className="accent-[#3B82F6]"
-          />
-          <div className="flex items-center gap-2 text-sm text-[#E2E8F0] flex-1">
-            <span>Liquidity Min</span>
-            <input
-              type="number"
-              value={filters.liquidityMin}
-              onChange={(e) => onChange({ ...filters, liquidityMin: Number(e.target.value) })}
-              className="w-24 bg-[#0B1220] border border-[#1F2937] rounded px-2 py-1 text-sm text-[#E2E8F0]"
-            />
-            <span className="text-xs text-[#94A3B8]">M USD / day</span>
+        <div className="space-y-2">
+          <p className="text-xs text-slate-400">Liquidität (ø Tagesumsatz, Mio USD)</p>
+          <div className="flex gap-2">
+            {[
+              { label: "None", value: 0 },
+              { label: ">= 5M", value: 5 },
+              { label: ">= 10M", value: 10 },
+              { label: ">= 25M", value: 25 },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onChange({ ...filters, liquidityMin: opt.value })}
+                className={classNames(
+                  "px-3 py-1.5 text-xs rounded-full transition-all",
+                  filters.liquidityMin === opt.value
+                    ? "bg-emerald-500 text-white"
+                    : "bg-slate-700 text-slate-200 hover:bg-slate-600"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
-      <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-        <p className="text-sm font-semibold text-[#E2E8F0] mb-3">Ethical Filters</p>
-        <label className="flex items-center gap-3 text-sm text-[#E2E8F0] mb-2">
-          <input
-            type="checkbox"
-            checked={filters.excludeDefense}
-            onChange={(e) => onChange({ ...filters, excludeDefense: e.target.checked })}
-            className="accent-[#3B82F6]"
-          />
-          Exclude Defense/Weapons
-        </label>
-        <label className="flex items-center gap-3 text-sm text-[#E2E8F0]">
-          <input
-            type="checkbox"
-            checked={filters.excludeFossil}
-            onChange={(e) => onChange({ ...filters, excludeFossil: e.target.checked })}
-            className="accent-[#3B82F6]"
-          />
-          Exclude Fossil Fuels
-        </label>
-      </div>
-      <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-        <p className="text-sm font-semibold text-[#E2E8F0] mb-2">Preset Packs</p>
-        <p className="text-xs text-[#94A3B8] mb-3">
-          Combine risk and ethical filters to standardize approval flows.
-        </p>
-        <div className="flex flex-wrap gap-2">
+
+      <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 space-y-3">
+        <p className="text-sm font-semibold text-[#E2E8F0] mb-1">Schnell-Presets</p>
+        <p className="text-xs text-slate-500">1 Klick für typische Compliance-Sets.</p>
+        <div className="flex flex-col gap-2">
           <button
             onClick={() =>
               onChange({
                 excludeCrypto: true,
-                marketCapMin: 500,
+                marketCapMin: 2000,
                 liquidityMin: 10,
                 excludeDefense: true,
                 excludeFossil: true,
               })
             }
-            className="text-xs px-3 py-2 rounded-lg border border-[#3B82F6]/40 bg-[#0F172A] text-[#E2E8F0] hover:border-[#3B82F6]"
+            className="text-xs px-3 py-2 rounded-lg border border-emerald-500/60 text-emerald-100 bg-emerald-500/10 hover:border-emerald-400"
           >
-            Institutional Safe
+            Institutional Safe (empfohlen)
           </button>
           <button
             onClick={() =>
               onChange({
                 excludeCrypto: true,
-                marketCapMin: 300,
+                marketCapMin: 500,
                 liquidityMin: 5,
                 excludeDefense: false,
                 excludeFossil: false,
               })
             }
-            className="text-xs px-3 py-2 rounded-lg border border-[#1F2937] bg-[#0F172A] text-[#E2E8F0] hover:border-[#334155]"
+            className="text-xs px-3 py-2 rounded-lg border border-slate-700 text-slate-200 bg-slate-800/60 hover:border-slate-500"
           >
             Liquidity First
           </button>
@@ -956,90 +977,113 @@ export default function StrategyLabClient({
 
   return (
     <div className="space-y-6">
-      <header className="rounded-2xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#0F172A] px-6 py-5 flex flex-col gap-3">
+      <header className="rounded-2xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#0F172A] px-6 py-5 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-[#94A3B8]">Strategy Lab</p>
             <h1 className="text-2xl font-semibold text-[#F8FAFC]">Dual-Mode Playbook</h1>
             <p className="text-sm text-[#94A3B8]">
-              Configure universes, tune pillars, and switch between Live Runs and Backtests without leaving the page.
+              Klarer 3-Schritte-Flow: Universum wählen, Strategie wählen, Analyse starten.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => handleTabSwitch("live")}
-              className={classNames(
-                "px-4 py-2 text-sm rounded-lg border transition-all",
-                activeTab === "live"
-                  ? "border-[#3B82F6] bg-[#3B82F6]/20 text-[#E2E8F0]"
-                  : "border-[#1F2937] bg-[#0B1220] text-[#94A3B8]"
-              )}
-            >
-              Live Run
-            </button>
-            <button
-              onClick={() => handleTabSwitch("backtest")}
-              className={classNames(
-                "px-4 py-2 text-sm rounded-lg border transition-all",
-                activeTab === "backtest"
-                  ? "border-[#3B82F6] bg-[#3B82F6]/20 text-[#E2E8F0]"
-                  : "border-[#1F2937] bg-[#0B1220] text-[#94A3B8]"
-              )}
-            >
-              Backtest
-            </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div
+            className={classNames(
+              "p-4 rounded-lg border-2 cursor-pointer transition-all",
+              activeTab === "live"
+                ? "border-emerald-500 bg-emerald-500/10"
+                : "border-slate-700 hover:border-slate-600 bg-[#0B1220]"
+            )}
+            onClick={() => handleTabSwitch("live")}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Zap className="w-5 h-5 text-emerald-400" />
+              <span className="font-semibold text-white">Live-Analyse</span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Analysiere aktuelle Marktdaten und erhalte heute kaufenswerte Aktien.
+            </p>
+          </div>
+          <div
+            className={classNames(
+              "p-4 rounded-lg border-2 cursor-pointer transition-all",
+              activeTab === "backtest"
+                ? "border-blue-500 bg-blue-500/10"
+                : "border-slate-700 hover:border-slate-600 bg-[#0B1220]"
+            )}
+            onClick={() => handleTabSwitch("backtest")}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <History className="w-5 h-5 text-blue-400" />
+              <span className="font-semibold text-white">Backtest</span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Teste, wie die Strategie von 2015–2025 performt hätte.
+            </p>
           </div>
         </div>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-[#94A3B8]">
-            {selectedUniverseMeta && (
-              <>
-                <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] flex items-center gap-1.5">
-                  <span>{selectedUniverseMeta.flag}</span>
-                  <span>{selectedUniverseMeta.name}</span>
-                  <span className="text-[#64748B]">({selectedUniverseMeta.symbol_count} stocks)</span>
-                </span>
-                <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] font-mono">
-                  Runtime: {formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)}
-                </span>
-              </>
-            )}
-            {selectedPreset && (
-              <span className="px-3 py-1 rounded-full border border-[#3B82F6]/30 bg-[#0B1220] text-[#E2E8F0]">
-                Preset: {presets.find(p => p.id === selectedPreset)?.name || selectedPreset}
+
+        <button
+          onClick={activeTab === "live" ? handleLiveRun : handleBacktestRun}
+          disabled={activeTab === "live" ? liveLoading : backtestLoading || !periodValid}
+          className={classNames(
+            "w-full py-3 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2",
+            activeTab === "live"
+              ? "bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-60"
+              : "bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-60"
+          )}
+        >
+          {activeTab === "live" ? (
+            <>
+              <Zap className="w-5 h-5" /> Top-Aktien jetzt finden
+            </>
+          ) : (
+            <>
+              <Play className="w-5 h-5" /> Backtest starten (2015–2025)
+            </>
+          )}
+        </button>
+
+        <div className="flex flex-wrap items-center gap-3 text-xs text-[#94A3B8]">
+          {selectedUniverseMeta && (
+            <>
+              <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] flex items-center gap-1.5">
+                <span>{selectedUniverseMeta.flag}</span>
+                <span>{selectedUniverseMeta.name}</span>
+                <span className="text-[#64748B]">({selectedUniverseMeta.symbol_count} stocks)</span>
               </span>
-            )}
-            <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220]">
-              Weight total: {weightTotal}%
+              <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] font-mono">
+                Runtime: {formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)}
+              </span>
+            </>
+          )}
+          {selectedPreset && (
+            <span className="px-3 py-1 rounded-full border border-[#3B82F6]/30 bg-[#0B1220] text-[#E2E8F0]">
+              Preset: {presets.find(p => p.id === selectedPreset)?.name || selectedPreset}
             </span>
-            {latestRun && (
-              <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
-                Latest: {latestRun.as_of_date}
-              </span>
-            )}
-          </div>
+          )}
+          <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220]">
+            Weight total: {weightTotal}%
+          </span>
+          {latestRun && (
+            <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
+              Latest: {latestRun.as_of_date}
+            </span>
+          )}
+        </div>
       </header>
 
       <MarketContextBar initialData={marketContext ?? undefined} />
 
       <SectionCard
         title="Shared Configuration"
-        subtitle="Universe selection, strategy weights, and filters apply to both modes."
+        subtitle="Folge den drei Schritten – alles wirkt auf Live & Backtest."
       >
         <div className="space-y-6">
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-[#94A3B8] uppercase tracking-wide">Universe Selection</p>
-              {selectedUniverseMeta && (
-                <div className="flex items-center gap-3 text-xs text-[#94A3B8]">
-                  <span className="px-2 py-1 rounded bg-[#0F172A] border border-[#1F2937]">
-                    {selectedUniverseMeta.symbol_count} stocks
-                  </span>
-                  <span className="px-2 py-1 rounded bg-[#0F172A] border border-[#1F2937] font-mono">
-                    {formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)}
-                  </span>
-                </div>
-              )}
-            </div>
+            <StepLabel step={1}>Wähle dein Anlageuniversum</StepLabel>
             <UniverseSelector
               value={selectedUniverse}
               onChange={setSelectedUniverse}
@@ -1048,6 +1092,7 @@ export default function StrategyLabClient({
           </div>
 
           <div className="space-y-3">
+            <StepLabel step={2}>Wähle eine Strategie (oder passe Gewichte an)</StepLabel>
             <PresetSelector
               value={selectedPreset}
               onChange={handlePresetChange}
@@ -1059,7 +1104,10 @@ export default function StrategyLabClient({
             <WeightEditor weights={weights} onChange={setWeights} />
           </div>
 
-          <FilterPanel filters={filters} onChange={setFilters} />
+          <div className="space-y-3">
+            <StepLabel step={3}>Feinjustiere Filter (optional)</StepLabel>
+            <FilterPanel filters={filters} onChange={setFilters} />
+          </div>
         </div>
       </SectionCard>
 
@@ -1075,7 +1123,7 @@ export default function StrategyLabClient({
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
                 <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Estimated Runtime</p>
                 <p className="text-lg text-[#E2E8F0] font-semibold font-mono">
-                  {selectedUniverseMeta ? formatRuntime(selectedUniverseMeta.estimatedRuntimeMin) : '--'}
+                  {selectedUniverseMeta ? runtimeEstimate(selectedUniverseMeta.symbol_count ?? 0, "live").label : '--'}
                 </p>
                 <p className="text-xs text-[#64748B]">
                   {selectedUniverseMeta?.status === 'TEST' && '⚡ Quick test run'}
