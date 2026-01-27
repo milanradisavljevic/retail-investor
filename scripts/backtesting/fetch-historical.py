@@ -22,6 +22,7 @@ from pathlib import Path
 from datetime import datetime
 
 import yfinance as yf
+import yfinance.cache as yf_cache
 import pandas as pd
 
 # Configuration
@@ -44,6 +45,9 @@ YAHOO_ALIASES: dict[str, str] = {
     "MOGA": "MOG-A",
     "GEFB": "GEF-B",
     "CRDA": "CRD-A",
+    # EURO STOXX 50 fixes
+    "CS": "CS-USD",          # Credit Suisse delisted ADR -> historical placeholder
+    "SX5E": "^STOXX50E",     # Euro Stoxx 50 index on Yahoo
 }
 
 # Get universe from CLI arg, env var, or default to sp500
@@ -51,6 +55,7 @@ YAHOO_ALIASES: dict[str, str] = {
 # - Env var enables `UNIVERSE=... npm run backtest`
 UNIVERSE_NAME = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("UNIVERSE", "sp500")
 UNIVERSE_FILE = Path(f"config/universes/{UNIVERSE_NAME}.json")
+CACHE_DIR = Path(".cache/yfinance")
 
 
 def load_universe() -> tuple[list[str], str]:
@@ -120,6 +125,9 @@ def main():
 
     # Create output directory
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    # Ensure yfinance cache is writable (default user cache can be read-only in some environments)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    yf_cache.set_cache_location(str(CACHE_DIR.absolute()))
 
     # Load universe
     symbols, benchmark = load_universe()

@@ -1,15 +1,15 @@
 /**
  * Backtesting Runner
  *
- * Simulates quarterly rebalancing strategy using historical data.
- * Buy Top 10 stocks at start of each quarter, hold for 3 months.
+ * Simulates configurable rebalancing strategy (monthly/quarterly/annually) using historical data.
+ * Buy Top N stocks at rebalance dates, hold until next rebalance.
  *
  * Usage: npx tsx scripts/backtesting/run-backtest.ts
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { calculateMetrics, type DailyRecord, type BacktestSummary } from './calculate-metrics';
+import { calculateMetrics, type DailyRecord, type BacktestSummary, type RebalanceEvent } from './calculate-metrics';
 import { calculateHybridScore, type HybridScoreInput } from './hybrid-scoring';
 
 // Configuration
@@ -22,6 +22,42 @@ const TOP_N = 10;
 
 // Scoring mode: 'momentum' (legacy) or 'hybrid' (new)
 const SCORING_MODE = process.env.SCORING_MODE === 'momentum' ? 'momentum' : 'hybrid';
+
+type RebalanceFrequency = 'monthly' | 'quarterly' | 'annually';
+const REBALANCE_FREQUENCY: RebalanceFrequency = (() => {
+  const env = (process.env.REBALANCING || 'quarterly').toLowerCase();
+  if (env === 'monthly' || env === 'quarterly' || env === 'annually') return env;
+  return 'quarterly';
+})();
+
+// Slippage and transaction costs
+interface SlippageModel {
+  type: 'optimistic' | 'realistic' | 'conservative';
+  buySlippage: number;   // e.g. 0.005 for 0.5%
+  sellSlippage: number;  // e.g. 0.005 for 0.5%
+}
+
+const SLIPPAGE_MODELS: Record<string, SlippageModel> = {
+  optimistic: { type: 'optimistic', buySlippage: 0.001, sellSlippage: 0.001 },
+  realistic: { type: 'realistic', buySlippage: 0.005, sellSlippage: 0.005 },
+  conservative: { type: 'conservative', buySlippage: 0.015, sellSlippage: 0.015 }
+};
+
+const DEFAULT_SLIPPAGE_MODEL = 'realistic';
+const TRANSACTION_COST_PCT = 0.001; // 0.1% per trade
+
+// Slippage model selection (moved after SLIPPAGE_MODELS definition)
+const ENV_SLIPPAGE_MODEL = process.env.SLIPPAGE_MODEL || DEFAULT_SLIPPAGE_MODEL;
+const SLIPPAGE_MODEL_KEY = Object.keys(SLIPPAGE_MODELS).includes(ENV_SLIPPAGE_MODEL)
+  ? ENV_SLIPPAGE_MODEL
+  : DEFAULT_SLIPPAGE_MODEL;
+
+interface BacktestCosts {
+  totalSlippageCost: number;
+  totalTransactionCost: number;
+  totalTrades: number;
+  avgSlippagePerTrade: number;
+}
 
 type UniverseConfig = {
   benchmark?: string;
@@ -62,14 +98,26 @@ function loadUniverseConfig(): { universeName: string; symbols: string[]; benchm
   return { universeName, symbols, benchmark };
 }
 
-// Quarter start dates (first trading day approximation)
-const QUARTER_STARTS = [
-  '2020-01-02', '2020-04-01', '2020-07-01', '2020-10-01',
-  '2020-01-02', '2021-01-04', '2021-04-01', '2021-07-01', '2021-10-01',
-  '2022-01-03', '2022-04-01', '2022-07-01', '2022-10-03',
-  '2023-01-03', '2023-04-03', '2023-07-03', '2023-10-02',
-  '2024-01-02', '2024-04-01', '2024-07-01', '2024-10-01',
-].filter((d, i, arr) => arr.indexOf(d) === i); // Remove duplicates
+function shouldRebalance(
+  currentDate: Date,
+  lastRebalanceDate: Date,
+  frequency: RebalanceFrequency
+): boolean {
+  const monthsDiff =
+    (currentDate.getFullYear() - lastRebalanceDate.getFullYear()) * 12 +
+    (currentDate.getMonth() - lastRebalanceDate.getMonth());
+
+  switch (frequency) {
+    case 'monthly':
+      return monthsDiff >= 1;
+    case 'quarterly':
+      return monthsDiff >= 3;
+    case 'annually':
+      return monthsDiff >= 12;
+    default:
+      return false;
+  }
+}
 
 interface PriceData {
   date: string;
@@ -95,6 +143,38 @@ interface Position {
 interface Portfolio {
   positions: Position[];
   cash: number;
+}
+
+interface BacktestResult {
+  dailyRecords: DailyRecord[];
+  costs: BacktestCosts;
+  rebalanceEvents: RebalanceEvent[];
+}
+
+/**
+ * Execute a buy trade with slippage and transaction costs
+ */
+function executeBuy(price: number, shares: number, model: SlippageModel): { cost: number; avgPrice: number } {
+  const slippagePrice = price * (1 + model.buySlippage);
+  const grossCost = slippagePrice * shares;
+  const transactionCost = grossCost * TRANSACTION_COST_PCT;
+  return {
+    cost: grossCost + transactionCost,
+    avgPrice: slippagePrice
+  };
+}
+
+/**
+ * Execute a sell trade with slippage and transaction costs
+ */
+function executeSell(price: number, shares: number, model: SlippageModel): { proceeds: number; avgPrice: number } {
+  const slippagePrice = price * (1 - model.sellSlippage);
+  const grossProceeds = slippagePrice * shares;
+  const transactionCost = grossProceeds * TRANSACTION_COST_PCT;
+  return {
+    proceeds: grossProceeds - transactionCost,
+    avgPrice: slippagePrice
+  };
 }
 
 /**
@@ -287,23 +367,16 @@ function selectTopStocks(
 /**
  * Find nearest trading day on or after given date
  */
-function findNearestTradingDay(date: string, allDates: string[]): string | null {
-  if (allDates.includes(date)) return date;
-
-  for (const d of allDates) {
-    if (d >= date) return d;
-  }
-  return null;
-}
-
-/**
- * Run the backtest simulation
- */
-function runBacktest(dataMap: Map<string, SymbolData>, benchmarkSymbol: string): DailyRecord[] {
+// Run the backtest simulation
+function runBacktest(
+  dataMap: Map<string, SymbolData>,
+  benchmarkSymbol: string,
+  rebalanceFrequency: RebalanceFrequency = REBALANCE_FREQUENCY
+): BacktestResult {
   console.log('\nRunning backtest simulation...');
   console.log(`Period: ${START_DATE} to ${END_DATE}`);
   console.log(`Initial capital: $${INITIAL_CAPITAL.toLocaleString()}`);
-  console.log(`Strategy: Quarterly rebalance, Top ${TOP_N} stocks`);
+  console.log(`Strategy: ${rebalanceFrequency} rebalance, Top ${TOP_N} stocks`);
   console.log(`Scoring mode: ${SCORING_MODE.toUpperCase()}`);
   console.log(`Benchmark: ${benchmarkSymbol}`);
 
@@ -321,50 +394,105 @@ function runBacktest(dataMap: Map<string, SymbolData>, benchmarkSymbol: string):
   let portfolio: Portfolio = { positions: [], cash: INITIAL_CAPITAL };
   const dailyRecords: DailyRecord[] = [];
 
-  // Track current quarter
-  let currentQuarterIdx = 0;
-  let nextRebalanceDate = findNearestTradingDay(QUARTER_STARTS[0], allDates);
+  // Initialize costs tracking
+  let totalSlippageCost = 0;
+  let totalTransactionCost = 0;
+  let totalTrades = 0;
+
+  // Get selected slippage model
+  const slippageModel = SLIPPAGE_MODELS[SLIPPAGE_MODEL_KEY];
+
+  // Rebalance tracking
+  let lastRebalanceDate: Date | null = null;
+  const rebalanceEvents: RebalanceEvent[] = [];
 
   // Initial benchmark value
   const benchmarkStartPrice = benchmarkData.prices.get(allDates[0])?.close || 1;
 
   for (const date of allDates) {
-    // Check if rebalance needed
-    if (nextRebalanceDate && date >= nextRebalanceDate) {
-      // Sell all positions
+    const dateObj = new Date(date);
+
+    // Portfolio value before any rebalance on this day
+    let portfolioValueBefore = portfolio.cash;
+    for (const pos of portfolio.positions) {
+      const price = dataMap.get(pos.symbol)?.prices.get(date)?.close;
+      if (price) {
+        portfolioValueBefore += pos.shares * price;
+      }
+    }
+
+    const needsRebalance =
+      lastRebalanceDate === null || shouldRebalance(dateObj, lastRebalanceDate, rebalanceFrequency);
+
+    if (needsRebalance) {
+      const soldSymbols: string[] = [];
+      const boughtSymbols: string[] = [];
+      let soldNotional = 0;
+      let buyNotional = 0;
+
+      // Sell all positions with slippage and transaction costs
       for (const pos of portfolio.positions) {
         const price = dataMap.get(pos.symbol)?.prices.get(date)?.close;
         if (price) {
-          portfolio.cash += pos.shares * price;
+          const sellResult = executeSell(price, pos.shares, slippageModel);
+          portfolio.cash += sellResult.proceeds;
+
+          const grossProceeds = price * pos.shares;
+          soldNotional += grossProceeds;
+          totalSlippageCost += (grossProceeds - sellResult.proceeds) - (grossProceeds * TRANSACTION_COST_PCT);
+          totalTransactionCost += grossProceeds * TRANSACTION_COST_PCT;
+          totalTrades++;
         }
+        soldSymbols.push(pos.symbol);
         // If stock delisted (no price), position value = 0
       }
       portfolio.positions = [];
 
       // Select new top stocks
       const topStocks = selectTopStocks(dataMap, date, allDates, TOP_N, benchmarkSymbol);
-      console.log(`\n${date}: Rebalancing to ${topStocks.length} stocks`);
+      console.log(`\n${date}: Rebalancing to ${topStocks.length} stocks (${rebalanceFrequency})`);
       console.log(`  Top 5: ${topStocks.slice(0, 5).join(', ')}`);
 
-      // Buy equal weight positions
-      const cashPerPosition = portfolio.cash / topStocks.length;
-      for (const symbol of topStocks) {
-        const price = dataMap.get(symbol)?.prices.get(date)?.close;
-        if (price && price > 0) {
-          const shares = Math.floor(cashPerPosition / price);
-          if (shares > 0) {
-            portfolio.positions.push({ symbol, shares, entryPrice: price });
-            portfolio.cash -= shares * price;
+      // Buy equal weight positions with slippage and transaction costs
+      if (topStocks.length > 0) {
+        const cashPerPosition = portfolio.cash / topStocks.length;
+        for (const symbol of topStocks) {
+          const price = dataMap.get(symbol)?.prices.get(date)?.close;
+          if (price && price > 0) {
+            const estimatedShares = Math.floor(
+              cashPerPosition / (price * (1 + slippageModel.buySlippage) * (1 + TRANSACTION_COST_PCT))
+            );
+
+            if (estimatedShares > 0) {
+              const buyResult = executeBuy(price, estimatedShares, slippageModel);
+
+              if (buyResult.cost <= cashPerPosition) {
+                portfolio.positions.push({ symbol, shares: estimatedShares, entryPrice: buyResult.avgPrice });
+                portfolio.cash -= buyResult.cost;
+
+                const grossCost = price * estimatedShares;
+                buyNotional += grossCost;
+                totalSlippageCost += (buyResult.cost - grossCost) - (grossCost * TRANSACTION_COST_PCT);
+                totalTransactionCost += grossCost * TRANSACTION_COST_PCT;
+                totalTrades++;
+                boughtSymbols.push(symbol);
+              }
+            }
           }
         }
       }
 
-      // Move to next quarter
-      currentQuarterIdx++;
-      nextRebalanceDate =
-        currentQuarterIdx < QUARTER_STARTS.length
-          ? findNearestTradingDay(QUARTER_STARTS[currentQuarterIdx], allDates)
-          : null;
+      const turnoverBase = Math.max(soldNotional, buyNotional);
+      const turnoverPct = portfolioValueBefore > 0 ? (turnoverBase / portfolioValueBefore) * 100 : 0;
+      rebalanceEvents.push({
+        date,
+        action: 'rebalance',
+        sold: soldSymbols,
+        bought: boughtSymbols,
+        turnover: Math.round(turnoverPct * 100) / 100,
+      });
+
+      lastRebalanceDate = dateObj;
     }
 
     // Calculate portfolio value
@@ -398,7 +526,16 @@ function runBacktest(dataMap: Map<string, SymbolData>, benchmarkSymbol: string):
     });
   }
 
-  return dailyRecords;
+  // Calculate final cost metrics
+  const avgSlippagePerTrade = totalTrades > 0 ? totalSlippageCost / totalTrades : 0;
+  const costs: BacktestCosts = {
+    totalSlippageCost,
+    totalTransactionCost,
+    totalTrades,
+    avgSlippagePerTrade
+  };
+
+  return { dailyRecords, costs, rebalanceEvents };
 }
 
 /**
@@ -453,10 +590,19 @@ async function main(): Promise<void> {
   console.log(`Loaded data for ${dataMap.size} symbols`);
 
   // Run backtest
-  const dailyRecords = runBacktest(dataMap, universe.benchmark);
+  const { dailyRecords, costs, rebalanceEvents } = runBacktest(
+    dataMap,
+    universe.benchmark,
+    REBALANCE_FREQUENCY
+  );
 
-  // Calculate metrics
   const summary = calculateMetrics(dailyRecords, START_DATE, END_DATE);
+
+  // Add cost information to the summary
+  summary.costs = costs;
+  summary.rebalance_events = rebalanceEvents;
+  summary.rebalance_frequency = REBALANCE_FREQUENCY;
+  summary.top_n = TOP_N;
 
   // Write results
   writeResults(dailyRecords, summary);
@@ -467,6 +613,7 @@ async function main(): Promise<void> {
   console.log('='.repeat(60));
   console.log(`\nStrategy: ${summary.strategy}`);
   console.log(`Period: ${summary.period}`);
+  console.log(`Slippage Model: ${SLIPPAGE_MODEL_KEY}`);
   console.log('\nPortfolio Performance:');
   console.log(`  Total Return:      ${summary.metrics.total_return_pct.toFixed(2)}%`);
   console.log(`  Annualized Return: ${summary.metrics.annualized_return_pct.toFixed(2)}%`);
@@ -479,6 +626,16 @@ async function main(): Promise<void> {
   console.log(`  Max Drawdown:      ${summary.benchmark.max_drawdown_pct.toFixed(2)}%`);
   console.log(`  Sharpe Ratio:      ${summary.benchmark.sharpe_ratio.toFixed(2)}`);
   console.log(`\nOutperformance: ${summary.outperformance_pct.toFixed(2)}%`);
+
+  // Print cost breakdown if available
+  if (summary.costs) {
+    console.log('\nCost Breakdown:');
+    console.log(`  Total Slippage Cost: $${summary.costs.totalSlippageCost.toFixed(2)}`);
+    console.log(`  Total Transaction Cost: $${summary.costs.totalTransactionCost.toFixed(2)}`);
+    console.log(`  Total Trades: ${summary.costs.totalTrades}`);
+    console.log(`  Avg Slippage Per Trade: $${summary.costs.avgSlippagePerTrade.toFixed(2)}`);
+  }
+
   console.log('='.repeat(60));
 }
 

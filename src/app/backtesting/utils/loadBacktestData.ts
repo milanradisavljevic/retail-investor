@@ -27,6 +27,15 @@ export interface BacktestSummary {
     volatility_pct?: number;
   };
   outperformance_pct: number;
+  rebalance_events?: {
+    date: string;
+    action: 'rebalance';
+    sold: string[];
+    bought: string[];
+    turnover: number;
+  }[];
+  rebalance_frequency?: string;
+  top_n?: number;
 }
 
 export interface BacktestData {

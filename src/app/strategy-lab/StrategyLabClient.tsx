@@ -7,6 +7,8 @@ import type { MarketContextResponse } from "@/lib/marketContext";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import type { UniverseWithMetadata, PresetConfig } from "./loaders";
 import { SectorExposure } from "@/app/components/SectorExposure";
+import { EquityCurve } from "@/app/components/EquityCurve";
+import { DrawdownChart } from "@/app/components/DrawdownChart";
 
 type PillarWeights = {
   valuation: number;
@@ -723,21 +725,7 @@ function MetricsTable({ metrics }: { metrics: BacktestMetrics }) {
   );
 }
 
-function CompactChart({ title, points }: { title: string; points?: number }) {
-  return (
-    <div className="rounded-xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#111827] p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold text-[#E2E8F0]">{title}</p>
-        <span className="text-[10px] text-[#94A3B8]">
-          {points ? `${points} points` : "interactive soon"}
-        </span>
-      </div>
-      <div className="h-32 rounded-lg bg-[#0F172A] border border-dashed border-[#1F2937] flex items-center justify-center text-xs text-[#64748B]">
-        Chart placeholder
-      </div>
-    </div>
-  );
-}
+
 
 export default function StrategyLabClient({
   latestRun,
@@ -755,7 +743,8 @@ export default function StrategyLabClient({
     universes.find(u => u.id === "russell2000_full")?.id || universes[0]?.id || "test"
   );
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-  const [strategy, setStrategy] = useState<string>("4-pillar");
+  // Align with available backtest outputs; UI currently supports hybrid/momentum
+  const [strategy] = useState<string>("hybrid");
   const [weights, setWeights] = useState<PillarWeights>({
     valuation: 25,
     quality: 40,
@@ -794,6 +783,11 @@ export default function StrategyLabClient({
     () => universes.find(u => u.id === selectedUniverse),
     [universes, selectedUniverse]
   );
+
+  // Fetch backtest results when component mounts
+  useEffect(() => {
+    fetchBacktestResults(strategy);
+  }, []);
 
   // Format runtime display
   const formatRuntime = (min: number) => {
@@ -923,6 +917,14 @@ export default function StrategyLabClient({
     }
   }
 
+  // Handle tab switching to refresh data if needed
+  const handleTabSwitch = (tab: "live" | "backtest") => {
+    setActiveTab(tab);
+    if (tab === "backtest") {
+      fetchBacktestResults(strategy);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <header className="rounded-2xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#0F172A] px-6 py-5 flex flex-col gap-3">
@@ -936,7 +938,7 @@ export default function StrategyLabClient({
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setActiveTab("live")}
+              onClick={() => handleTabSwitch("live")}
               className={classNames(
                 "px-4 py-2 text-sm rounded-lg border transition-all",
                 activeTab === "live"
@@ -947,7 +949,7 @@ export default function StrategyLabClient({
               Live Run
             </button>
             <button
-              onClick={() => setActiveTab("backtest")}
+              onClick={() => handleTabSwitch("backtest")}
               className={classNames(
                 "px-4 py-2 text-sm rounded-lg border transition-all",
                 activeTab === "backtest"
@@ -1256,12 +1258,21 @@ export default function StrategyLabClient({
               <div className="xl:col-span-2 space-y-4">
                 <MetricsTable metrics={backtestMetrics} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <CompactChart title="Equity Curve" points={equityCurve.length || undefined} />
-                  <CompactChart title="Drawdown" points={drawdown.length || undefined} />
+                  <div className="rounded-xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#111827] p-4">
+                    <p className="text-sm font-semibold text-[#E2E8F0] mb-3">Equity Curve</p>
+                    <EquityCurve data={equityCurve.map(d => ({ date: d.date, portfolio: d.portfolio_value, benchmark: d.sp500_value }))} />
+                  </div>
+                  <div className="rounded-xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#111827] p-4">
+                    <p className="text-sm font-semibold text-[#E2E8F0] mb-3">Drawdown</p>
+                    <DrawdownChart 
+                      data={drawdown.map(d => ({ date: d.date, drawdown: d.drawdown_pct / 100 }))} 
+                      maxDrawdown={backtestMetrics.maxDrawdown / 100} 
+                    />
+                  </div>
                 </div>
               </div>
               <div className="space-y-4">
-                <CompactChart title="Quarterly Breakdown" />
+                
                 <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] p-4">
                   <p className="text-sm font-semibold text-[#E2E8F0] mb-2">Recent Backtests</p>
                   <div className="space-y-3">

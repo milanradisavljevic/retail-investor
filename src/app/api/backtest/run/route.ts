@@ -34,7 +34,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Weights must sum to 100%' }, { status: 400 });
     }
 
-    const cmd = 'npx tsx scripts/backtesting/run-backtest.ts';
+    // Use local tsx binary to avoid PATH/npx issues in server runtimes
+    const tsxPath = path.join(process.cwd(), 'node_modules', '.bin', 'tsx');
+    if (!fs.existsSync(tsxPath)) {
+      return NextResponse.json(
+        { error: 'TSX binary not found. Install dependencies first (npm install).' },
+        { status: 500 }
+      );
+    }
+    const cmd = `${tsxPath} scripts/backtesting/run-backtest.ts`;
     const env = {
       ...process.env,
       SCORING_MODE: strategy,

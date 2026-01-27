@@ -31,12 +31,29 @@ export interface PerformanceMetrics {
   volatility_pct: number;
 }
 
+export interface RebalanceEvent {
+  date: string;
+  action: 'rebalance';
+  sold: string[];
+  bought: string[];
+  turnover: number; // percentage of portfolio traded
+}
+
 export interface BacktestSummary {
   period: string;
   strategy: string;
   metrics: PerformanceMetrics;
   benchmark: PerformanceMetrics;
   outperformance_pct: number;
+  costs?: {
+    totalSlippageCost: number;
+    totalTransactionCost: number;
+    totalTrades: number;
+    avgSlippagePerTrade: number;
+  };
+  rebalance_events?: RebalanceEvent[];
+  rebalance_frequency?: string;
+  top_n?: number;
 }
 
 /**
