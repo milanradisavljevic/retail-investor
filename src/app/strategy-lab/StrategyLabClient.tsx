@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Zap, History, Play, TrendingUp, Shield, Rocket } from "lucide-react";
 import MarketContextBar from "@/app/components/MarketContextBar";
 import { formatPercent } from "@/lib/percent";
 import type { MarketContextResponse } from "@/lib/marketContext";
@@ -409,9 +408,9 @@ function PresetSelector({
   };
 
   const iconFor = (id: string) => {
-    if (id.includes("shield")) return <Shield className="w-5 h-5" />;
-    if (id.includes("rocket")) return <Rocket className="w-5 h-5" />;
-    return <TrendingUp className="w-5 h-5" />;
+    if (id.includes("shield")) return "🛡️";
+    if (id.includes("rocket")) return "🚀";
+    return "📈";
   };
 
   return (
@@ -999,7 +998,7 @@ export default function StrategyLabClient({
             onClick={() => handleTabSwitch("live")}
           >
             <div className="flex items-center gap-2 mb-1">
-              <Zap className="w-5 h-5 text-emerald-400" />
+              <span className="text-emerald-400">⚡</span>
               <span className="font-semibold text-white">Live-Analyse</span>
             </div>
             <p className="text-xs text-slate-400">
@@ -1016,7 +1015,7 @@ export default function StrategyLabClient({
             onClick={() => handleTabSwitch("backtest")}
           >
             <div className="flex items-center gap-2 mb-1">
-              <History className="w-5 h-5 text-blue-400" />
+              <span className="text-blue-400">⏱️</span>
               <span className="font-semibold text-white">Backtest</span>
             </div>
             <p className="text-xs text-slate-400">
@@ -1037,11 +1036,11 @@ export default function StrategyLabClient({
         >
           {activeTab === "live" ? (
             <>
-              <Zap className="w-5 h-5" /> Top-Aktien jetzt finden
+              <span className="text-lg">⚡</span> Top-Aktien jetzt finden
             </>
           ) : (
             <>
-              <Play className="w-5 h-5" /> Backtest starten (2015–2025)
+              <span className="text-lg">▶</span> Backtest starten (2015–2025)
             </>
           )}
         </button>
