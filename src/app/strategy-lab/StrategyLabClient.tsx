@@ -402,7 +402,7 @@ function PresetSelector({
 }) {
   const riskMap: Record<string, "low" | "medium" | "high"> = {
     shield: "low",
-    deep-value: "medium",
+    "deep-value": "medium",
     compounder: "medium",
     quant: "medium",
     rocket: "high",
