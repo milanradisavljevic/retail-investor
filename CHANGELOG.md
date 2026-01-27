@@ -61,6 +61,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - **Console-Output**: Zeigt "Slippage Model: [optimistic|realistic|conservative]" und vollständige Cost Breakdown
   - **Validation**: UI-Slippage-Parameter werden korrekt durch API-Route → Environment → Backtest-Skript durchgereicht
   - **Realismus**: Bei quarterly Rebalancing über 5 Jahre (165 Trades) entsprechen Conservative Costs ~55% des Starting Capital ($55k von $100k) - extrem realistisch für High-Turnover Small-Cap Strategies
+- **Strategy Lab: Production-Only Universe Auswahl + Timeseries Fallback (implemented by Codex)**:
+  - Universe-Liste filtert jetzt auf die 8 Production Universes + Test (SP500, NASDAQ 100, Russell 2000, CAC 40, DAX 40, FTSE 100, EURO STOXX 50) gemäß Cleanup-Empfehlung vom 2026-01-26.
+  - Backtest-UI fällt auf Sample-Equity/Drawdown-Kurven zurück, wenn der API-Endpoint keine Zeitreihen liefert (verhindert leere Charts wie im aktuellen Screenshot).
 
 #### Added
 - **Studio Workspace UX Design Specification (implemented by Claude)**:

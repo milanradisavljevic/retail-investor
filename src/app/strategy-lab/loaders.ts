@@ -189,7 +189,23 @@ function calculateRuntime(symbolCount: number): number {
 export async function loadUniversesWithMetadata(): Promise<UniverseWithMetadata[]> {
   const universes = await loadUniverses();
 
-  return universes.map(universe => {
+  // Only show production-ready universes (per 2026-01-26 cleanup plan in CHANGELOG)
+  const PRODUCTION_WHITELIST = new Set([
+    'sp500-full',
+    'nasdaq100',
+    'russell2000_full',
+    'russell2000_full_yf',
+    'russell2000_full_clean',
+    'cac40_full',
+    'dax_full',
+    'ftse100_full',
+    'eurostoxx50_full',
+    'test',
+  ]);
+
+  const filtered = universes.filter(u => PRODUCTION_WHITELIST.has(u.id));
+
+  return filtered.map(universe => {
     const symbolCount = universe.symbol_count || 0;
     const status = getUniverseStatus(symbolCount);
     const region = getUniverseRegion(universe.id, universe.benchmark);

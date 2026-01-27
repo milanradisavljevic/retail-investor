@@ -161,6 +161,25 @@ const SAMPLE_RECENT_BACKTESTS = [
   },
 ];
 
+const SAMPLE_EQUITY: Array<{ date: string; portfolio_value: number; sp500_value: number }> = Array.from({ length: 12 }).map(
+  (_, i) => {
+    const month = i + 1;
+    const date = `2020-${month.toString().padStart(2, "0")}-01`;
+    const base = 100000;
+    const portfolio_value = base * (1 + 0.01 * i);
+    const sp500_value = base * (1 + 0.008 * i);
+    return { date, portfolio_value, sp500_value };
+  }
+);
+
+const SAMPLE_DRAWDOWN: Array<{ date: string; drawdown_pct: number }> = [
+  { date: "2020-01-01", drawdown_pct: 0 },
+  { date: "2020-04-01", drawdown_pct: -5 },
+  { date: "2020-07-01", drawdown_pct: -12 },
+  { date: "2020-10-01", drawdown_pct: -6 },
+  { date: "2021-01-01", drawdown_pct: -2 },
+];
+
 function classNames(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -872,9 +891,19 @@ export default function StrategyLabClient({
           winRate: m.win_rate_pct ?? SAMPLE_BACKTEST.winRate,
         });
       }
-      setEquityCurve(data.equityCurve ?? []);
-      setDrawdown(data.drawdown ?? []);
-      setBacktestError(null);
+      const curve = data.equityCurve ?? [];
+      const dd = data.drawdown ?? [];
+
+      if (curve.length === 0 || dd.length === 0) {
+        console.warn('[Backtest] No timeseries returned, falling back to sample curves');
+        setEquityCurve(SAMPLE_EQUITY);
+        setDrawdown(SAMPLE_DRAWDOWN);
+        setBacktestError("Backtest results missing timeseries — showing sample curve.");
+      } else {
+        setEquityCurve(curve);
+        setDrawdown(dd);
+        setBacktestError(null);
+      }
     } catch (err) {
       console.error(err);
       setBacktestMetrics(SAMPLE_BACKTEST);
