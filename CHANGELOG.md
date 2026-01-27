@@ -118,6 +118,8 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Mode-Karten statt Tabs (Live-Analyse vs. Backtest) + kontextabhängiger Haupt-CTA.
   - Neue PresetCards mit Risiko-Badge, Icon und visuellen Weight-Balken; FilterCheckboxes mit Tooltips & empfohlen-Badge.
   - Laufzeit-/Universe-Badges bleiben sichtbar; Filter-Presets „Institutional Safe“ und „Liquidity First“ präzisiert.
+- **Bugfix PresetCard (by Codex)**:
+  - Entfernt externe `classnames` Dependency und nutzt lokale Helper-Funktion, damit Next.js Build ohne fehlendes Modul läuft.
 
 ### 2026-01-26
 

@@ -1,9 +1,10 @@
 'use client';
 
 import { ReactNode } from 'react';
-import classNames from 'classnames';
 
 export type RiskLevel = 'low' | 'medium' | 'high';
+
+const cx = (...classes: Array<string | false | undefined>) => classes.filter(Boolean).join(' ');
 
 interface PresetCardProps {
   name: string;
@@ -32,9 +33,11 @@ export function PresetCard({ name, subtitle, description, icon, riskLevel, weigh
     <button
       type="button"
       onClick={onClick}
-      className={classNames(
+      className={cx(
         'w-full text-left p-4 rounded-lg border-2 transition-all',
-        selected ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.3)]' : 'border-slate-700 bg-slate-800/60 hover:border-slate-500'
+        selected
+          ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.3)]'
+          : 'border-slate-700 bg-slate-800/60 hover:border-slate-500'
       )}
     >
       <div className="flex items-start justify-between mb-2">
