@@ -11,6 +11,83 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ### 2026-01-28
 
 #### Added
+- **Performance Tracking System (implemented by Claude)**:
+  - **Purpose**: Comprehensive instrumentation for measuring and analyzing run performance to identify bottlenecks
+  - **Core Tracker** (`src/lib/performance/tracker.ts` - 400+ lines):
+    - `PerformanceTracker` class for instrumenting run phases
+    - Tracks data fetch, scoring, selection, and persistence phases
+    - Measures wall clock time, CPU time, and memory usage
+    - Automatic bottleneck detection (phases >30% of total time)
+    - Generates optimization recommendations per phase
+    - Hydration-safe metrics collection
+    - Phase-level metrics: duration, cache hits/misses, symbols processed, avg ms/symbol
+  - **API Endpoint** (`src/app/api/performance/summary/route.ts`):
+    - GET `/api/performance/summary` returns aggregated metrics
+    - Last 100 runs loaded and analyzed
+    - Calculates averages: duration, cache hit rate, symbols per run
+    - Generates daily trends for visualization
+    - Group-by-day aggregation with statistical analysis
+  - **Performance Dashboard** (`src/app/components/PerformanceDashboard.tsx`):
+    - Real-time visualization at `/performance` route
+    - Recent runs table with bottleneck highlighting
+    - Performance trend charts (duration over time)
+    - Cache hit rate trends with Recharts integration
+    - Metric cards: avg duration, data fetch, scoring, cache hit rate
+    - Color-coded warnings (green >80%, yellow >50%, red <50%)
+  - **CLI Tool** (`scripts/performance-report.ts`):
+    - Comprehensive analysis via `npm run perf:report`
+    - Statistical breakdown: mean, median, min, max, std deviation
+    - Phase breakdown with percentage contributions
+    - Cache performance analysis
+    - Per-symbol timing metrics
+    - Bottleneck frequency analysis
+    - Universe-specific performance comparison
+    - Memory usage tracking
+    - Recent trend detection (last 10 runs vs overall)
+    - Actionable recommendations based on metrics
+  - **Integration Documentation** (`docs/PERFORMANCE_TRACKING_INTEGRATION.md`):
+    - Complete integration guide with code examples
+    - Pattern for instrumenting existing code
+    - Request statistics tracking examples
+    - Best practices and troubleshooting
+    - Advanced usage (custom phases, export, monitoring integration)
+  - **Files Created**:
+    - `src/lib/performance/tracker.ts` - Core performance tracking (400+ lines)
+    - `src/app/api/performance/summary/route.ts` - API endpoint (150 lines)
+    - `src/app/components/PerformanceDashboard.tsx` - Dashboard UI (300+ lines)
+    - `src/app/performance/page.tsx` - Performance page route
+    - `scripts/performance-report.ts` - CLI analysis tool (250+ lines)
+    - `docs/PERFORMANCE_TRACKING_INTEGRATION.md` - Integration guide (600+ lines)
+  - **NPM Scripts**:
+    - `npm run perf:report` - Generate comprehensive performance report
+  - **Features**:
+    - Phase timing with `startPhase()` / `endPhase()` API
+    - Memory delta tracking per phase
+    - Cache hit rate analysis
+    - Provider call tracking
+    - Failed fetch detection
+    - File size tracking for persistence phase
+    - Cross-run trend analysis
+    - Bottleneck recommendations (e.g., "Low cache hit rate - increase TTL")
+  - **Metrics Collected**:
+    - Wall clock duration (total runtime)
+    - CPU time (actual processing time)
+    - Memory peak (heap usage)
+    - Per-phase durations and percentages
+    - Cache hits/misses ratio
+    - Symbols processed vs failed
+    - Provider API calls made
+    - Average ms per symbol (overall and per phase)
+    - JSON file size for persistence
+  - **Use Cases**:
+    - Identify slow phases in scoring pipeline
+    - Track performance degradation over time
+    - Validate optimization impacts
+    - Compare universe performance characteristics
+    - Monitor cache effectiveness
+    - A/B test scoring algorithm changes
+  - **Rationale**: No visibility into pipeline performance characteristics; unable to identify bottlenecks or validate optimizations; 15-minute runs needed profiling to understand where time is spent
+
 - **Draft State Management for Strategy Lab (implemented by Claude)**:
   - **Purpose**: Prevents accidental expensive runs by tracking configuration changes before execution
   - **Custom Hook**: `useDraftConfig` with localStorage persistence

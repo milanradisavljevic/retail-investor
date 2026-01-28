@@ -1,6 +1,7 @@
 {
   "name": "DAX 40 (Sample)",
   "description": "Representative subset of DAX large caps",
+  "provider": "yfinance",
   "version": "2026-01-12",
   "selection_rule": "Handpicked DAX constituents for MVP",
   "survivorship_bias_note": "Static subset for demos, not full index",

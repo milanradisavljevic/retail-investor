@@ -52,6 +52,21 @@ function loadNameMap(universeName: string): Map<string, NameEntry> {
     candidates.push(path.join(namesDir, 'russell2000_full_yf_names.json'));
   }
 
+  // Explicit alias fallbacks for popular universes where naming often varies
+  const aliases: Record<string, string[]> = {
+    's&p 500': ['sp500_names.json', 'sp500-full_names.json'],
+    'sp500': ['sp500_names.json', 'sp500-full_names.json'],
+    's&p 500 (sample)': ['sp500_names.json', 'sp500-full_names.json'],
+  };
+
+  for (const [needle, files] of Object.entries(aliases)) {
+    if (universeName.toLowerCase().includes(needle)) {
+      for (const file of files) {
+        candidates.push(path.join(namesDir, file));
+      }
+    }
+  }
+
   const filePath = candidates.find((p) => fs.existsSync(p));
   if (!filePath) {
     console.warn(`No name map found for "${universeName}". Tried: ${candidates.map(p => path.basename(p)).join(', ')}`);

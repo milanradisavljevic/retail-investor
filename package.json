@@ -27,7 +27,8 @@
     "audit:coverage": "tsx scripts/universe/coverage_audit.ts",
     "audit:coverage:all": "tsx scripts/universe/coverage_audit.ts --all",
     "audit:fields": "tsx scripts/universe/field_coverage_audit.ts",
-    "audit:fields:all": "tsx scripts/universe/field_coverage_audit.ts --all"
+    "audit:fields:all": "tsx scripts/universe/field_coverage_audit.ts --all",
+    "perf:report": "tsx scripts/performance-report.ts"
   },
   "dependencies": {
     "ajv": "^8.17.1",
