@@ -10,6 +10,42 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### 2026-01-28
 
+#### Added
+- **Draft State Management for Strategy Lab (implemented by Claude)**:
+  - **Purpose**: Prevents accidental expensive runs by tracking configuration changes before execution
+  - **Custom Hook**: `useDraftConfig` with localStorage persistence
+    - Tracks draft configuration changes (universe, weights, filters, presets, topK)
+    - Hydration-safe implementation (defers localStorage read to useEffect)
+    - Cross-tab synchronization via storage events
+    - Computes human-readable diff summary of changes
+  - **Dirty State Indicator**: Floating component at bottom-right when changes exist
+    - Shows detailed change summary (e.g., "Weights: Valuation 25→45%, Quality 40→30%")
+    - Displays estimated runtime for the configuration
+    - "Reset to Current" button to discard draft changes
+    - "Run Analysis" button to execute with draft config
+    - Confirmation dialog for large universes (>500 symbols or runtime >5 min)
+    - Orange accent color for warning visibility
+    - Smooth slide-up animation on appearance
+  - **Auto-clear Draft**: Draft cleared from localStorage after successful run completion
+  - **Integration**: Fully integrated into Strategy Lab's live and backtest workflows
+  - **Files Created**:
+    - `src/hooks/useDraftConfig.ts` - Draft state management hook (217 lines)
+    - `src/app/components/DirtyStateIndicator.tsx` - Floating indicator component (122 lines)
+  - **Files Modified**:
+    - `src/app/strategy-lab/StrategyLabClient.tsx` - Integrated draft system
+    - `src/app/globals.css` - Added slide-up animation and accent-orange color
+  - **UX Benefits**:
+    - Users see exactly what changed before starting expensive runs
+    - Prevents "I didn't realize I changed that" scenarios
+    - Makes configuration state transparent and reversible
+    - Warns before processing large universes
+  - **Technical Features**:
+    - Deep equality checking for dirty state detection
+    - Partial updates with `updateDraft()` helper
+    - Storage key scoped to prevent conflicts
+    - TypeScript-safe with full type coverage
+  - **Rationale**: Users were accidentally starting 15-minute runs after tweaking sliders, with no indication of pending changes
+
 #### Removed
 - **Universe Configuration Cleanup (implemented by Claude)**:
   - **Removed 13 non-production universe files**: Deleted sample, test, seed, and duplicate configurations to streamline universe dropdown
@@ -241,9 +277,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - **Competition of Ideas**: This implementation serves as an alternative UX approach for A/B comparison with the existing dashboard, allowing exploration of different interaction patterns while keeping both systems operational
   - **Note**: Existing dashboard remains completely untouched - all changes are isolated to new routes under `/new-ux-lab/studio`
 
-- **Run History Sidebar (implemented by Gemini)**:
+- **Run History Sidebar (implemented by Qwen)**:
   - **Feature**: Collapsible sidebar in Strategy Lab to browse and load past scoring runs
-  - **UI**: 
+  - **UI**:
     - Groups runs by date (Today, Yesterday, This Week, Older)
     - Shows Universe badge, Preset/Mode name, and Pick count per run
     - Visual indication of the currently active run

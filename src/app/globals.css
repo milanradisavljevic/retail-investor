@@ -139,3 +139,28 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--navy-500);
 }
+
+/* Animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Accent Orange for warnings */
+:root {
+  --accent-orange: #f97316;
+}
+
+@theme inline {
+  --color-accent-orange: var(--accent-orange);
+}

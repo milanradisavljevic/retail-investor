@@ -11,6 +11,8 @@ import { EquityCurve } from "@/app/components/EquityCurve";
 import { DrawdownChart } from "@/app/components/DrawdownChart";
 import { PresetCard } from "@/app/components/PresetCard";
 import { FilterCheckbox } from "@/app/components/FilterCheckbox";
+import { useDraftConfig, type DraftConfig } from "@/hooks/useDraftConfig";
+import { DirtyStateIndicator } from "@/app/components/DirtyStateIndicator";
 
 type PillarWeights = {
   valuation: number;
@@ -184,6 +186,27 @@ const SAMPLE_DRAWDOWN: Array<{ date: string; drawdown_pct: number }> = [
 
 function classNames(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+/**
+ * Extract current config from the latest run.
+ * Note: Current run schema doesn't persist config, so we use defaults.
+ * This serves as the baseline for draft comparison.
+ */
+function extractConfigFromRun(run: RunV1SchemaJson | null, universeId: string): DraftConfig {
+  return {
+    universe: run?.universe?.definition?.name || universeId,
+    preset: null, // Run schema doesn't persist preset info
+    weights: { valuation: 25, quality: 40, technical: 20, risk: 15 }, // Default weights
+    filters: {
+      excludeCrypto: false,
+      marketCapMin: 0,
+      liquidityMin: 0,
+      excludeDefense: false,
+      excludeFossil: false,
+    },
+    topK: 10,
+  };
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -778,26 +801,28 @@ export default function StrategyLabClient({
   marketContext?: MarketContextResponse | null;
 }) {
   const [activeTab, setActiveTab] = useState<"live" | "backtest">("live");
-  const [selectedUniverse, setSelectedUniverse] = useState<string>(
-    universes.find(u => u.id === "russell2000_full")?.id || universes[0]?.id || "test"
+
+  // Initialize default universe
+  const defaultUniverse = universes.find(u => u.id === "russell2000_full")?.id || universes[0]?.id || "test";
+
+  // Extract current config from latest run
+  const currentConfig = useMemo(
+    () => extractConfigFromRun(latestRun, defaultUniverse),
+    [latestRun, defaultUniverse]
   );
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+
+  // Draft state management with localStorage persistence
+  const { draft, updateDraft, isDirty, diffSummary, reset: resetDraft, clearDraft } = useDraftConfig(currentConfig);
+
+  // Use draft values for UI state
+  const selectedUniverse = draft.universe;
+  const selectedPreset = draft.preset;
+  const weights = draft.weights;
+  const filters = draft.filters;
+  const topK = draft.topK;
+
   // Align with available backtest outputs; UI currently supports hybrid/momentum
   const [strategy] = useState<string>("hybrid");
-  const [weights, setWeights] = useState<PillarWeights>({
-    valuation: 25,
-    quality: 40,
-    technical: 20,
-    risk: 15,
-  });
-  const [filters, setFilters] = useState<FilterState>({
-    excludeCrypto: false,
-    marketCapMin: 0,
-    liquidityMin: 0,
-    excludeDefense: false,
-    excludeFossil: false,
-  });
-  const [topK, setTopK] = useState<number>(10);
   const [startDate, setStartDate] = useState<string>(PERIOD_PRESETS.fiveYear.start);
   const [endDate, setEndDate] = useState<string>(PERIOD_PRESETS.fiveYear.end);
   const [rebalancing, setRebalancing] = useState<"monthly" | "quarterly" | "annually">("quarterly");
@@ -838,6 +863,27 @@ export default function StrategyLabClient({
       return mins > 0 ? `~${hours}h ${mins}m` : `~${hours}h`;
     }
     return `~${min} minutes`;
+  };
+
+  // Setter functions that update draft
+  const setSelectedUniverse = (universe: string) => {
+    updateDraft({ universe });
+  };
+
+  const setWeights = (newWeights: PillarWeights) => {
+    updateDraft({ weights: newWeights });
+  };
+
+  const setFilters = (newFilters: FilterState) => {
+    updateDraft({ filters: newFilters });
+  };
+
+  const setTopK = (newTopK: number) => {
+    updateDraft({ topK: newTopK });
+  };
+
+  const setSelectedPreset = (presetId: string | null) => {
+    updateDraft({ preset: presetId });
   };
 
   // Handle preset selection
@@ -886,6 +932,9 @@ export default function StrategyLabClient({
       const data = (await res.json()) as LiveRunResponse;
       setLivePicks(data.topPicks);
       setLiveAsOfDate(data.asOfDate);
+
+      // Clear draft after successful run
+      clearDraft();
     } catch (err) {
       console.error(err);
       setLiveError("Failed to load live picks. Falling back to last run.");
@@ -955,6 +1004,9 @@ export default function StrategyLabClient({
       if (!res.ok) throw new Error(`Backtest run failed (${res.status})`);
       await res.json(); // ignore payload, fetch results separately
       await fetchBacktestResults(strategy);
+
+      // Clear draft after successful run
+      clearDraft();
     } catch (err) {
       console.error(err);
       setBacktestError("Backtest failed. Showing sample metrics.");
@@ -1369,6 +1421,20 @@ export default function StrategyLabClient({
           </SectionCard>
         </div>
       )}
+
+      {/* Draft State Indicator - Floating notification for unsaved changes */}
+      <DirtyStateIndicator
+        isDirty={isDirty}
+        diffSummary={diffSummary}
+        onReset={resetDraft}
+        onRunAnalysis={activeTab === "live" ? handleLiveRun : handleBacktestRun}
+        estimatedRuntime={
+          selectedUniverseMeta
+            ? formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)
+            : "~1 minute"
+        }
+        symbolCount={selectedUniverseMeta?.symbol_count ?? 0}
+      />
     </div>
   );
 }
