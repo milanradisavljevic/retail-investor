@@ -10,6 +10,32 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### 2026-01-28
 
+#### Removed
+- **Universe Configuration Cleanup (implemented by Claude)**:
+  - **Removed 13 non-production universe files**: Deleted sample, test, seed, and duplicate configurations to streamline universe dropdown
+  - **Files removed**:
+    - Sample files: `sp500.json` (72 symbols), `russell2000.json` (34 symbols), `eurostoxx50.json` (30 symbols)
+    - Test files: `russell2000_50_test.json` (50 symbols)
+    - Duplicate files: `russell2000_full_yf.json` (1943 symbols, duplicate of russell2000_full.json)
+    - Seed files (5 symbols each): `cac40.json`, `dax.json`, `eurostoxx50_seed.json`, `ftse100.json`, `ibovespa.json`, `nikkei225.json`, `sensex.json`, `shanghai_comp.json`
+  - **Updated index.json references**:
+    - Europe: `eurostoxx50` → `eurostoxx50_full` (corrected from 50 to 49 actual symbols)
+    - Asia: `shanghai_comp` → `shanghai_comp_full` (corrected from 50 to 60 actual symbols)
+    - Asia: Updated symbol counts for `nikkei225_full` (54), `sensex_full` (11)
+  - **Result**: Reduced from 27 to 13 universe files (12 production + 1 test)
+  - **Production universes remaining**:
+    - US: `sp500-full.json` (501), `nasdaq100.json` (102), `russell2000_full.json` (1943)
+    - Europe: `dax_full.json` (40), `cac40_full.json` (40), `ftse100_full.json` (100), `eurostoxx50_full.json` (49)
+    - Asia: `nikkei225_full.json` (54), `sensex_full.json` (11), `shanghai_comp_full.json` (60)
+    - LatAm: `ibovespa_full.json` (86)
+    - Test: `test.json` (5)
+  - **Validation**: All European universe symbols verified via YFinance API
+    - DAX 40: All German blue-chips valid (Adidas, Allianz, BASF, BMW, SAP, Siemens, VW, etc.)
+    - CAC 40: All French blue-chips valid (Accor, Air Liquide, Airbus, BNP Paribas, LVMH, etc.)
+    - FTSE 100: All UK blue-chips valid (AstraZeneca, BP, HSBC, Shell, Unilever, Vodafone, etc.)
+    - EURO STOXX 50: Pan-European mix valid (ASML, LVMH, SAP, TotalEnergies, etc.)
+  - **Rationale**: Sample/seed files cluttered universe dropdown and confused users about which files to use for production runs
+
 #### Changed
 - **Navigation Cleanup (implemented by Claude)**:
   - **Removed Backtesting Tab**: Standalone backtesting page merged into Strategy Lab
@@ -215,6 +241,19 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - **Competition of Ideas**: This implementation serves as an alternative UX approach for A/B comparison with the existing dashboard, allowing exploration of different interaction patterns while keeping both systems operational
   - **Note**: Existing dashboard remains completely untouched - all changes are isolated to new routes under `/new-ux-lab/studio`
 
+- **Run History Sidebar (implemented by Gemini)**:
+  - **Feature**: Collapsible sidebar in Strategy Lab to browse and load past scoring runs
+  - **UI**: 
+    - Groups runs by date (Today, Yesterday, This Week, Older)
+    - Shows Universe badge, Preset/Mode name, and Pick count per run
+    - Visual indication of the currently active run
+  - **Architecture**:
+    - `src/lib/runHistory.ts`: specialized fetcher for run metadata
+    - `src/app/components/RunHistorySidebar.tsx`: Client Component with Tailwind styling
+    - `src/app/strategy-lab/page.tsx`: Server Component updated to handle `?runId=...` params and parallel data loading
+    - `src/app/strategy-lab/SidebarWrapper.tsx`: Handles client-side navigation updates
+  - **Integration**: Seamlessly integrated into the Strategy Lab layout, allowing users to switch between historical results without reloading the application shell.
+
 #### Fixed
 - **Next.js searchParams Await Handling (implemented by Codex)**:
   - Route `/` and the historical run page unwrap Next.js 15+ `searchParams` Promises before parsing, preventing crashes when building score views.
@@ -222,6 +261,19 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 #### Added
 - **README_easy (written by Codex)**: plain-language guide that explains the scoring math (inputs, per-metric scaling, pillar weights, and ranking flow) for non-technical readers.
+
+#### Fixed
+- **Company name mapping aliases (implemented by Codex)**:
+  - Added explicit aliases for S&P 500 naming variants so name files (`sp500_names.json`) are picked up even when the universe title includes “S&P 500 (sample)”.
+
+#### Changed
+- **Europe universes default to yfinance (implemented by Codex)**:
+  - Set provider to `yfinance` for CAC40, DAX, EURO STOXX 50, FTSE100 (seed/full/aliases) to avoid Finnhub coverage/plan errors on EU tickers.
+
+#### Fixed
+- **SQLite WAL mode & yfinance cache handling (implemented by Codex)**:
+  - Ensured SQLite initialization runs in WAL mode via `db.pragma('journal_mode = WAL')` (already active in `src/data/db.ts`).
+  - Removed legacy `YFINANCE_NO_CACHE` environment knob from helper script; WAL should prevent readonly errors without disabling caching.
 
 ### 2026-01-27
 

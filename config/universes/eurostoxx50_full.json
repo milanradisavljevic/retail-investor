@@ -1,6 +1,7 @@
 {
   "name": "EURO STOXX 50 (Full)",
   "description": "Complete EURO STOXX 50 index - Eurozone blue-chip stocks",
+  "provider": "yfinance",
   "benchmark": "^STOXX50E",
   "snapshot_file": "data/universes/snapshots/eurostoxx50/2026-01-22.json",
   "snapshot_date": "2026-01-22",

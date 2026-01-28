@@ -11,12 +11,12 @@
       {"id": "dax_full", "name": "DAX 40", "symbolCount": 40},
       {"id": "cac40_full", "name": "CAC 40", "symbolCount": 40},
       {"id": "ftse100_full", "name": "FTSE 100", "symbolCount": 100},
-      {"id": "eurostoxx50", "name": "Euro Stoxx 50", "symbolCount": 50}
+      {"id": "eurostoxx50_full", "name": "Euro Stoxx 50", "symbolCount": 49}
     ],
     "asia": [
-      {"id": "nikkei225_full", "name": "Nikkei 225", "symbolCount": 225},
-      {"id": "sensex_full", "name": "SENSEX", "symbolCount": 30},
-      {"id": "shanghai_comp", "name": "Shanghai Composite", "symbolCount": 50}
+      {"id": "nikkei225_full", "name": "Nikkei 225", "symbolCount": 54},
+      {"id": "sensex_full", "name": "SENSEX", "symbolCount": 11},
+      {"id": "shanghai_comp_full", "name": "Shanghai Composite", "symbolCount": 60}
     ],
     "latam": [
       {"id": "ibovespa_full", "name": "Ibovespa", "symbolCount": 86}

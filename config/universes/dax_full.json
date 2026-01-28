@@ -1,6 +1,7 @@
 {
   "name": "DAX 40 (Full)",
   "description": "Complete DAX 40 index - German blue-chip stocks",
+  "provider": "yfinance",
   "benchmark": "^GDAXI",
   "snapshot_file": "data/universes/snapshots/dax/2026-01-22.json",
   "snapshot_date": "2026-01-22",

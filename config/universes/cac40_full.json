@@ -1,6 +1,7 @@
 {
   "name": "CAC 40 (Full)",
   "description": "Complete CAC 40 index - French blue-chip stocks",
+  "provider": "yfinance",
   "benchmark": "^FCHI",
   "snapshot_file": "data/universes/snapshots/cac40/2026-01-22.json",
   "snapshot_date": "2026-01-22",
