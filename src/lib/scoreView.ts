@@ -16,6 +16,8 @@ export interface ScoreQuery {
   filters: ScoreFilters;
 }
 
+export type ScoreSearchParams = Record<string, string | string[] | undefined>;
+
 type ScoreEntry = RunV1SchemaJson['scores'][number];
 
 function parseBool(value: string | null | undefined): boolean {
@@ -23,9 +25,21 @@ function parseBool(value: string | null | undefined): boolean {
   return value === '1' || value.toLowerCase() === 'true';
 }
 
+function isPromise(value: unknown): value is Promise<unknown> {
+  return Boolean(value) && typeof (value as Promise<unknown>).then === 'function';
+}
+
+export function parseScoreQuery(searchParams?: ScoreSearchParams): ScoreQuery;
+export function parseScoreQuery(searchParams?: Promise<unknown>): never;
 export function parseScoreQuery(
-  searchParams?: Record<string, string | string[] | undefined>
+  searchParams?: ScoreSearchParams | Promise<unknown>
 ): ScoreQuery {
+  if (isPromise(searchParams)) {
+    throw new Error(
+      'parseScoreQuery received a Promise. Unwrap searchParams with await or React.use() first.'
+    );
+  }
+
   const getParam = (key: string): string | undefined => {
     const value = searchParams?.[key];
     if (Array.isArray(value)) return value[0];

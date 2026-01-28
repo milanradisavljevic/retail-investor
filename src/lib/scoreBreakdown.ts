@@ -123,7 +123,7 @@ export function buildScoreBreakdown(
   // Technical (may be absent)
   const ret13w = (metrics.priceReturn13Week?.value as number | undefined) ?? undefined;
   const ret52w = (metrics.priceReturn52Week?.value as number | undefined) ?? undefined;
-  const pos52w = (metrics.high52Week?.value !== undefined && metrics.low52Week?.value !== undefined && metrics.currentPrice?.value !== undefined)
+  const pos52w = (metrics.high52Week?.value != null && metrics.low52Week?.value != null && metrics.currentPrice?.value != null)
     ? (metrics.currentPrice.value - metrics.low52Week.value) / (metrics.high52Week.value - metrics.low52Week.value || 1)
     : undefined;
 

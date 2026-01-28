@@ -1,13 +1,16 @@
 import { Suspense } from "react";
 import { getRecentRuns } from "@/lib/runLoader";
 import { computeDeltas } from "@/lib/runDelta";
-import { buildScoreView, parseScoreQuery, type ScoreQuery } from "@/lib/scoreView";
+import { buildScoreView, parseScoreQuery, type ScoreQuery, type ScoreSearchParams } from "@/lib/scoreView";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
+import type { SymbolDelta } from "@/lib/runDelta";
 import Link from "next/link";
 import { BriefingToolbar } from "./components/BriefingToolbar";
 import { DocumentsBanner } from "./components/DocumentsBanner";
 import { RunTriggerButton } from "./components/RunTriggerButton";
 import { ScoreBoardClient } from "./components/ScoreBoardClient";
+
+type AwaitableScoreSearchParams = ScoreSearchParams | Promise<ScoreSearchParams> | undefined;
 
 function ModeBadge({ mode }: { mode: RunV1SchemaJson["mode"] }) {
   const colors =
@@ -33,12 +36,13 @@ function ModeBadge({ mode }: { mode: RunV1SchemaJson["mode"] }) {
   );
 }
 
-export default function Home({
+export default async function Home({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: AwaitableScoreSearchParams;
 }) {
-  const query: ScoreQuery = parseScoreQuery(searchParams);
+  const resolvedSearchParams = await searchParams;
+  const query: ScoreQuery = parseScoreQuery(resolvedSearchParams);
   const [latest, previous] = getRecentRuns(2);
   const run = latest?.run ?? null;
   const deltaMap: Map<string, SymbolDelta> = run

@@ -22,6 +22,39 @@
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
+
+  /* Studio Workspace Colors (from ux.md) */
+  /* Surfaces */
+  --surface-0: hsl(240 8% 6%);
+  --surface-1: hsl(240 8% 9%);
+  --surface-2: hsl(240 8% 12%);
+  --surface-3: hsl(240 8% 15%);
+
+  /* Borders */
+  --border-subtle: hsl(240 8% 18%);
+  --border-default: hsl(240 8% 24%);
+  --border-emphasis: hsl(240 8% 32%);
+
+  /* Text (Studio-specific) */
+  --text-tertiary: hsl(240 8% 56%);
+  --text-placeholder: hsl(240 8% 40%);
+
+  /* Accent (primary action blue) */
+  --accent-50: hsl(210 100% 96%);
+  --accent-500: hsl(210 90% 58%);
+  --accent-600: hsl(210 90% 52%);
+  --accent-700: hsl(210 90% 46%);
+
+  /* Semantic */
+  --success: hsl(142 76% 48%);
+  --warning: hsl(38 92% 58%);
+  --error: hsl(0 72% 58%);
+  --info: hsl(199 89% 58%);
+
+  /* Ghost row (for diversification skips) */
+  --ghost-bg: hsl(199 40% 12%);
+  --ghost-border: hsl(199 40% 22%);
+  --ghost-text: hsl(199 60% 72%);
 }
 
 @theme inline {
@@ -47,6 +80,39 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+
+  /* Studio Workspace Colors */
+  /* Surfaces */
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  /* Borders */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-emphasis: var(--border-emphasis);
+
+  /* Text (Studio-specific) */
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-placeholder: var(--text-placeholder);
+
+  /* Accent */
+  --color-accent-50: var(--accent-50);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+
+  /* Semantic */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+
+  /* Ghost row */
+  --color-ghost-bg: var(--ghost-bg);
+  --color-ghost-border: var(--ghost-border);
+  --color-ghost-text: var(--ghost-text);
 }
 
 body {

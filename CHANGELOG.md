@@ -8,6 +8,221 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-01-28
+
+#### Changed
+- **Navigation Cleanup (implemented by Claude)**:
+  - **Removed Backtesting Tab**: Standalone backtesting page merged into Strategy Lab
+    - Old `/backtesting` route now redirects to `/strategy-lab`
+    - Strategy Lab already includes full backtesting functionality with charts
+    - Eliminates navigation redundancy and user confusion
+  - **Cleaner UX Lab Landing**: Removed development prompt display
+    - Now shows clean overview with completion status
+    - Prominent "Launch Studio Workspace" CTA
+    - Design philosophy summary
+    - Feature completion grid with visual indicators
+  - **Main Navigation**: Now shows only 3 tabs
+    - Latest Briefing (main dashboard)
+    - History (run history)
+    - Strategy Lab (includes backtesting, presets, configuration)
+  - **Rationale**: Backtesting functionality was duplicated between standalone page and Strategy Lab, causing confusion about which to use
+
+#### Fixed
+- **Studio Workspace Hydration Errors (implemented by Claude)**:
+  - **React Key Prop Error**: Fixed missing key on React.Fragment in ResultsTable component
+    - Changed from `<>` to `<React.Fragment key={...}>` for proper list rendering
+    - Prevents "Each child in a list should have a unique 'key' prop" console errors
+  - **Hydration Mismatch in useDraft Hook**: Fixed SSR/client mismatch
+    - Moved localStorage read from useState initializer to useEffect
+    - Initializes with currentConfig on server to match client's first render
+    - Loads from localStorage after hydration completes
+    - Prevents "Hydration failed because the server rendered HTML didn't match the client" errors
+  - **Dirty State Calculation**: Only shows dirty state after hydration completes
+    - Prevents flash of incorrect dirty state on page load
+    - Uses `isHydrated` flag to defer dirty comparison
+  - **Result**: Clean console with no hydration warnings in development or production
+
+#### Added
+- **Studio Workspace - Alternative UX Implementation (implemented by Claude)**:
+  - **Purpose**: Professional, Notion/Linear-inspired workspace as an alternative to the classic dashboard UX, accessible via "New UX Lab" tab
+  - **Architecture**: Parallel route implementation at `/new-ux-lab/studio` that coexists with existing dashboard without modifications
+  - **Route Structure**:
+    - `/new-ux-lab/studio` - Landing page (auto-redirects to latest universe)
+    - `/new-ux-lab/studio/[universe]` - Main workspace for specific universe
+  - **Components Created** (Milestone 1 - Core Workspace Shell):
+    - `StudioLayout` - Three-panel layout (header + left rail + central canvas)
+    - `LeftRail` - Universe selector, current run badge, run history (last 10 runs)
+    - `CentralCanvas` - Main results area with responsive layout
+    - `CanvasHeader` - Breadcrumb navigation + view mode toggles
+    - `ResultsTable` - Professional table with pillar scores, price targets, upside percentages
+  - **Visual System** (from ux.md specification):
+    - Flat design with subtle borders (no shadows)
+    - Surface colors: 4-level system (surface-0 through surface-3) for depth hierarchy
+    - Border colors: 3-level system (subtle/default/emphasis)
+    - Text colors: 4-level hierarchy (primary/secondary/tertiary/placeholder)
+    - Semantic colors: success (green), warning (yellow), error (red), info (blue)
+    - Ghost row colors: Prepared for diversification callouts (Milestone 3)
+  - **Color Tokens Added to globals.css**:
+    - All Studio Workspace colors following HSL specification from ux.md
+    - Integrated with existing Tailwind @theme inline system
+    - Maintains compatibility with classic dashboard colors
+  - **Data Flow**:
+    - Server components load runs via existing `runLoader` utilities
+    - Filters runs by universe ID for workspace-specific history
+    - Displays top 30 picks with full pillar breakdown
+  - **Features Implemented**:
+    - Responsive table with hover states
+    - Color-coded pillar scores (green ≥80, yellow ≥60, gray <60)
+    - Price target display with upside percentage (green positive, red negative)
+    - Run history navigation in left rail
+    - Back navigation to both Classic View and Lab landing
+  - **Implementation Status**:
+    - ✅ Milestone 1: Core Workspace Shell (COMPLETED)
+    - ✅ Milestone 2: Configuration + Draft State (COMPLETED)
+    - ✅ Milestone 3: Diversification Ghost Rows + Contextual Inspector (COMPLETED)
+  - **Milestone 2 Features** (implemented by Claude):
+    - **Inspector Panel**: Right sidebar (360px) with collapsible functionality
+    - **Strategy Configuration UI**:
+      - 5 preset strategies: Rocket (growth), Deep Value, Balanced, Quality, Risk-Aware
+      - Preset cards with emoji indicators and descriptions
+      - "Custom" option for manual weight configuration
+    - **Weight Sliders**: Interactive 4-pillar weight configuration (Valuation, Quality, Technical, Risk)
+      - Range sliders with numeric inputs
+      - Real-time validation (must sum to 100%)
+      - Visual feedback (green valid, yellow invalid)
+    - **Diversification Controls**:
+      - Toggle switch for enabling/disabling caps
+      - Sector cap slider (0-100%)
+      - Industry cap slider (0-100%)
+      - Helper text explaining each control
+    - **Draft State Management** (`useDraft` hook):
+      - localStorage persistence per universe
+      - Automatic save on configuration changes
+      - Reset functionality to revert to current run
+    - **Dirty State Detection**:
+      - Compares draft vs current configuration
+      - Visual indicator (orange badge) when changes detected
+      - Detailed diff summary showing exact changes
+      - Change categories: Weights delta, Diversification delta
+    - **Run Analysis Button**:
+      - Disabled when no changes (clean state)
+      - Enabled when configuration differs from current run
+      - Shows estimated cost: symbol count, provider, estimated time
+      - Confirmation modal for large runs (>500 symbols)
+      - Time estimation: <100: 1-2min, <500: 3-5min, <1000: 5-8min, <2000: 8-12min
+    - **Visual Polish**:
+      - Inspector slide-in animation (300ms ease)
+      - Custom slider styling with accent color thumbs
+      - Toggle switch component for boolean controls
+      - Responsive modal overlay for confirmations
+    - **Component Architecture**:
+      - All configuration components are client-side ('use client')
+      - Modular design: PresetSelector, WeightSliders, DiversificationControls, DirtyIndicator, RunAnalysisButton
+      - Type-safe with shared DraftConfig interface
+      - Clean separation between UI and state logic
+    - **Universe Selector** (added by Claude):
+      - Dropdown in left rail to switch between available universes
+      - Auto-discovers universes from run history
+      - Shows current selection with checkmark
+      - Click-outside-to-close behavior
+      - Smooth navigation using Next.js router
+      - Sorted by most recent run date
+  - **Milestone 3 Features** (implemented by Claude):
+    - **Ghost Rows** - Inline diversification skip callouts:
+      - Appears in results table where skipped symbols would have ranked
+      - Shows summary: "X picks skipped due to diversification caps"
+      - Subtle blue gradient background (ghost-bg, ghost-border, ghost-text colors)
+      - Clickable to open diversification inspector
+      - Notion-style inline callout design
+    - **Diversification Inspector Mode**:
+      - Click ghost row → Inspector switches to diversification mode
+      - Shows summary: "Why some picks were skipped"
+      - Groups skipped symbols by reason (sector cap, industry cap)
+      - Displays each skipped symbol with:
+        - Would-be rank (#6, #8, etc.)
+        - Symbol name
+        - Total score
+      - "Back to Configuration" button to return
+    - **Stock Inspector Mode**:
+      - Click any stock row → Inspector switches to stock detail mode
+      - Header: Symbol name + total score (large display)
+      - Evidence Pillars: 2x2 grid with color-coded scores
+        - Green (≥80), Yellow (≥60), Gray (<60)
+      - Price Target section:
+        - Fair value (large display)
+        - Upside percentage (color-coded)
+      - Data Quality section:
+        - Quality score, completeness ratio
+        - Missing critical data warning (if applicable)
+      - "Back to Configuration" button
+    - **Contextual Inspector**:
+      - Inspector panel morphs based on user action
+      - Mode switching via custom events (EventTarget)
+      - Auto-opens when mode changes from row clicks
+      - Smooth transitions between modes
+    - **Ghost Row Positioning Logic**:
+      - Calculates where first skipped symbol would have appeared
+      - Injects ghost row at that exact position in table
+      - Uses `findGhostRowIndex()` utility function
+    - **Skipped Symbols Data Building**:
+      - Parses `selections.skipped_for_diversity` array
+      - Maps to full score objects
+      - Infers reason from industry field
+      - Estimates would-be rank positions
+    - **Component Architecture**:
+      - All new components are client-side for interactivity
+      - Event-based communication between ResultsTable and Inspector
+      - Type-safe with SkippedSymbol interface
+      - Clean separation: GhostRow, DiversificationInspector, StockInspector
+  - **Design Philosophy**:
+    - Progressive disclosure (controls only appear when needed)
+    - No auto-run (explicit user action required)
+    - Keyboard-first (Tab navigation, Escape to close, ⌘K placeholder)
+    - Professional feel (Linear/Notion inspiration, not Bloomberg terminal)
+  - **Files Created** (Milestone 1):
+    - `src/app/new-ux-lab/studio/page.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/page.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/StudioLayout.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/LeftRail.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/CentralCanvas.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/CanvasHeader.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/ResultsTable.tsx`
+  - **Files Created** (Milestone 2):
+    - `src/app/new-ux-lab/studio/[universe]/components/Inspector.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/ConfigInspector.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/PresetSelector.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/WeightSliders.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/DiversificationControls.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/DirtyIndicator.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/RunAnalysisButton.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/UniverseSelector.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/hooks/useDraft.ts`
+    - `src/app/new-ux-lab/studio/[universe]/lib/universes.ts`
+    - `docs/studio-workspace-guide.md`
+    - `docs/studio-milestone2-features.md`
+    - `docs/studio-universe-selector.md`
+  - **Files Created** (Milestone 3):
+    - `src/app/new-ux-lab/studio/[universe]/components/GhostRow.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/DiversificationInspector.tsx`
+    - `src/app/new-ux-lab/studio/[universe]/components/StockInspector.tsx`
+  - **Files Modified** (Milestone 3):
+    - `src/app/new-ux-lab/studio/[universe]/components/Inspector.tsx` - Added mode switching and event handling
+    - `src/app/new-ux-lab/studio/[universe]/components/ResultsTable.tsx` - Added ghost row injection and row click handlers
+    - `src/app/new-ux-lab/studio/[universe]/components/CentralCanvas.tsx` - Added skipped symbols data building
+  - **Files Modified**:
+    - `src/app/globals.css` - Added Studio Workspace color tokens
+    - `src/app/new-ux-lab/page.tsx` - Added Studio link and implementation status
+  - **Competition of Ideas**: This implementation serves as an alternative UX approach for A/B comparison with the existing dashboard, allowing exploration of different interaction patterns while keeping both systems operational
+  - **Note**: Existing dashboard remains completely untouched - all changes are isolated to new routes under `/new-ux-lab/studio`
+
+#### Fixed
+- **Next.js searchParams Await Handling (implemented by Codex)**:
+  - Route `/` and the historical run page unwrap Next.js 15+ `searchParams` Promises before parsing, preventing crashes when building score views.
+  - `parseScoreQuery` now rejects Promise inputs via a small type/runtime guard so ScoreQuery parsing always receives a plain record.
+
+#### Added
+- **README_easy (written by Codex)**: plain-language guide that explains the scoring math (inputs, per-metric scaling, pillar weights, and ranking flow) for non-technical readers.
+
 ### 2026-01-27
 
 #### Fixed

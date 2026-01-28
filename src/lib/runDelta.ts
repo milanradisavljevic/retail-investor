@@ -6,8 +6,8 @@ type PriceTarget = NonNullable<ScoreEntry['price_target']>;
 export interface SymbolDelta {
   deltaTotal: number | null;
   deltaReturn: number | null;
-  changedConfidence: { from: PriceTarget['confidence'] | null; to: PriceTarget['confidence'] | null } | null;
-  changedDeepAnalysis: { from: boolean | null; to: boolean | null } | null;
+  changedConfidence: { from: PriceTarget['confidence'] | null | undefined; to: PriceTarget['confidence'] | null | undefined } | null;
+  changedDeepAnalysis: { from: boolean | null | undefined; to: boolean | null | undefined } | null;
 }
 
 export type DeltaMap = Map<string, SymbolDelta>;
@@ -46,7 +46,7 @@ export function computeDeltas(
         : null;
 
     const deltaReturn =
-      currentTarget && previousTarget
+      currentTarget && previousTarget && currentTarget.expected_return_pct != null && previousTarget.expected_return_pct != null
         ? currentTarget.expected_return_pct - previousTarget.expected_return_pct
         : null;
 

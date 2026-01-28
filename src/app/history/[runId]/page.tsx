@@ -3,22 +3,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRunById } from "@/lib/runLoader";
 import { getCompanyName } from "@/core/company";
-import { buildScoreView, parseScoreQuery } from "@/lib/scoreView";
+import { buildScoreView, parseScoreQuery, type ScoreSearchParams } from "@/lib/scoreView";
 import { formatPercent } from "@/lib/percent";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import { BriefingToolbar } from "@/app/components/BriefingToolbar";
 import { RunExportButtons, type CsvRow } from "@/app/components/RunExportButtons";
 
-type Params = { params: { runId: string }; searchParams?: Record<string, string | string[] | undefined> };
+type AwaitableScoreSearchParams = ScoreSearchParams | Promise<ScoreSearchParams> | undefined;
+type Params = { params: { runId: string }; searchParams?: AwaitableScoreSearchParams };
 
-export default function RunDetailPage({ params, searchParams }: Params) {
+export default async function RunDetailPage({ params, searchParams }: Params) {
   const match = getRunById(params.runId);
   if (!match) {
     notFound();
   }
 
   const run = match.run as RunV1SchemaJson;
-  const query = parseScoreQuery(searchParams);
+  const resolvedSearchParams = await searchParams;
+  const query = parseScoreQuery(resolvedSearchParams);
   const scores = buildScoreView(run, query);
   const totalCount = run.scores.length;
   const visibleCount = scores.length;
@@ -173,9 +175,9 @@ export default function RunDetailPage({ params, searchParams }: Params) {
                   ? formatPercent(priceTarget.expected_return_pct, { signed: true })
                   : "—";
                 const returnColor =
-                  priceTarget && priceTarget.expected_return_pct >= 0.15
+                  priceTarget && priceTarget.expected_return_pct != null && priceTarget.expected_return_pct >= 0.15
                     ? "text-accent-green"
-                    : priceTarget && priceTarget.expected_return_pct >= 0.08
+                    : priceTarget && priceTarget.expected_return_pct != null && priceTarget.expected_return_pct >= 0.08
                       ? "text-accent-gold"
                       : "text-text-secondary";
                 return (
@@ -201,7 +203,7 @@ export default function RunDetailPage({ params, searchParams }: Params) {
                       {priceTarget ? `${priceTarget.holding_period_months}m` : "—"}
                     </td>
                     <td className="px-4 py-3 text-sm text-center text-text-secondary">
-                      {priceTarget ? priceTarget.confidence.toUpperCase() : "—"}
+                      {priceTarget?.confidence ? priceTarget.confidence.toUpperCase() : "—"}
                     </td>
                     <td className="px-4 py-3 text-sm text-center">
                       {priceTarget ? (
