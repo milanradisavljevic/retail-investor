@@ -5,15 +5,21 @@ import { useState } from "react";
 interface RunTriggerButtonProps {
   universe?: string;
   label?: string;
+  symbolCount?: number;
 }
 
 export function RunTriggerButton({
-  universe = "russell2000_full_yf",
-  label = "Run Russell 2000"
+  universe = process.env.NEXT_PUBLIC_UNIVERSE ?? process.env.UNIVERSE ?? "russell2000_full_yf",
+  label,
+  symbolCount
 }: RunTriggerButtonProps) {
   const [isTriggering, setIsTriggering] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const formattedUniverse = universe.replace(/[_-]+/g, " ").toUpperCase();
+  const resolvedLabel = label ?? `Run ${formattedUniverse}`;
+  const resolvedSymbolCount = symbolCount ?? 1943;
 
   const handleTrigger = async () => {
     setIsTriggering(true);
@@ -53,7 +59,7 @@ export function RunTriggerButton({
             Confirm Run
           </h3>
           <p className="text-sm text-text-secondary mb-4">
-            This will start a Russell 2000 analysis run with 1,943 symbols.
+            This will start a {formattedUniverse} analysis run with {resolvedSymbolCount.toLocaleString()} symbols.
             <br />
             <br />
             <span className="text-accent-gold">⏱️ Estimated duration: 15-25 minutes</span>
@@ -92,7 +98,7 @@ export function RunTriggerButton({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        {label}
+        {resolvedLabel}
       </button>
 
       {message && (

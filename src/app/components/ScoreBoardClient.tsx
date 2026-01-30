@@ -101,7 +101,7 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
 
           return (
             <Link
-              href={`/stock/${score.symbol}`}
+              href={`/briefing/${score.symbol}`}
               key={score.symbol}
               className={`block rounded-xl border p-5 transition-all hover:border-navy-500 bg-navy-800 ${
                 isPickOfDay ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-navy-700'

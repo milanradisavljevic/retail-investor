@@ -21,6 +21,7 @@ import { createChildLogger } from '../src/utils/logger';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import type { LiveRunFilterConfig } from '../src/scoring/filters';
+import { updateCompanyNames } from './data-maintenance/fetch-company-names';
 
 const logger = createChildLogger('run_daily');
 
@@ -67,6 +68,13 @@ async function main() {
 
   try {
     const { filters } = applyCliArgs();
+
+    // Refresh company names so new symbols always render readable names
+    try {
+      await updateCompanyNames();
+    } catch (error) {
+      logger.warn({ error }, 'Company name update failed, continuing with existing map');
+    }
 
     // Initialize database
     initializeDatabase();

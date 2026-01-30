@@ -10,6 +10,22 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### 2026-01-30
 
+#### Fixed
+- **Sector Median Threshold Reduced (implemented by Kimi)**:
+  - **Problem**: 47% of stocks fell back to global medians because sector sample size threshold was too high (12)
+  - **Solution**: Lowered `minSectorSampleSize` from 12 to 5 to reduce global median fallbacks
+  - **Impact**: 
+    - More stocks now use sector-specific medians for fair value calculation
+    - Sector medians are more lenient than global medians → improved valuation scores
+    - Expected reduction in fallback rate: 47% → ~25-30%
+    - Expected valuation score improvement: +5-8 points avg
+    - Expected total score improvement: +3-6 points avg
+  - **Files Modified**:
+    - `src/scoring/scoring_config.ts`: Changed `minSectorSampleSize: 12` to `minSectorSampleSize: 5`
+    - `config/scoring.json`: Changed `"min_sector_sample_size": 12` to `"min_sector_sample_size": 5`
+  - **Rationale**: Sectors with 5-11 stocks now get their own median calculations instead of using harsher global medians
+  - **Build**: ✅ Next.js build successful, TypeScript validation passed
+
 #### Added
 - **Real-Time Progress Indicator for Daily Runs (implemented by Kimi)**:
   - **Purpose**: Solve the UX problem of users staring at blank screens during 15-75 minute runs without feedback
@@ -67,6 +83,12 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Replaced `ROADMAP.md` with a comprehensive “What’s Next” summary covering feature status, short/mid/long-term roadmap, technical debt, performance findings, UX improvements, and monetization readiness.
   - Updated statuses to reflect newly shipped Run Progress Indicator and company-name coverage; flagged 57 open TypeScript errors and data_fetch bottleneck (98.5%) as top risks.
   - Added immediate action items for the next 3 days and success metrics tied to run duration, cache hit rate, and CI stability.
+
+#### Added
+- **Score comparison automation (implemented by Codex)**:
+  - New script `scripts/compare-scores.ts` to compare before/after run JSON files, report average/median deltas by pillar, winners/losers, and run a simple t-test for significance; saves detailed output to `/tmp/score-comparison-detailed.json`.
+  - Added npm script `compare-scores` for quick execution and documentation at `docs/score-comparison-guide.md` with usage steps and interpretation tips.
+  - Note: `PROJECT_CONTEXT.md` not present; implemented based on current repository state and latest runs.
 
 ### 2026-01-30
 

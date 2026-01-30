@@ -60,6 +60,7 @@ import {
   type LiveRunFilterConfig,
   type FilteredSymbolsResult,
 } from './filters';
+import { PerformanceTracker } from '@/lib/performance/tracker';
 
 const logger = createChildLogger('scoring_engine');
 
@@ -239,6 +240,14 @@ export async function scoreUniverse(
   const throttler = new RequestThrottler(pipelineCfg.throttleMs ?? 0);
   const MAX_CONCURRENCY = pipelineCfg.maxConcurrency ?? 4;
 
+  // Initialize performance tracker
+  const runId = `run_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const perfTracker = new PerformanceTracker(
+    runId,
+    appConfig.universe.name,
+    symbols.length
+  );
+
   // Apply filters BEFORE scoring to save API calls
   let filteredResult: FilteredSymbolsResult | null = null;
   let symbolsAfterFiltering = symbols;
@@ -303,6 +312,7 @@ export async function scoreUniverse(
     const fallbackProfileMap: Record<string, CompanyProfile | null> = {};
 
     // Pass 1: fetch raw data with cache + throttling
+    perfTracker.startPhase('data_fetch');
     await runWithConcurrency(
       symbolsToScore,
       async (symbol) => {
@@ -342,6 +352,20 @@ export async function scoreUniverse(
       Math.min(MAX_CONCURRENCY, symbolsToScore.length)
     );
 
+    // End data fetch phase
+    const totalCacheRequests = requestStats.fundamentalsCacheHits + requestStats.technicalCacheHits + requestStats.profileCacheHits;
+    const totalProviderRequests = requestStats.fundamentalsRequests + requestStats.technicalRequests + requestStats.profileRequests;
+    const failedFetches = symbolsToScore.length - Object.keys(rawDataMap).filter(s => rawDataMap[s].fundamentals || rawDataMap[s].technical).length;
+
+    perfTracker.endPhase('data_fetch', {
+      symbols_processed: symbolsToScore.length,
+      cache_hits: totalCacheRequests,
+      cache_misses: totalProviderRequests,
+      provider_calls: totalProviderRequests,
+      failed_fetches: failedFetches,
+      avg_ms_per_symbol: perfTracker.getPhaseTime('data_fetch') / symbolsToScore.length
+    });
+
     const medians = buildGroupMedians(asOfDateStr, Object.values(rawDataMap));
 
     // Build sector medians for price targets
@@ -369,6 +393,7 @@ export async function scoreUniverse(
     );
 
     // Phase 1: scan-only scoring without price targets
+    perfTracker.startPhase('scoring');
     await runWithConcurrency(
       symbolsToScore,
       async (symbol) => {
@@ -586,6 +611,14 @@ export async function scoreUniverse(
       2 // Lower concurrency for expensive Monte Carlo calculations
     );
 
+    // End scoring phase
+    perfTracker.endPhase('scoring', {
+      symbols_scored: scores.length,
+      avg_ms_per_symbol: perfTracker.getPhaseTime('scoring') / scores.length
+    });
+
+    // Selection phase
+    perfTracker.startPhase('selection');
     const actualRequests =
       provider.getRequestCount() + (fallbackProvider ? fallbackProvider.getRequestCount() : 0);
     const estimatedRequests = symbolsToScore.length * 3;
@@ -617,6 +650,14 @@ export async function scoreUniverse(
     // Ensure deterministic ordering for downstream hashing
     scores.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
+    // End selection phase
+    perfTracker.endPhase('selection', {
+      picks_generated: selections.top30.length
+    });
+
+    // Start persistence phase (computed by run builder/writer)
+    perfTracker.startPhase('persistence');
+
     const dataQualitySummary = summarizeDataQuality(
       scores.map((s) => ({ symbol: s.symbol, dataQuality: s.dataQuality })),
       appConfig.universe.name
@@ -627,6 +668,20 @@ export async function scoreUniverse(
       Object.values(rawDataMap),
       appConfig.universe.benchmark
     );
+
+    // End persistence phase (note: actual file writes happen in run_daily.ts)
+    perfTracker.endPhase('persistence', {
+      json_write_ms: 0, // Will be updated by run_daily.ts
+      file_size_bytes: 0 // Will be updated by run_daily.ts
+    });
+
+    // Save performance metrics and log summary
+    try {
+      await perfTracker.save();
+      perfTracker.printSummary();
+    } catch (error) {
+      logger.warn({ error }, 'Failed to save performance metrics');
+    }
 
     return {
       scores,

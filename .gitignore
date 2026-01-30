@@ -64,6 +64,7 @@ secrets/
 docs/**/*.md
 !docs/ASSUMPTIONS.md
 !docs/DECISIONS.md
+!docs/score-comparison-guide.md
 Formel Ausarbeitung.md
 
 # SQLite databases (may contain cached data)
@@ -94,3 +95,6 @@ GEMINI.md
 CLAUDE.md
 QWEN.md
 .directory
+KIMI.md
+# backup generated locally
+config/company_names.json.backup

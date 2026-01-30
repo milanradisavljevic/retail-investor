@@ -46,19 +46,19 @@ export default function RootLayout({
                     href="/"
                     className="text-text-secondary hover:text-text-primary transition-colors"
                   >
-                    Latest Briefing
-                  </a>
-                  <a
-                    href="/history"
-                    className="text-text-secondary hover:text-text-primary transition-colors"
-                  >
-                    History
+                    Dashboard
                   </a>
                   <a
                     href="/strategy-lab"
                     className="text-text-secondary hover:text-text-primary transition-colors"
                   >
                     Strategy Lab
+                  </a>
+                  <a
+                    href="/settings"
+                    className="text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    Settings
                   </a>
                 </nav>
               </div>
