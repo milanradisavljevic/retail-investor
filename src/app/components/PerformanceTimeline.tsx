@@ -46,14 +46,16 @@ export function PerformanceTimeline({ data: initialData }: Props) {
   };
 
   // Prepare chart data (normalize to percentage from start)
-  const chartData = data.timeSeries.map((point, idx) => {
-    const firstPoint = data.timeSeries[0];
+  const sortedSeries = [...data.timeSeries].sort((a, b) => a.date.localeCompare(b.date));
+  const chartData = sortedSeries.map((point, idx) => {
+    const firstPoint = sortedSeries[0];
     return {
       date: point.date,
       stock: ((point.price - firstPoint.price) / firstPoint.price) * 100,
-      market: ((point.sp500 - firstPoint.sp500) / firstPoint.sp500) * 100
+      market: ((point.sp500 - firstPoint.sp500) / firstPoint.sp500) * 100,
     };
   });
+  const hasChartData = chartData.length > 1;
 
   const summary = data.summary[period] ?? { return: 0, vsMarket: 0, vsSector: 0 };
   const stockReturn = summary.return ?? 0;
@@ -105,54 +107,60 @@ export function PerformanceTimeline({ data: initialData }: Props) {
       </div>
 
       {/* Chart */}
-      <div className="h-80 rounded-xl border border-navy-700 bg-navy-800 p-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis
-              dataKey="date"
-              stroke="#94a3b8"
-              tick={{ fill: '#94a3b8', fontSize: 12 }}
-              tickFormatter={(date) => {
-                const d = new Date(date);
-                return `${d.getMonth() + 1}/${d.getFullYear().toString().slice(2)}`;
-              }}
-              minTickGap={50}
-            />
-            <YAxis
-              stroke="#94a3b8"
-              tick={{ fill: '#94a3b8', fontSize: 12 }}
-              tickFormatter={(value) => `${value.toFixed(0)}%`}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#1e293b',
-                border: '1px solid #334155',
-                borderRadius: '8px'
-              }}
-              labelFormatter={(date) => new Date(date).toLocaleDateString()}
-              formatter={(value: number) => [`${value.toFixed(2)}%`, '']}
-            />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="stock"
-              stroke="#fbbf24"
-              strokeWidth={2}
-              dot={false}
-              name={data.symbol}
-            />
-            <Line
-              type="monotone"
-              dataKey="market"
-              stroke="#94a3b8"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={false}
-              name="S&P 500"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="h-[320px] w-full min-w-0 rounded-xl border border-navy-700 bg-navy-800 p-4">
+        {hasChartData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis
+                dataKey="date"
+                stroke="#94a3b8"
+                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                tickFormatter={(date) => {
+                  const d = new Date(date);
+                  return `${d.getMonth() + 1}/${d.getFullYear().toString().slice(2)}`;
+                }}
+                minTickGap={50}
+              />
+              <YAxis
+                stroke="#94a3b8"
+                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                tickFormatter={(value) => `${value.toFixed(0)}%`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                }}
+                labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                formatter={(value: number) => [`${value.toFixed(2)}%`, '']}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="stock"
+                stroke="#fbbf24"
+                strokeWidth={2}
+                dot={false}
+                name={data.symbol}
+              />
+              <Line
+                type="monotone"
+                dataKey="market"
+                stroke="#94a3b8"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+                name="S&P 500"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-full flex items-center justify-center text-text-secondary text-sm">
+            Performance-Daten sind aktuell nicht verfügbar.
+          </div>
+        )}
       </div>
 
       {/* Quarterly Breakdown */}

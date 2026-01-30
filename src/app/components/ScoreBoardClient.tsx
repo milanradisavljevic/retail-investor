@@ -4,6 +4,8 @@ import { useMemo, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { PriceTargetCard } from './PriceTargetCard';
 import { ScoreBreakdownModal } from './ScoreBreakdownModal';
+import { MiniPerfChart } from './MiniPerfChart';
+import { InlineMiniPerfChart } from './InlineMiniPerfChart';
 import { buildScoreBreakdown } from '@/lib/scoreBreakdown';
 import { formatPercent } from '@/lib/percent';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
@@ -103,7 +105,7 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
             <Link
               href={`/briefing/${score.symbol}`}
               key={score.symbol}
-              className={`block rounded-xl border p-5 transition-all hover:border-navy-500 bg-navy-800 ${
+              className={`block rounded-xl border p-5 transition-all hover:border-navy-500 bg-navy-800 min-w-0 ${
                 isPickOfDay ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-navy-700'
               }`}
             >
@@ -120,7 +122,7 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                     <DataQualityBadge score={dqScore} />
                   </div>
                   <p className="mt-0.5 truncate text-sm text-text-secondary">{companyName}</p>
-                </div>
+                    </div>
                 <div className="ml-4 text-right">
                   <button
                     type="button"
@@ -134,6 +136,16 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                     <DeltaLabel value={deltaTotal} />
                   </div>
                 </div>
+              </div>
+
+              {/* Mini Performance Chart */}
+              <div className="my-3">
+                <InlineMiniPerfChart 
+                  symbol={score.symbol}
+                  height={60}
+                  showReturnBadge={true}
+                  className="rounded-md border border-navy-700 bg-navy-900/50"
+                />
               </div>
 
               <div className="mb-4 border-t border-navy-700 pt-4">

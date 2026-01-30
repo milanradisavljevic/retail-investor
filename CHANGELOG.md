@@ -10,7 +10,164 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### 2026-01-30
 
+#### Fixed
+- **Duplicate Charts in Stock Cards (fixed by Kimi/Codex)**:
+  - **Issue**: Stock cards on dashboard showed two charts stacked on top of each other
+  - **Root Cause**: `ScoreBoardClient.tsx` rendered both `InlineMiniPerfChart` and `MiniPerfChart`
+  - **Solution**: Removed `MiniPerfChart`, kept the more compact `InlineMiniPerfChart` with `showReturnBadge={true}`
+  - **File**: `src/app/components/ScoreBoardClient.tsx`
+
+- **Deep Analysis Warning Placement (fixed by Kimi/Codex)**:
+  - **Issue**: "Deep Analysis Recommended" warning was incorrectly appearing on dashboard stock cards
+  - **Root Cause**: `PriceTargetCard` component was showing the warning unconditionally in both dashboard and detailed views
+  - **Solution**: Added `showDeepAnalysisWarning` prop to `PriceTargetCard` (defaults to `false`)
+  - **Changes**:
+    - `src/app/components/PriceTargetCard.tsx`: Added optional `showDeepAnalysisWarning` prop
+    - `src/app/components/StockDetailView.tsx`: Set `showDeepAnalysisWarning={true}` to show warning in detailed view
+    - `src/app/components/ScoreBoardClient.tsx`: Uses default (false) - warning no longer appears on dashboard cards
+
 #### Added
+- **5 New Quantitative Investment Strategies (implemented by Claude)**:
+  - **Purpose**: Expand strategy portfolio from 5 to 10 proven investment approaches, covering all major investment philosophies
+  - **New Strategies**:
+    - **Magic Formula (Greenblatt)** (`config/presets/magic-formula.json`):
+      - Philosophy: "Buy good companies at bargain prices"
+      - Pillar Weights: Valuation 40%, Quality 45%, Technical 5%, Risk 10%
+      - Key Metrics: Earnings Yield (EBIT/EV) + Return on Capital (ROIC)
+      - Filters: Min ROE 12%, Max P/E 25, Min Quality Score 60%
+      - Historical Performance: 30.8% CAGR (1988-2004), +10-15% p.a. vs S&P 500
+      - Target: Annual rebalancing, 1-3 year holding period
+      - Source: "The Little Book That Beats the Market" by Joel Greenblatt (2006)
+    - **Piotroski F-Score** (`config/presets/piotroski.json`):
+      - Philosophy: Financial health through 9 binary quality checks
+      - Pillar Weights: Valuation 25%, Quality 55%, Technical 5%, Risk 15%
+      - 9-Point Checklist: Profitability (4), Leverage (3), Operating Efficiency (2)
+      - Filters: Min ROE 5%, Max P/B 3.0, Min Quality Score 70%
+      - Historical Performance: High F-Score (8-9) stocks +23% p.a., Low F-Score -7% p.a.
+      - Target: Small-cap value stocks, annual rebalancing
+      - Source: "Value Investing: The Use of Historical Financial Statement Information" (2000)
+    - **GARP (Growth at Reasonable Price)** (`config/presets/garp.json`):
+      - Philosophy: O'Shaughnessy's balanced growth/value approach
+      - Pillar Weights: Valuation 35%, Quality 35%, Technical 20%, Risk 10%
+      - Key Metric: PEG Ratio < 1.5 (P/E / Growth Rate)
+      - Filters: Min ROE 10%, Max P/E 35, Min Total Score 60%
+      - Historical Performance: 15-18% CAGR, +3-5% p.a. vs pure growth
+      - Target: Semi-annual rebalancing, 1-3 year holding
+      - Source: "What Works on Wall Street" by James O'Shaughnessy
+    - **Momentum + Mean Reversion Hybrid** (`config/presets/momentum-hybrid.json`):
+      - Philosophy: Buy momentum but avoid overextension
+      - Pillar Weights: Valuation 10%, Quality 25%, Technical 55%, Risk 10%
+      - Strategy: Strong 6M momentum + Not >30% from MA200
+      - Filters: Min Technical Score 60%, Min Quality Score 40%
+      - Historical Performance: 14-17% CAGR with reduced drawdowns (-25% vs -35%)
+      - Target: Monthly rebalancing, 1-6 month holding
+      - Type: Technical/Quantitative Hybrid
+    - **Dividend Aristocrats** (`config/presets/dividend-aristocrats.json`):
+      - Philosophy: Consistent dividend growth = quality and stability
+      - Pillar Weights: Valuation 20%, Quality 40%, Technical 10%, Risk 30%
+      - Requirements: Yield 2-6%, Payout <80%, Growth >5% p.a., 10+ years consistency
+      - Filters: Min Dividend Yield 2%, Max Payout Ratio 80%, Min Risk Score 50%
+      - Historical Performance: 11-13% CAGR (1990-2024), lower volatility (Beta 0.85)
+      - Target: Semi-annual rebalancing, 5+ year holding
+      - Characteristics: Low volatility, stable earnings, defensive sectors
+  - **Complete Strategy Portfolio** (10 strategies total):
+    1. Compounder (Buffett Style) - Quality-first approach
+    2. Deep Value (Graham Style) - Pure value with margin of safety
+    3. Quant (Balanced Hybrid) - Equal-weighted multi-factor
+    4. Rocket (GARP/Momentum) - Growth with momentum
+    5. Shield (Defensive/Low Vol) - Capital preservation
+    6. 🆕 Magic Formula (Greenblatt) - Quality at bargain prices
+    7. 🆕 Piotroski F-Score - Financial health checklist
+    8. 🆕 GARP (Growth at Reasonable Price) - PEG-based
+    9. 🆕 Momentum/Mean Reversion - Technical hybrid
+    10. 🆕 Dividend Aristocrats - Income & stability
+  - **Documentation** (`docs/strategies/README.md`):
+    - Comprehensive strategy guide with 30+ pages
+    - Detailed description of each strategy's philosophy
+    - Pillar weights breakdown and rationale
+    - Key characteristics and ideal use cases
+    - Backtested performance metrics from academic literature
+    - Best-fit investor profiles and market conditions
+    - Strategy comparison matrix (risk, holding period, alpha potential)
+    - Portfolio construction examples (aggressive, balanced, income, value)
+    - Implementation notes and customization options
+    - References to original books and academic papers
+  - **Validation**:
+    - All 10 presets load successfully via `loadPresets()`
+    - Pillar weights sum to 1.0 for all strategies (validated)
+    - JSON schema valid and consistent across all files
+    - Strategy Lab UI automatically detects and displays new strategies
+  - **Technical Implementation**:
+    - Presets use existing 4-pillar scoring system (no architectural changes)
+    - Each strategy configures weights, thresholds, filters, diversification
+    - Leverages `pillar_weights` in scoring engine for customization
+    - Backward compatible with existing runs and UI
+  - **Next Steps** (future enhancements):
+    - Backtest each strategy on historical data (2019-2024)
+    - Calculate strategy-specific alpha, Sharpe ratio, max drawdown
+    - Add strategy performance comparison dashboard
+    - Implement strategy recommendations based on user risk profile
+    - Add German translations for strategy descriptions in UI
+  - **Impact**: Users now have 10 proven quantitative strategies covering ALL major investment philosophies - from deep value to high momentum, from dividend income to quality growth. Positions platform as comprehensive quant strategy toolkit.
+
+- **Mini Performance Charts on Stock Cards (implemented by Kimi)**:
+  - **Purpose**: Give users immediate visual feedback on 1-year performance without clicking Details
+  - **MiniPerfChart Component** (`src/app/components/MiniPerfChart.tsx`):
+    - Compact 60px height SVG sparkline chart
+    - Fetches 1-year price data via `/api/stock/chart` endpoint
+    - Green/red color based on positive/negative return
+    - Gradient fill under line for visual appeal
+    - Return percentage badge in top-right corner
+    - Responsive width that adapts to card size
+    - Loading skeleton while data fetches
+    - Graceful fallback when data unavailable
+  - **API Endpoint** (`src/app/api/stock/chart/route.ts`):
+    - GET endpoint: `/api/stock/chart?symbol=XYZ&days=252`
+    - Returns array of {date, close} for chart rendering
+    - Uses YFinanceProvider server-side to fetch candles
+    - Error handling for missing data
+  - **Integration** (`src/app/components/ScoreBoardClient.tsx`):
+    - Chart positioned between company name and pillar scores
+    - Adds visual interest without dominating the card
+    - Maintains existing layout and readability
+    - Works on both card grid and table views
+  - **Benefits**:
+    - Users see performance trend at-a-glance
+    - No need to click Details for basic performance view
+    - Makes stock cards more visually engaging
+    - Reinforces scoring with price action visualization
+  - **Build**: ✅ Next.js build successful, API endpoint registered at `/api/stock/chart`
+
+
+- **Inline Mini Performance Charts IN Stock Cards (implemented by Kimi)**:
+  - **Purpose**: Add ultra-compact charts directly inside stock cards for at-a-glance performance
+  - **Coexist with External Charts**: Both versions now display simultaneously
+  - **InlineMiniPerfChart Component** (`src/app/components/InlineMiniPerfChart.tsx`):
+    - Ultra-compact 32px height chart (vs 60px external version)
+    - Positioned right under company name inside card header
+    - Simplified design: no gradient, thinner line (1.5px vs 2px)
+    - No return badge (keeps it clean and minimal)
+    - Width: 120px fixed (vs 200px responsive external version)
+    - Same data source (reuses `/api/stock/chart` endpoint)
+    - Consistent styling with dark theme
+  - **Integration** (`src/app/components/ScoreBoardClient.tsx`):
+    - Added inline chart in card header section
+    - External MiniPerfChart remains between cards
+    - Both charts use same data fetching logic (no duplication)
+  - **Benefits**:
+    - Users can scan performance from card grid directly
+    - Quick visual confirmation of scoring vs price action
+    - Professional dashboard feel with multi-level data density
+    - External charts still provide detailed comparison view
+  - **Visual Hierarchy**:
+    - **Level 1**: Inline chart - Quick scan inside card
+    - **Level 2**: External chart - Detailed view between cards
+    - **Level 3**: Stock detail page - Full analysis
+  - **Technical**:
+    - No duplicate API calls (data reused from same endpoint)
+    - Minimal bundle size impact (component reused)
+    - Responsive: Works at all screen sizes
+
 - **Complete Settings System with Persistence (implemented by Kimi)**:
   - **Purpose**: Transform Settings from placeholder to production-ready user preferences system
   - **Core Architecture**:
@@ -142,6 +299,11 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Neues i18n-Framework unter `src/lib/i18n/` mit `de.json` (Default) und `en.json`, Übersetzungs-Utility (`index.ts`) und React-Hook `useTranslation`.
   - Navigation, Footer, Home/Briefing-Startseite, Run-Progress-Indikator, Strategy Lab Config/Run-Button und Dokumenten-Hinweise auf i18n umgestellt; Default-Sprache auf Deutsch gesetzt (`html lang="de"`).
   - Fallback auf Englisch bei fehlenden Keys; Terminologie vereinheitlicht (Pillar-Gewichte, Diversifikation, Laufstatus, Fehlermeldungen).
+
+#### Fixed
+- **Performance-Charts decken Kartenbreite ab (fix by Codex)**:
+  - PerformanceTimeline sortiert Zeitreihe sauber, nutzt volle Breite mit `min-w-0` und größerer Höhe; zeigt freundlichen Placeholder, falls keine Daten vorliegen.
+  - Briefing-Detailansicht markiert die Performance-Sektion als `min-w-0`, damit der Chart nicht zusammenschrumpft.
 
 #### Added
 - **Score comparison automation (implemented by Codex)**:

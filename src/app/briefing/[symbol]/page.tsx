@@ -150,7 +150,7 @@ export default async function StockDetailPage({
             </section>
             
             {/* Performance Timeline */}
-            <section className="rounded-xl border border-navy-700 bg-navy-800 p-6">
+            <section className="rounded-xl border border-navy-700 bg-navy-800 p-6 min-w-0">
               {timeSeriesData ? (
                  <PerformanceTimeline data={timeSeriesData} />
               ) : (
