@@ -2,7 +2,6 @@
 <img width="1089" height="1269" alt="Bildschirmfoto_20260130_195919" src="https://github.com/user-attachments/assets/bd935679-890e-4568-b57e-d8cdeba5b680" />
 <img width="1292" height="1269" alt="Bildschirmfoto_20260130_200446" src="https://github.com/user-attachments/assets/0fd3f33d-e27b-4a1a-acba-72b999e7b50a" />
 <img width="1420" height="1258" alt="Bildschirmfoto_20260130_200535" src="https://github.com/user-attachments/assets/64d917f8-7345-40aa-9775-476ccc261fa4" />
-<img width="1453" height="1261" alt="Bildschirmfoto_20260130_220306" src="https://github.com/user-attachments/assets/82cf56bf-4797-4088-85de-3a5a11be2869" />
 
 # How Our Stock Score Works (Simple Version)
 
