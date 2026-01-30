@@ -1,74 +1,74 @@
 # Retail Investor MVP
-<img width="2915" height="653" alt="BPMN" src="https://github.com/user-attachments/assets/764f4a83-c890-47e2-a107-baab94f2d6ee" />
-<img width="2155" height="5297" alt="Screenshot 2026-01-24 at 18-32-26 Privatinvestor MVP" src="https://github.com/user-attachments/assets/56612ca1-c339-4f56-ad86-275ddb7533b3" />
-<img width="2155" height="3301" alt="Screenshot 2026-01-24 at 18-32-41 Privatinvestor MVP" src="https://github.com/user-attachments/assets/6de201fc-a80d-4b50-ae1c-c91d31479e0a" />
+
+Deterministic stock briefings, strategy lab, and live run tracking for retail investors. Built with Next.js + TypeScript, offline-first data, and a dark finance UI.
+<img width="902" height="1341" alt="Screenshot 2026-01-30 at 17-03-00 Privatinvestor MVP" src="https://github.com/user-attachments/assets/ce8145e2-4f82-452f-98b8-f4a106a003e6" />
 
 
-Scoring and backtesting toolkit (Next.js + TypeScript + Python) with offline-friendly data pulls and a dark finance dashboard.
 
-## Für Endanwender (Kurzfassung)
-- Universes wählen, Scores berechnen, Backtests ansehen (Equity/Drawdown/Comparison).
-- Daten lokal: yfinance Fetcher (2015–2025), aktuell S&P 500 Full 490/501, Russell 2000 Full 1941/1943 CSVs.
-- Scoring-Modi: Hybrid, Momentum, 4-Pillar (gewichtbar via UI/CLI).
-- Strategie-Lab UI: Universe/Preset Auswahl, Runtime-Anzeige, Region/Flaggen.
-- Läuft offline nach Daten-Fetch; keine LLMs im Scoring-Pfad.
+## What this project is
+A quantitative scoring and backtesting toolkit that produces investor-friendly briefings. We score every stock on four pillars (Valuation, Quality, Technical, Risk), backtest the strategies, and stream real-time progress while runs are executing—no guesswork, no LLMs in the scoring path.
 
-## Was das Projekt macht
-- Bewertet Aktien deterministisch: Fundamentals + Technicals → Pillar-Scores + Gesamtscore (Momentum/Hybrid/4-Pillar), keine LLM-Komponenten im Scoring.
-- Universes wählbar: Packs unter `config/universes/*.json` (SP500, Nasdaq100, EuroStoxx50 Samples, Russell2000_full), Benchmark pro Pack; Fetcher lädt YF-Daten lokal.
-- Analystenfelder: yfinance-Bridge zieht Konsens-Targets (Mean/Low/High), Analystenanzahl, nächste Earnings; fehlen die Daten, fallen sie auf `null`.
-- Backtesting: Quartalsweise Rebalance Top 10; Ergebnisse als CSV + JSON, im UI als Equity/Drawdown/Comparison visualisiert.
-- Infrastruktur: Next.js App Router, serverseitiges Laden der Backtest-Daten, Recharts für Charts, Tailwind Dark Finance Theme; Python-Skripte für Historical Fetch und Tests.
+## What’s ready today
+- **Stock Briefing pages** (symbol view): score forensics, performance timeline, peer comparison, and price target with confidence bands.
+- **Strategy Lab**: pick universe/preset or customize weights; live **Run Progress Indicator** (SSE) shows phases, ETA, cache hit rate, failures, and current symbol.
+- **Performance Tracker**: instruments every run; bottlenecks and stats stored under `data/performance/*.json`.
+- **Offline names + data**: company names cached from run data; universes live in `config/universes/*.json`.
+- **Backtesting dashboards**: equity/drawdown/comparison charts for Hybrid/Momentum/4-Pillar modes.
+- **CLI + scripts**: daily run, backtests, stress tests, and score comparison automation.
 
-## Quick Start
-- Voraussetzungen: Node 22, npm, Python 3.11, `yfinance` (siehe `requirements.txt`), Finnhub/YF Zugangsdaten per `.env`.
-- Install: `npm install` (Recharts via `--legacy-peer-deps` für React 19).
-- Dev-Server: `npm run dev` → http://localhost:3000
-- Backtests: 
-  - Hybrid (aktuell): `SCORING_MODE=hybrid npx tsx scripts/backtesting/run-backtest.ts`
-  - Momentum: `SCORING_MODE=momentum npx tsx scripts/backtesting/run-backtest.ts`
-  - Ergebnisse liegen unter `data/backtesting/` (CSV + summary JSON). Kopien: `*-momentum.*`, `*-4pillar.*`
-- Historische Daten laden: `python scripts/backtesting/fetch-historical.py russell2000_full` (1,944 Symbole; 2 fehlen aktuell) oder `... sp500-full` (11 fehlen aktuell). Zeitraum: 2015-01-01 bis 2025-12-31.
+## Quick start
+```bash
+npm install --legacy-peer-deps     # Node 22, React 19
+npm run dev                        # http://localhost:3000
 
-## Backtesting Dashboard (/backtesting)
-- Tabs für Modelle: Momentum-Only, Hybrid, 4-Pillar (Time-Series jetzt hinterlegt), plus Pending-Slots für Momentum+Market-Cap und Momentum+Vol-Cap.
-- Parameter Controls (4-Pillar): Slider/Preset für Pillar-Gewichte, Universe-Auswahl (liest `config/universes/*.json`), Run-Button triggert `/api/backtest/run` mit `SCORING_MODE`/`CUSTOM_WEIGHTS`/`UNIVERSE`.
-- Charts: Equity Curve und Drawdown (USD/EUR Umschaltbar, manueller EUR-Kurs), Strategy Comparison Tabelle (inkl. 4-Pillar, Hybrid, Momentum + Datei-Werte).
-- Datenquellen: 
-  - Momentum: `data/backtesting/backtest-summary-momentum.json` + `backtest-results-momentum.csv`
-  - Hybrid: `data/backtesting/backtest-summary.json` + `backtest-results.csv`
-  - 4-Pillar: aktuell identisch zum letzten Hybrid-Run, abgelegt als `backtest-summary-4pillar.json` + `backtest-results-4pillar.csv`
+# Daily scoring run (writes data/runs/<timestamp>.json)
+npm run run:daily
 
-## Runs & Skripte
-- `npm run run:daily` (`scripts/run_daily.ts`): kompletter 4-Pillar-Scoring-Run inkl. Fair-Value/Price-Target, schreibt `data/runs/<run>.json` (+ LLM-Output) und kappt die Pipeline bei 150 Symbols (`top_k`/`max_symbols_per_run`).
-- Monte Carlo Lite: wird in `run:daily` für Top 30 mit `requires_deep_analysis=true` angestoßen (Python CLI, Finnhub-Dependence für Revenue/Series). Falls Fundamentals fehlen, wird die Monte-Carlo-Komponente übersprungen; Price-Target bleibt gültig.
-- Test-Run mit 50 Small Caps (yfinance): `TSX_DISABLE_RPC=1 UNIVERSE=russell2000_50_test npm run run:daily -- --universe=russell2000_50_test` (benutzt Name-Map `russell_2000_50_test_names.json`).
-- Backtests (`scripts/backtesting`): `npm run backtest` (fetch + run), `backtest:momentum|hybrid` (nur Run), Universe per Env/Argument (`UNIVERSE` oder CLI `russell2000`/`nasdaq100`); Strategie: Quarterly Rebalance Top 10 nach Score.
-- Performance-Checks: `npm run stress-test` (Provider-Latency/Error-Check, Universe `config/universes/sp500-full.json`, optional `--symbols`/`--provider`).
-- Diagnose: `scripts/debug-fair-value.ts` (Fair-Value/Median), `scripts/debug-quality-100.ts` (Fundamentals/Quality), `scripts/audit-value.ts` (liest letzten Run und Coverage).
-- Universes (`config/universes/*.json`): Samples `sp500` (72), `nasdaq100` (43), `eurostoxx50` (30), `russell2000` (34), Full `sp500-full` (501), `russell2000_full` (1.943), `test` (5); Default ohne Env: `config/universe.json` (15) oder `config/universes/test.json`.
+# Compare before/after score impact
+npm run compare-scores data/runs/<before>.json data/runs/<after>.json
+```
 
-## Universes & Benchmarks
-- Universe Files: `config/universes/*.json` (z.B. `sp500`, `nasdaq100`, `eurostoxx50`, `russell2000_full`, `russell2000` Sample). Benchmark wird aus der Datei gelesen (z.B. SPY, IWM).
-- Auswahl: per Env `UNIVERSE`/`UNIVERSE_CONFIG` oder via UI-Select auf `/backtesting` (wirkt auf den Run-Trigger).
-- Datenlücken: S&P 500 Full fehlen 11 CSVs (ABMD, ANSS, CTLT, DFS, HES, JNPR, MRO, PARA, PXD, WBA, WRK). Russell2000_full fehlen 2 CSVs (AKE, THRD).
+## How the scoring works (simple version)
+We rank stocks 0–100 using four pillars:
+- **Valuation** (P/E, P/B, P/S), **Quality** (ROE, Debt/Equity), **Technical** (trend + momentum), **Risk** (volatility + leverage).
+- Each metric is scaled between a “good” and “bad” range; missing data falls back to medians or neutral 50.
+- Pillars average their metrics; total score = weighted sum (defaults 25% each, editable in Strategy Lab).
+- Price target: sector medians + stock scores → fair-value range, upside %, confidence tag.
 
-## API Trigger
-- Endpoint: `POST /api/backtest/run`
-- Body: `{ strategy: 'hybrid' | 'momentum', weights: {valuation,quality,technical,risk}, universe: 'russell2000_full' }`
-- Validierung: Weights müssen 100% summieren. Führt `npx tsx scripts/backtesting/run-backtest.ts` mit Env `SCORING_MODE`, `CUSTOM_WEIGHTS`, `UNIVERSE` aus und gibt das aktuelle `backtest-summary.json` zurück.
+Key ranges (from `src/scoring/scoring_config.ts`):
+- P/E good ≤15, bad ≥30; P/B good ≤1.5, bad ≥5; P/S good ≤1, bad ≥5
+- ROE good ≥35%, bad ≤8%; Debt/Equity good ≤0.2, bad ≥1.5
 
-## Wichtige Dateien
-- Dashboard: `src/app/backtesting/page.tsx`, Komponenten unter `src/app/backtesting/components/`
-- Datenlader: `src/app/backtesting/utils/loadBacktestData.ts`
-- Backtest-Skripte: `scripts/backtesting/run-backtest.ts`, `scripts/backtesting/fetch-historical.py`
-- Strategy Comparison: `data/backtesting/strategy-comparison.json`
-- Universum-Filter: `src/backtesting/filters/universeFilter.ts` (MarketCap/Preis/Volumen/Crypto/Meme + Blacklist Defaults)
-- Analystendaten (yfinance): `src/data_py/yfinance_adapter.py` + `src/providers/yfinance_provider.ts`
+## Product tour
+- **Briefing (/briefing/[symbol])**: narrative-free, data-first view with peers, timelines, and targets.
+- **Strategy Lab (/strategy-lab)**: presets (Rocket, Deep Value, Balanced, Quality, Risk-Aware) or manual sliders; live progress while runs execute; auto-refresh on completion.
+- **Backtesting (/backtesting)**: Hybrid, Momentum, and 4-Pillar runs with equity/drawdown charts and comparison tables.
+- **Performance (/performance)**: phase-level timings, cache hit rates, and bottleneck flags.
 
-## Offene Punkte / ToDo
-- Fehlende 51 Russell2000_full Ticker nachladen oder ausschließen.
-- Monte Carlo deterministischer machen (Seed/Assumptions loggen) und optional per Feature-Flag deaktivierbar für Full-Runs.
-- Eigener 4-Pillar-Run mit echter 4-Pillar-Logik (nicht nur Hybrid-Run-Kopie) und Zeitreihe ablegen.
-- Pending Modelle rechnen: Momentum + Market-Cap-Filter (>500M), Momentum + Vol-Cap (<50%).
-- README_no_push.md enthält das alte README (nicht pushen).
+## Data & universes
+- Universe definitions: `config/universes/*.json` (S&P 500 full, Russell 2000 full, Nasdaq100, EuroStoxx50, samples, test).
+- Historical CSVs via `python scripts/backtesting/fetch-historical.py <universe>` (2015–2025 window).
+- Runs emitted to `data/runs/`; performance logs in `data/performance/`.
+
+## Ops & scripts (highlights)
+- `npm run run:daily` — full scoring pipeline.
+- `npm run backtest` — fetch + run backtests (Hybrid default). Variants: `backtest:momentum`, `backtest:hybrid`.
+- `npm run stress-test` — provider latency/error check.
+- `npm run compare-scores <before> <after>` — new tool to measure score deltas and significance.
+- `npm run perf:report` — summarize performance tracker outputs.
+
+## Why this matters
+- **Deterministic**: same inputs → same outputs; great for auditing and regression checks.
+- **Transparent**: live progress, cache hit rates, and per-phase timings—no black boxes.
+- **Offline-first**: after fetching data once, runs and UI stay local.
+- **Retail-friendly**: briefings explain score drivers without jargon or hallucinations.
+
+## Contributing & standards
+- TypeScript strict, no `any`; Tailwind dark finance theme; keep UI components pure and data fetching in server components.
+- Feature flags/env for optional behavior; avoid breaking existing pipelines.
+- Work with Gemini, Claude, Qwen, and Codex—document changes in `CHANGELOG.md` with author attribution.
+
+## Screenshots
+- Process overview: `latest screenshots/BPMN.png`
+- Dashboard: `latest screenshots/Screenshot 2026-01-28 at 16-26-30 Privatinvestor MVP.png`
+- Briefing: `latest screenshots/Screenshot 2026-01-28 at 16-26-41 Privatinvestor MVP.png`
