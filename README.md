@@ -2,8 +2,11 @@
 
 Deterministic stock briefings, strategy lab, and live run tracking for retail investors. Built with Next.js + TypeScript, offline-first data, and a dark finance UI.
 
+<img width="1089" height="1269" alt="Bildschirmfoto_20260130_195919" src="https://github.com/user-attachments/assets/a6395804-6eec-402e-bf5a-ba47509e8fa1" />
+<img width="1292" height="1269" alt="Bildschirmfoto_20260130_200446" src="https://github.com/user-attachments/assets/4bcb3e94-279f-42f9-8fdf-f2a2fc1d0888" />
+<img width="1420" height="1258" alt="Bildschirmfoto_20260130_200535" src="https://github.com/user-attachments/assets/662bad11-c263-45fe-92f3-0c742f2fc628" />
 
-<img width="902" height="1341" alt="Screenshot 2026-01-30 at 17-03-00 Privatinvestor MVP" src="https://github.com/user-attachments/assets/ce8145e2-4f82-452f-98b8-f4a106a003e6" />
+
 
 ## What this project is
 A quantitative scoring and backtesting toolkit that produces investor-friendly briefings. We score every stock on four pillars (Valuation, Quality, Technical, Risk), backtest the strategies, and stream real-time progress while runs are executing—no guesswork, no LLMs in the scoring path.
