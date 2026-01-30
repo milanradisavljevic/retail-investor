@@ -83,6 +83,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Replaced `ROADMAP.md` with a comprehensive “What’s Next” summary covering feature status, short/mid/long-term roadmap, technical debt, performance findings, UX improvements, and monetization readiness.
   - Updated statuses to reflect newly shipped Run Progress Indicator and company-name coverage; flagged 57 open TypeScript errors and data_fetch bottleneck (98.5%) as top risks.
   - Added immediate action items for the next 3 days and success metrics tied to run duration, cache hit rate, and CI stability.
+- **README rewrite with current product (authored by Codex)**:
+  - Rebased `README.md` on the simplified scoring explainer, added marketing-friendly overview, feature tour, quick start, and new screenshots from `latest screenshots/`.
+  - Highlighted shipped features (Stock Briefing, Strategy Lab with live progress, Performance Tracker, offline names, backtesting dashboards) and the new `compare-scores` script.
 
 #### Added
 - **Score comparison automation (implemented by Codex)**:
