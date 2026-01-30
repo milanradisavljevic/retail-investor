@@ -306,6 +306,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Briefing-Detailansicht markiert die Performance-Sektion als `min-w-0`, damit der Chart nicht zusammenschrumpft.
   - InlineMiniPerfChart reagiert jetzt auf Container-Breite (ResizeObserver, min 160px) und füllt Karten; TimeSeries-Loader fällt auf Live-YFinance-Daten zurück, wenn CSVs fehlen (auch SPY-Benchmark).
   - Mini-Chart SVG nutzt jetzt `viewBox` + `width/height: 100%`, damit die Linie stets die volle Kartenbreite einnimmt; PerformanceTimeline filtert ungültige Daten bevor gerendert wird.
+  - PerformanceTimeline rendert jetzt eigenes vollflächiges SVG (statt Recharts) mit Gradient-Fill und Benchmark-Linie; ResizeObserver skaliert auf Kartenbreite, damit der Chart in Detail-Ansichten zuverlässig erscheint.
 
 #### Added
 - **Score comparison automation (implemented by Codex)**:

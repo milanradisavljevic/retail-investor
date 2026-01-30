@@ -1,16 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TimeSeriesData, QuarterlyPerformance } from '@/lib/analysis/timeSeriesAnalysis';
 
 interface Props {
@@ -23,6 +13,9 @@ export function PerformanceTimeline({ data: initialData }: Props) {
   const [period, setPeriod] = useState<PeriodOption>('1Y');
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(720);
+  const chartHeight = 260;
 
   // When period changes, reload data
   const handlePeriodChange = async (newPeriod: PeriodOption) => {
@@ -46,19 +39,64 @@ export function PerformanceTimeline({ data: initialData }: Props) {
   };
 
   // Prepare chart data (normalize to percentage from start)
-  const sortedSeries = [...data.timeSeries]
-    .filter((p) => isFinite(p.price) && isFinite(p.sp500))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const sortedSeries = useMemo(
+    () =>
+      [...data.timeSeries]
+        .filter((p) => isFinite(p.price) && isFinite(p.sp500))
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [data.timeSeries]
+  );
 
-  const chartData = sortedSeries.map((point) => {
+  const chartData = useMemo(() => {
+    if (sortedSeries.length < 2) return [];
     const firstPoint = sortedSeries[0];
-    return {
+    return sortedSeries.map((point) => ({
       date: point.date,
       stock: ((point.price - firstPoint.price) / firstPoint.price) * 100,
       market: ((point.sp500 - firstPoint.sp500) / firstPoint.sp500) * 100,
-    };
-  });
+    }));
+  }, [sortedSeries]);
+
   const hasChartData = chartData.length > 1;
+
+  useEffect(() => {
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry?.contentRect?.width) {
+        setWidth(Math.max(320, Math.floor(entry.contentRect.width)));
+      }
+    });
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const pathData = useMemo(() => {
+    if (!hasChartData) return { stock: '', market: '' };
+    const padding = 8;
+    const h = chartHeight - padding * 2;
+    const w = width - padding * 2;
+
+    const toPath = (key: 'stock' | 'market') => {
+      const values = chartData.map((d) => d[key]);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = max - min || 1;
+
+      const points = chartData
+        .map((d, i) => {
+          const x = padding + (i / (chartData.length - 1)) * w;
+          const y = padding + ((max - d[key]) / range) * h;
+          return `${x},${y}`;
+        })
+        .join(' ');
+      return `M ${points}`;
+    };
+
+    return {
+      stock: toPath('stock'),
+      market: toPath('market'),
+    };
+  }, [chartData, hasChartData, width]);
 
   const summary = data.summary[period] ?? { return: 0, vsMarket: 0, vsSector: 0 };
   const stockReturn = summary.return ?? 0;
@@ -112,53 +150,25 @@ export function PerformanceTimeline({ data: initialData }: Props) {
       {/* Chart */}
       <div className="h-[320px] w-full min-w-0 rounded-xl border border-navy-700 bg-navy-800 p-4">
         {hasChartData ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis
-                dataKey="date"
-                stroke="#94a3b8"
-                tick={{ fill: '#94a3b8', fontSize: 12 }}
-                tickFormatter={(date) => {
-                  const d = new Date(date);
-                  return `${d.getMonth() + 1}/${d.getFullYear().toString().slice(2)}`;
-                }}
-                minTickGap={50}
-              />
-              <YAxis
-                stroke="#94a3b8"
-                tick={{ fill: '#94a3b8', fontSize: 12 }}
-                tickFormatter={(value) => `${value.toFixed(0)}%`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1e293b',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                }}
-                labelFormatter={(date) => new Date(date).toLocaleDateString()}
-                formatter={(value: number) => [`${value.toFixed(2)}%`, '']}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="stock"
-                stroke="#fbbf24"
-                strokeWidth={2}
-                dot={false}
-                name={data.symbol}
-              />
-              <Line
-                type="monotone"
-                dataKey="market"
-                stroke="#94a3b8"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-                name="S&P 500"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div ref={containerRef} className="relative h-full w-full">
+            <svg
+              width="100%"
+              height="100%"
+              viewBox={`0 0 ${width} ${chartHeight}`}
+              preserveAspectRatio="none"
+              className="absolute inset-0"
+            >
+              <defs>
+                <linearGradient id="perf-stock" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d={pathData.market} fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="5 5" />
+              <path d={`${pathData.stock} L ${width} ${chartHeight} L 0 ${chartHeight} Z`} fill="url(#perf-stock)" />
+              <path d={pathData.stock} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </div>
         ) : (
           <div className="h-full flex items-center justify-center text-text-secondary text-sm">
             Performance-Daten sind aktuell nicht verfügbar.
