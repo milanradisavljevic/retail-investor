@@ -2,9 +2,7 @@
 
 Deterministic stock briefings, strategy lab, and live run tracking for retail investors. Built with Next.js + TypeScript, offline-first data, and a dark finance UI.
 
-![Process Overview](latest%20screenshots/BPMN.png)
-![Dashboard](latest%20screenshots/Screenshot%202026-01-28%20at%2016-26-30%20Privatinvestor%20MVP.png)
-![Briefing](latest%20screenshots/Screenshot%202026-01-28%20at%2016-26-41%20Privatinvestor%20MVP.png)
+
 
 ## What this project is
 A quantitative scoring and backtesting toolkit that produces investor-friendly briefings. We score every stock on four pillars (Valuation, Quality, Technical, Risk), backtest the strategies, and stream real-time progress while runs are executing—no guesswork, no LLMs in the scoring path.

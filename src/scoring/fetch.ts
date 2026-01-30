@@ -45,6 +45,7 @@ export interface FetchResult {
   raw: SymbolRawData;
   fallbackFundamentals: FundamentalsData | null;
   fallbackProfile: CompanyProfile | null;
+  fromCache: boolean;
 }
 
 export async function fetchSymbolDataWithCache(
@@ -130,7 +131,13 @@ export async function fetchSymbolDataWithCache(
     profile,
   };
 
-  return { raw, fallbackFundamentals, fallbackProfile };
+  // Determine if this symbol was fully served from cache
+  const fromCache =
+    cachedFundamentals !== null &&
+    cachedTechnical !== null &&
+    cachedProfile !== null;
+
+  return { raw, fallbackFundamentals, fallbackProfile, fromCache };
 }
 
 function needsFallback(fundamentals: FundamentalsData, required: string[]): boolean {

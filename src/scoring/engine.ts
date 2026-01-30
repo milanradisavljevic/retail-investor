@@ -61,6 +61,7 @@ import {
   type FilteredSymbolsResult,
 } from './filters';
 import { PerformanceTracker } from '@/lib/performance/tracker';
+import { progressStore } from '@/lib/progress/progressStore';
 
 const logger = createChildLogger('scoring_engine');
 
@@ -226,7 +227,8 @@ export async function scoreSymbol(
 }
 
 export async function scoreUniverse(
-  filterConfig?: Partial<LiveRunFilterConfig>
+  filterConfig?: Partial<LiveRunFilterConfig>,
+  runIdOverride?: string
 ): Promise<ScoringResult> {
   const symbols = getUniverse();
   const appConfig = getConfig();
@@ -240,13 +242,16 @@ export async function scoreUniverse(
   const throttler = new RequestThrottler(pipelineCfg.throttleMs ?? 0);
   const MAX_CONCURRENCY = pipelineCfg.maxConcurrency ?? 4;
 
-  // Initialize performance tracker
-  const runId = `run_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  // Initialize run ID and trackers
+  const runId = runIdOverride || `run_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const perfTracker = new PerformanceTracker(
     runId,
     appConfig.universe.name,
     symbols.length
   );
+
+  // Initialize progress tracking
+  progressStore.initRun(runId, appConfig.universe.name, symbols.length);
 
   // Apply filters BEFORE scoring to save API calls
   let filteredResult: FilteredSymbolsResult | null = null;
@@ -313,11 +318,19 @@ export async function scoreUniverse(
 
     // Pass 1: fetch raw data with cache + throttling
     perfTracker.startPhase('data_fetch');
+    progressStore.updateProgress(runId, { currentPhase: 'data_fetch' });
+
+    let processedCount = 0;
     await runWithConcurrency(
       symbolsToScore,
       async (symbol) => {
         try {
-          const { raw, fallbackFundamentals, fallbackProfile } =
+          progressStore.updateProgress(runId, {
+            currentSymbol: symbol,
+            processedSymbols: processedCount,
+          });
+
+          const { raw, fallbackFundamentals, fallbackProfile, fromCache } =
             await fetchSymbolDataWithCache(symbol, {
               provider,
               fallbackProvider,
@@ -333,10 +346,18 @@ export async function scoreUniverse(
           rawDataMap[symbol] = raw;
           fallbackFundamentalsMap[symbol] = fallbackFundamentals ?? null;
           fallbackProfileMap[symbol] = fallbackProfile ?? null;
+
+          // Update cache stats
+          if (fromCache) {
+            progressStore.incrementCacheHit(runId);
+          } else {
+            progressStore.incrementCacheMiss(runId);
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           errors.push(`${symbol}: ${message}`);
           logger.error({ symbol, error: message }, 'Failed to fetch raw data');
+          progressStore.addFailedSymbol(runId, symbol);
           rawDataMap[symbol] = {
             symbol,
             fundamentals: null,
@@ -348,6 +369,7 @@ export async function scoreUniverse(
             fallbackProfileMap[symbol] = null;
           }
         }
+        processedCount++;
       },
       Math.min(MAX_CONCURRENCY, symbolsToScore.length)
     );
@@ -394,6 +416,9 @@ export async function scoreUniverse(
 
     // Phase 1: scan-only scoring without price targets
     perfTracker.startPhase('scoring');
+    progressStore.updateProgress(runId, { currentPhase: 'scoring' });
+
+    let scoredCount = 0;
     await runWithConcurrency(
       symbolsToScore,
       async (symbol) => {
@@ -427,6 +452,7 @@ export async function scoreUniverse(
           const message = error instanceof Error ? error.message : String(error);
           errors.push(`${symbol}: ${message}`);
           logger.error({ symbol, error: message }, 'Failed to score symbol');
+          progressStore.addFailedSymbol(runId, symbol);
 
           // Add neutral score for failed symbols
           scanOnlyScores.push({
@@ -481,6 +507,11 @@ export async function scoreUniverse(
             },
           });
         }
+        scoredCount++;
+        progressStore.updateProgress(runId, {
+          currentSymbol: symbol,
+          processedSymbols: symbolsToScore.length + scoredCount,
+        });
       },
       Math.min(MAX_CONCURRENCY, symbolsToScore.length)
     );
@@ -619,6 +650,7 @@ export async function scoreUniverse(
 
     // Selection phase
     perfTracker.startPhase('selection');
+    progressStore.updateProgress(runId, { currentPhase: 'selection' });
     const actualRequests =
       provider.getRequestCount() + (fallbackProvider ? fallbackProvider.getRequestCount() : 0);
     const estimatedRequests = symbolsToScore.length * 3;
@@ -657,6 +689,7 @@ export async function scoreUniverse(
 
     // Start persistence phase (computed by run builder/writer)
     perfTracker.startPhase('persistence');
+    progressStore.updateProgress(runId, { currentPhase: 'persistence' });
 
     const dataQualitySummary = summarizeDataQuality(
       scores.map((s) => ({ symbol: s.symbol, dataQuality: s.dataQuality })),
@@ -682,6 +715,9 @@ export async function scoreUniverse(
     } catch (error) {
       logger.warn({ error }, 'Failed to save performance metrics');
     }
+
+    // Mark run as complete
+    progressStore.completeRun(runId);
 
     return {
       scores,
@@ -719,6 +755,11 @@ export async function scoreUniverse(
         } : undefined,
       },
     };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error({ error: message }, 'Run failed with error');
+    progressStore.errorRun(runId, message);
+    throw error;
   } finally {
     provider.close();
     if (fallbackProvider) {

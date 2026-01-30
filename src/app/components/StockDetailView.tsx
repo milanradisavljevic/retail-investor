@@ -151,7 +151,7 @@ export function StockDetailView({ run, score }: Props) {
       {priceTarget ? (
         <div className="rounded-xl border border-navy-700 bg-navy-800 p-4">
           <h3 className="text-lg font-semibold text-text-primary mb-3">Price Target</h3>
-          <PriceTargetCard {...priceTarget} />
+          <PriceTargetCard {...priceTarget} showDeepAnalysisWarning={true} />
         </div>
       ) : (
         <div className="rounded-xl border border-navy-700 bg-navy-800 p-4">

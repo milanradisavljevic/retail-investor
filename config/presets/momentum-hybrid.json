@@ -1,0 +1,34 @@
+{
+  "name": "Momentum + Mean Reversion",
+  "description": "Hybride technische Strategie: Kauft Aktien mit starkem 6-Monats-Momentum, aber vermeidet überdehnte Kurse (>30% von MA200). Kombiniert Trend-Following mit Rückkehr zum Mittelwert.",
+  "pillar_weights": {
+    "valuation": 0.10,
+    "quality": 0.25,
+    "technical": 0.55,
+    "risk": 0.10
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 8, "high": 40 },
+    "pb": { "low": 1, "high": 8 },
+    "ps": { "low": 0.5, "high": 6 },
+    "roe": { "low": 5, "high": 50 },
+    "debtEquity": { "low": 0.1, "high": 3 }
+  },
+  "filters": {
+    "min_technical_score": 60,
+    "min_quality_score": 40,
+    "max_debt_equity": 3.5
+  },
+  "diversification": {
+    "enabled": true,
+    "max_per_sector": 3,
+    "max_per_industry": 2
+  },
+  "philosophy": {
+    "strategy_type": "Technical/Quantitative Hybrid",
+    "key_metrics": ["6M Momentum", "Price vs MA200", "RSI"],
+    "entry_signal": "Strong momentum + not overbought",
+    "exit_signal": "Momentum reversal or >30% from MA200",
+    "rebalance_frequency": "monthly"
+  }
+}

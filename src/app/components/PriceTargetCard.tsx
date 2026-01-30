@@ -19,6 +19,8 @@ interface PriceTargetProps {
   returnDelta?: number | null;
   confidenceChange?: { from: "high" | "medium" | "low" | null | undefined; to: "high" | "medium" | "low" | null | undefined } | null;
   deepAnalysisChange?: { from: boolean | null | undefined; to: boolean | null | undefined } | null;
+  /** Whether to show the deep analysis warning box. Defaults to false (for compact/dashboard views). */
+  showDeepAnalysisWarning?: boolean;
 }
 
 function getDeltaColor(value: number): string {
@@ -142,6 +144,7 @@ export function PriceTargetCard(props: PriceTargetProps) {
     returnDelta,
     confidenceChange,
     deepAnalysisChange,
+    showDeepAnalysisWarning = false,
   } = props;
 
   const isNegativeUpside = upside_pct < 0;
@@ -213,8 +216,8 @@ export function PriceTargetCard(props: PriceTargetProps) {
         </span>
       </div>
 
-      {/* Deep Analysis Warning */}
-      {requires_deep_analysis && deep_analysis_reasons.length > 0 && (
+      {/* Deep Analysis Warning - only shown in detailed view */}
+      {showDeepAnalysisWarning && requires_deep_analysis && deep_analysis_reasons.length > 0 && (
         <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-lg p-3 mt-2">
           <div className="flex items-start gap-2">
             <AlertIcon className="w-4 h-4 text-accent-gold mt-0.5 flex-shrink-0" />

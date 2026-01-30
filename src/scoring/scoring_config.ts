@@ -53,7 +53,7 @@ export interface ScoringConfig {
 }
 
 const DEFAULT_PRICE_TARGET = {
-  minSectorSampleSize: 12,
+  minSectorSampleSize: 5, // Reduced from 12 to improve sector median usage
   defaultMedians: {
     pe: 20,
     pb: 3,

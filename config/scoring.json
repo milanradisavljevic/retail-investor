@@ -14,7 +14,7 @@
       "risk": 0.25
     },
     "price_target": {
-      "min_sector_sample_size": 12,
+      "min_sector_sample_size": 5,
       "default_medians": {
         "pe": 20,
         "pb": 3,

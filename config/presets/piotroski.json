@@ -1,0 +1,35 @@
+{
+  "name": "Piotroski F-Score",
+  "description": "Finanzielle Gesundheit durch 9 Qualitätschecks. Identifiziert fundamental starke Value-Aktien mit steigendem ROA, positiven Cashflows und verbesserter Bilanzqualität.",
+  "pillar_weights": {
+    "valuation": 0.25,
+    "quality": 0.55,
+    "technical": 0.05,
+    "risk": 0.15
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 5, "high": 18 },
+    "pb": { "low": 0.5, "high": 2.5 },
+    "ps": { "low": 0.3, "high": 2 },
+    "roe": { "low": 8, "high": 35 },
+    "debtEquity": { "low": 0.1, "high": 1.8 }
+  },
+  "filters": {
+    "min_roe": 5,
+    "max_pb": 3.0,
+    "min_quality_score": 70,
+    "max_debt_equity": 2.0
+  },
+  "diversification": {
+    "enabled": true,
+    "max_per_sector": 3,
+    "max_per_industry": 2
+  },
+  "philosophy": {
+    "author": "Joseph Piotroski",
+    "paper": "Value Investing: The Use of Historical Financial Statement Information",
+    "key_metrics": ["ROA", "Cash Flow", "Debt Ratio", "Gross Margin"],
+    "scoring_system": "9-point checklist (max 9 points)",
+    "target_market": "Small-cap value stocks"
+  }
+}

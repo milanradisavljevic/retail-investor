@@ -1,0 +1,38 @@
+{
+  "name": "Dividend Aristocrats",
+  "description": "Dividendenstrategie für stabile Einkommensströme: Fokus auf Unternehmen mit konsistentem Dividendenwachstum (10+ Jahre), nachhaltiger Ausschüttungsquote (<80%) und niedriger Volatilität.",
+  "pillar_weights": {
+    "valuation": 0.20,
+    "quality": 0.40,
+    "technical": 0.10,
+    "risk": 0.30
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 10, "high": 25 },
+    "pb": { "low": 1, "high": 4 },
+    "ps": { "low": 0.5, "high": 3 },
+    "roe": { "low": 10, "high": 30 },
+    "debtEquity": { "low": 0.2, "high": 1.5 }
+  },
+  "filters": {
+    "min_dividend_yield": 0.02,
+    "max_payout_ratio": 0.80,
+    "min_roe": 8,
+    "max_debt_equity": 2.0,
+    "min_quality_score": 55,
+    "min_risk_score": 50
+  },
+  "diversification": {
+    "enabled": true,
+    "max_per_sector": 2,
+    "max_per_industry": 2
+  },
+  "philosophy": {
+    "strategy_type": "Income/Dividend Growth",
+    "key_metrics": ["Dividend Yield", "Payout Ratio", "Dividend Growth Rate"],
+    "target_yield": "2-6%",
+    "target_payout_ratio": "< 80%",
+    "ideal_growth_rate": "> 5% annually",
+    "characteristics": ["Low volatility", "Stable earnings", "Mature businesses"]
+  }
+}

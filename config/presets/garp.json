@@ -1,0 +1,36 @@
+{
+  "name": "GARP (Growth at Reasonable Price)",
+  "description": "O'Shaughnessy GARP-Strategie: Wachstum zu vernünftigen Preisen. Balanciert Qualitätswachstum mit attraktiver Bewertung - ideal für PEG-Ratio < 1.5.",
+  "pillar_weights": {
+    "valuation": 0.35,
+    "quality": 0.35,
+    "technical": 0.20,
+    "risk": 0.10
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 10, "high": 30 },
+    "pb": { "low": 1.5, "high": 6 },
+    "ps": { "low": 0.8, "high": 4 },
+    "roe": { "low": 12, "high": 40 },
+    "debtEquity": { "low": 0.2, "high": 2 }
+  },
+  "filters": {
+    "min_roe": 10,
+    "max_pe": 35,
+    "min_quality_score": 55,
+    "min_valuation_score": 50,
+    "min_total_score": 60
+  },
+  "diversification": {
+    "enabled": true,
+    "max_per_sector": 2,
+    "max_per_industry": 2
+  },
+  "philosophy": {
+    "author": "James O'Shaughnessy",
+    "book": "What Works on Wall Street",
+    "key_metrics": ["PEG Ratio", "Earnings Growth", "ROE"],
+    "target_peg": "< 1.5",
+    "sweet_spot": "Growth + moderate valuation"
+  }
+}

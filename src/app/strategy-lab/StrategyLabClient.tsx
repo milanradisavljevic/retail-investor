@@ -13,6 +13,7 @@ import { PresetCard } from "@/app/components/PresetCard";
 import { FilterCheckbox } from "@/app/components/FilterCheckbox";
 import { useDraftConfig, type DraftConfig } from "@/hooks/useDraftConfig";
 import { DirtyStateIndicator } from "@/app/components/DirtyStateIndicator";
+import { RunProgressIndicator } from "@/app/components/RunProgressIndicator";
 
 type PillarWeights = {
   valuation: number;
@@ -834,6 +835,8 @@ export default function StrategyLabClient({
   const [liveAsOfDate, setLiveAsOfDate] = useState<string>(latestRun?.as_of_date ?? new Date().toISOString().slice(0, 10));
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+  const [runComplete, setRunComplete] = useState(false);
 
   const [backtestMetrics, setBacktestMetrics] = useState<BacktestMetrics>(SAMPLE_BACKTEST);
   const [backtestLoading, setBacktestLoading] = useState(false);
@@ -915,7 +918,11 @@ export default function StrategyLabClient({
   async function handleLiveRun() {
     setLiveLoading(true);
     setLiveError(null);
+    setRunComplete(false);
+    setCurrentRunId(null);
+
     try {
+      // Step 1: Trigger the run and get runId
       const res = await fetch("/api/live-run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -928,21 +935,71 @@ export default function StrategyLabClient({
           topK,
         }),
       });
-      if (!res.ok) throw new Error(`Live run failed (${res.status})`);
-      const data = (await res.json()) as LiveRunResponse;
-      setLivePicks(data.topPicks);
-      setLiveAsOfDate(data.asOfDate);
 
-      // Clear draft after successful run
-      clearDraft();
+      if (!res.ok) {
+        throw new Error(`Live run failed (${res.status})`);
+      }
+
+      const data = await res.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // If we got a runId, the run is starting in the background
+      if (data.runId) {
+        setCurrentRunId(data.runId);
+        // The progress indicator will handle the rest via SSE
+      } else if (data.topPicks) {
+        // Fallback: direct response with results
+        setLivePicks(data.topPicks);
+        setLiveAsOfDate(data.asOfDate);
+        setLiveLoading(false);
+        clearDraft();
+      }
     } catch (err) {
       console.error(err);
-      setLiveError("Failed to load live picks. Falling back to last run.");
+      setLiveError("Failed to start live run. Falling back to last run.");
       setLivePicks(buildLivePicksFromRun(latestRun, 20));
-    } finally {
       setLiveLoading(false);
     }
   }
+
+  // Handle run completion
+  const handleRunComplete = async () => {
+    setRunComplete(true);
+    setLiveLoading(false);
+    setCurrentRunId(null);
+
+    // Refresh the latest run data
+    try {
+      const res = await fetch("/api/live-run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topK }),
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as LiveRunResponse;
+        if (data.topPicks) {
+          setLivePicks(data.topPicks);
+          setLiveAsOfDate(data.asOfDate);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to refresh results:", err);
+    }
+
+    clearDraft();
+  };
+
+  const handleRunError = (error: string) => {
+    setLiveError(`Run failed: ${error}`);
+    setLiveLoading(false);
+    setCurrentRunId(null);
+    // Fall back to last run
+    setLivePicks(buildLivePicksFromRun(latestRun, 20));
+  };
 
   async function fetchBacktestResults(strategyKey: string) {
     try {
@@ -1078,7 +1135,11 @@ export default function StrategyLabClient({
 
         <button
           onClick={activeTab === "live" ? handleLiveRun : handleBacktestRun}
-          disabled={activeTab === "live" ? liveLoading : backtestLoading || !periodValid}
+          disabled={
+            activeTab === "live"
+              ? liveLoading || !!currentRunId
+              : backtestLoading || !periodValid
+          }
           className={classNames(
             "w-full py-3 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2",
             activeTab === "live"
@@ -1087,9 +1148,15 @@ export default function StrategyLabClient({
           )}
         >
           {activeTab === "live" ? (
-            <>
-              <span className="text-lg">⚡</span> Top-Aktien jetzt finden
-            </>
+            currentRunId ? (
+              <>
+                <span className="text-lg">⏳</span> Analysis Running...
+              </>
+            ) : (
+              <>
+                <span className="text-lg">⚡</span> Top-Aktien jetzt finden
+              </>
+            )
           ) : (
             <>
               <span className="text-lg">▶</span> Backtest starten (2015–2025)
@@ -1162,6 +1229,16 @@ export default function StrategyLabClient({
         </div>
       </SectionCard>
 
+      {activeTab === "live" && currentRunId && (
+        <SectionCard title="Run Progress" subtitle="Real-time scoring progress">
+          <RunProgressIndicator
+            runId={currentRunId}
+            onComplete={handleRunComplete}
+            onError={handleRunError}
+          />
+        </SectionCard>
+      )}
+
       {activeTab === "live" && (
         <div className="space-y-6">
           <SectionCard title="Run Configuration" subtitle="Generate picks as of today.">
@@ -1217,10 +1294,14 @@ export default function StrategyLabClient({
             <div className="flex flex-wrap gap-2 mt-4">
               <button
                 onClick={handleLiveRun}
-                disabled={liveLoading}
+                disabled={liveLoading || !!currentRunId}
                 className="px-4 py-2 text-sm rounded-lg border border-[#3B82F6] bg-[#3B82F6]/10 text-[#E2E8F0] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {liveLoading ? "Loading..." : "Generate Picks"}
+                {currentRunId
+                  ? "Running..."
+                  : liveLoading
+                    ? "Starting..."
+                    : "Generate Picks"}
               </button>
               <button className="px-4 py-2 text-sm rounded-lg border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
                 Save Configuration
@@ -1424,7 +1505,7 @@ export default function StrategyLabClient({
 
       {/* Draft State Indicator - Floating notification for unsaved changes */}
       <DirtyStateIndicator
-        isDirty={isDirty}
+        isDirty={isDirty && !currentRunId}
         diffSummary={diffSummary}
         onReset={resetDraft}
         onRunAnalysis={activeTab === "live" ? handleLiveRun : handleBacktestRun}
