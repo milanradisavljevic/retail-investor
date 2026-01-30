@@ -46,8 +46,11 @@ export function PerformanceTimeline({ data: initialData }: Props) {
   };
 
   // Prepare chart data (normalize to percentage from start)
-  const sortedSeries = [...data.timeSeries].sort((a, b) => a.date.localeCompare(b.date));
-  const chartData = sortedSeries.map((point, idx) => {
+  const sortedSeries = [...data.timeSeries]
+    .filter((p) => isFinite(p.price) && isFinite(p.sp500))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const chartData = sortedSeries.map((point) => {
     const firstPoint = sortedSeries[0];
     return {
       date: point.date,
