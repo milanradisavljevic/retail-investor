@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { YFinanceProvider } from '@/providers/yfinance_provider';
 
 export interface TimeSeriesPoint {
   date: string;
@@ -40,32 +41,58 @@ export async function loadTimeSeriesData(
   period: '1Y' | '3Y' | '5Y' = '1Y'
 ): Promise<TimeSeriesData> {
   // 1. Load symbol's historical data
-  const symbolFile = path.join(
-    process.cwd(),
-    'data',
-    'backtesting',
-    'historical',
-    `${symbol}.csv`
-  );
+  const symbolFile = path.join(process.cwd(), 'data', 'backtesting', 'historical', `${symbol}.csv`);
 
-  let symbolData: { date: string; close: number }[];
+  let symbolData: { date: string; close: number }[] | null = null;
+  let spyData: { date: string; close: number }[] | null = null;
+
+  // Try local CSV first
   try {
     const csv = await fs.readFile(symbolFile, 'utf-8');
     symbolData = parseCSV(csv);
   } catch (error) {
-    throw new Error(`Historical data not found for ${symbol}`);
+    symbolData = null;
   }
 
-  // 2. Load S&P 500 benchmark data (SPY.csv)
-  const spyFile = path.join(
-    process.cwd(),
-    'data',
-    'backtesting',
-    'historical',
-    'SPY.csv'
-  );
-  const spyCSV = await fs.readFile(spyFile, 'utf-8');
-  const spyData = parseCSV(spyCSV);
+  try {
+    const spyCSV = await fs.readFile(
+      path.join(process.cwd(), 'data', 'backtesting', 'historical', 'SPY.csv'),
+      'utf-8'
+    );
+    spyData = parseCSV(spyCSV);
+  } catch (error) {
+    spyData = null;
+  }
+
+  // Fallback to live fetch if local CSVs are missing
+  if (!symbolData || symbolData.length === 0 || !spyData || spyData.length === 0) {
+    const provider = new YFinanceProvider();
+    const days = period === '1Y' ? 252 : period === '3Y' ? 756 : 1260;
+
+    const [candles, spyCandles] = await Promise.all([
+      provider.getCandles(symbol, days).catch(() => null),
+      provider.getCandles('SPY', days).catch(() => null),
+    ]);
+
+    if (!candles?.c?.length) {
+      throw new Error(`Historical data not found for ${symbol}`);
+    }
+
+    symbolData = candles.t.map((timestamp, i) => ({
+      date: new Date(timestamp * 1000).toISOString().split('T')[0],
+      close: candles.c[i],
+    }));
+
+    if (spyCandles?.c?.length) {
+      spyData = spyCandles.t.map((timestamp, i) => ({
+        date: new Date(timestamp * 1000).toISOString().split('T')[0],
+        close: spyCandles.c[i],
+      }));
+    } else {
+      // fallback: mirror stock data to keep structure
+      spyData = symbolData;
+    }
+  }
 
   // 3. Filter to requested period
   const cutoffDate = getCutoffDate(period);

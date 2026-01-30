@@ -304,6 +304,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - **Performance-Charts decken Kartenbreite ab (fix by Codex)**:
   - PerformanceTimeline sortiert Zeitreihe sauber, nutzt volle Breite mit `min-w-0` und größerer Höhe; zeigt freundlichen Placeholder, falls keine Daten vorliegen.
   - Briefing-Detailansicht markiert die Performance-Sektion als `min-w-0`, damit der Chart nicht zusammenschrumpft.
+  - InlineMiniPerfChart reagiert jetzt auf Container-Breite (ResizeObserver, min 160px) und füllt Karten; TimeSeries-Loader fällt auf Live-YFinance-Daten zurück, wenn CSVs fehlen (auch SPY-Benchmark).
 
 #### Added
 - **Score comparison automation (implemented by Codex)**:
