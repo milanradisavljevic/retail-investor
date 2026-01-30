@@ -9,8 +9,11 @@ import { BriefingToolbar } from "./components/BriefingToolbar";
 import { DocumentsBanner } from "./components/DocumentsBanner";
 import { RunTriggerButton } from "./components/RunTriggerButton";
 import { ScoreBoardClient } from "./components/ScoreBoardClient";
+import { getCompanyName } from "@/core/company";
+import { translate, DEFAULT_LANGUAGE } from "@/lib/i18n";
 
 type AwaitableScoreSearchParams = ScoreSearchParams | Promise<ScoreSearchParams> | undefined;
+const lang = DEFAULT_LANGUAGE;
 
 function ModeBadge({ mode }: { mode: RunV1SchemaJson["mode"] }) {
   const colors =
@@ -45,11 +48,23 @@ export default async function Home({
   const query: ScoreQuery = parseScoreQuery(resolvedSearchParams);
   const [latest, previous] = getRecentRuns(2);
   const run = latest?.run ?? null;
-  const deltaMap: Map<string, SymbolDelta> = run
-    ? computeDeltas(run, previous?.run)
+
+  // Enrich company names from local map so dashboard shows full names even if run data is missing them
+  const runWithNames: RunV1SchemaJson | null = run
+    ? {
+        ...run,
+        scores: run.scores.map((s) => ({
+          ...s,
+          company_name: s.company_name ?? getCompanyName(s.symbol),
+        })),
+      }
+    : null;
+
+  const deltaMap: Map<string, SymbolDelta> = runWithNames
+    ? computeDeltas(runWithNames, previous?.run)
     : new Map<string, SymbolDelta>();
 
-  if (!run) {
+  if (!runWithNames) {
     return (
       <div className="text-center py-16">
         <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-navy-800 flex items-center justify-center">
@@ -68,11 +83,10 @@ export default async function Home({
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-text-primary mb-3">
-          No Briefing Available
+          {translate("briefing.noBriefingTitle", lang)}
         </h2>
         <p className="text-text-secondary mb-6 max-w-md mx-auto">
-          Run the daily analysis to generate your first stock briefing with
-          scores and price targets.
+          {translate("briefing.noBriefingBody", lang)}
         </p>
         <code className="inline-block bg-navy-800 border border-navy-700 px-4 py-2 rounded-lg text-sm font-mono text-accent-blue">
           npm run run:daily
@@ -81,8 +95,8 @@ export default async function Home({
     );
   }
 
-  const sortedScores = buildScoreView(run, query);
-  const totalCount = run.scores.length;
+  const sortedScores = buildScoreView(runWithNames, query);
+  const totalCount = runWithNames.scores.length;
   const visibleCount = sortedScores.length;
   const deltaLookup = Object.fromEntries(deltaMap.entries());
   const topCardScores = sortedScores.slice(0, 20).map((score, index) => ({
@@ -103,24 +117,21 @@ export default async function Home({
       <div className="mb-8">
         <div className="flex items-center gap-3 flex-wrap mb-2">
           <h2 className="text-2xl font-semibold text-text-primary">
-            Latest Briefing
+            {translate("run.latest", lang)}
           </h2>
           <span className="text-xs px-3 py-1 rounded-full bg-navy-800 text-text-secondary border border-navy-700">
             {run.universe.definition.name}
           </span>
           {run.mode && <ModeBadge mode={run.mode} />}
           <div className="ml-auto flex items-center gap-2">
-            <Link
-              href="/new-ux-lab"
-              className="rounded-lg border border-navy-700 bg-navy-800 px-3 py-2 text-xs font-semibold text-text-secondary transition hover:border-navy-500 hover:text-text-primary"
-            >
-              New UX Lab
-            </Link>
-            <RunTriggerButton />
+            <RunTriggerButton
+              label={`${translate("run.run", lang)} ${run.universe.definition.name || 'Universe'}`}
+              symbolCount={run.scores.length}
+            />
           </div>
         </div>
         <p className="text-text-secondary text-sm">
-          Analysis as of{" "}
+          {translate("run.analysisAsOf", lang)}{" "}
           <span className="text-text-primary font-medium">
             {run.as_of_date}
           </span>{" "}
@@ -141,7 +152,7 @@ export default async function Home({
           </Suspense>
         </div>
         <p className="text-xs text-text-muted mt-2">
-          Showing {visibleCount} of {totalCount} symbols
+          {translate("briefing.showing", lang)} {visibleCount} {translate("briefing.of", lang)} {totalCount} {translate("briefing.symbols", lang)}
         </p>
       </div>
 
@@ -153,15 +164,15 @@ export default async function Home({
       {/* Run Details */}
       <div className="bg-navy-800 rounded-xl border border-navy-700 p-6 mb-8">
         <h3 className="text-lg font-semibold text-text-primary mb-4">
-          Run Summary
+          {translate("briefing.runSummary", lang)}
         </h3>
         <dl className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { label: "Universe", value: run.universe.definition.name },
-            { label: "Symbols", value: run.scores.length.toString() },
-            { label: "Provider", value: run.provider.name.toUpperCase() },
+            { label: translate("briefing.universe", lang), value: run.universe.definition.name },
+            { label: translate("briefing.symbols", lang), value: run.scores.length.toString() },
+            { label: translate("briefing.provider", lang), value: run.provider.name.toUpperCase() },
             {
-              label: "Requests",
+              label: translate("briefing.requests", lang),
               value:
                 run.provider.rate_limit_observed?.requests_made?.toString() ??
                 "N/A",
@@ -181,12 +192,12 @@ export default async function Home({
       {run.data_quality_summary && (
         <div className="mt-8 bg-navy-800 rounded-xl border border-navy-700 p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-4">
-            Data Quality Overview
+            {translate("briefing.dataQuality", lang)}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div>
               <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-                Avg Score
+                {translate("briefing.avgScore", lang)}
               </div>
               <div className="text-2xl font-semibold text-text-primary">
                 {run.data_quality_summary.avg_data_quality_score.toFixed(1)}
@@ -194,7 +205,7 @@ export default async function Home({
             </div>
             <div>
               <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-                High Quality
+                {translate("briefing.highQuality", lang) || "High Quality"}
               </div>
               <div className="text-2xl font-semibold text-accent-green">
                 {(run.data_quality_summary.pct_high * 100).toFixed(0)}%
@@ -202,7 +213,7 @@ export default async function Home({
             </div>
             <div>
               <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-                Medium
+                {translate("briefing.mediumQuality", lang) || "Medium"}
               </div>
               <div className="text-2xl font-semibold text-accent-gold">
                 {(run.data_quality_summary.pct_medium * 100).toFixed(0)}%
@@ -210,7 +221,7 @@ export default async function Home({
             </div>
             <div>
               <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-                Low Quality
+                {translate("briefing.lowQuality", lang) || "Low Quality"}
               </div>
               <div className="text-2xl font-semibold text-accent-red">
                 {(run.data_quality_summary.pct_low * 100).toFixed(0)}%

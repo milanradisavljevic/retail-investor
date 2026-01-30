@@ -1,0 +1,138 @@
+{
+  "common": {
+    "loading": "Lädt...",
+    "error": "Fehler",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "yes": "Ja",
+    "no": "Nein",
+    "none": "Keine",
+    "back": "Zurück",
+    "viewList": "Liste anzeigen",
+    "with": "mit"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "strategyLab": "Strategy Lab",
+    "settings": "Einstellungen",
+    "performance": "Performance",
+    "history": "Verlauf"
+  },
+  "briefing": {
+    "title": "Aktuelle Analyse",
+    "lastUpdate": "Letzte Aktualisierung",
+    "totalScore": "Gesamtscore",
+    "price": "Kurs",
+    "return1Y": "1-Jahres-Rendite",
+    "riskScore": "Risiko-Score",
+    "viewDetails": "Details anzeigen",
+    "exportJSON": "Als JSON exportieren",
+    "noBriefingTitle": "Kein Briefing verfügbar",
+    "noBriefingBody": "Starte den täglichen Lauf, um dein erstes Aktien-Briefing mit Scores und Kurszielen zu erzeugen.",
+    "showing": "Angezeigt",
+    "of": "von",
+    "symbols": "Symbole",
+    "runSummary": "Lauf-Zusammenfassung",
+    "universe": "Universum",
+    "provider": "Datenprovider",
+    "requests": "Anfragen",
+    "dataQuality": "Datenqualität",
+    "avgScore": "Durchschnittlicher Score",
+    "highQuality": "Hohe Qualität",
+    "mediumQuality": "Mittlere Qualität",
+    "lowQuality": "Niedrige Qualität",
+    "missingData": "Fehlende Daten",
+    "criticalMissing": "Kritische Lücken",
+    "additionalAnalysis": "Zusätzliche Analyse empfohlen",
+    "openValuationFor": "Öffne die Bewertungssektion für",
+    "symbolsNeedDocs": "Symbole benötigen Dokumente"
+  },
+  "scoring": {
+    "pillars": {
+      "valuation": "Bewertung",
+      "quality": "Qualität",
+      "technical": "Technik",
+      "risk": "Risiko"
+    },
+    "strategies": {
+      "compounder": "Compounder",
+      "deepValue": "Deep Value",
+      "quant": "Quant",
+      "rocket": "Rocket",
+      "shield": "Shield",
+      "custom": "Benutzerdefiniert"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "general": {
+      "title": "Allgemein",
+      "language": "Sprache",
+      "theme": "Design",
+      "defaultUniverse": "Standard-Universum"
+    },
+    "analysis": {
+      "title": "Analyse",
+      "defaultStrategy": "Standard-Strategie",
+      "minThreshold": "Minimaler Score"
+    },
+    "reset": "Auf Standard zurücksetzen"
+  },
+  "progress": {
+    "connecting": "Verbindung zum Lauf...",
+    "waiting": "Warten auf Server",
+    "running": "Analyse läuft",
+    "phases": {
+      "initializing": "Initialisierung",
+      "data_fetch": "Daten werden geladen",
+      "scoring": "Scoring",
+      "selection": "Top-Picks werden gewählt",
+      "persistence": "Ergebnisse werden gespeichert",
+      "complete": "Abgeschlossen",
+      "error": "Fehler"
+    },
+    "eta": "Restzeit",
+    "elapsed": "Vergangen",
+    "current": "Aktuell",
+    "cacheHitRate": "Cache-Trefferquote",
+    "failed": "Fehlgeschlagen",
+    "cacheHits": "Cache-Treffer",
+    "apiCalls": "API-Aufrufe",
+    "liveUpdates": "Live-Updates",
+    "reconnecting": "Verbindung wird erneut aufgebaut",
+    "failedSymbols": "Symbole fehlgeschlagen, Lauf läuft weiter",
+    "operations": "Operationen",
+    "runFailed": "Lauf fehlgeschlagen",
+    "runId": "Run-ID"
+  },
+  "run": {
+    "latest": "Aktuellstes Briefing",
+    "analysisAsOf": "Analyse vom",
+    "pickOfDay": "Pick des Tages",
+    "run": "Lauf starten",
+    "summary": "Zusammenfassung",
+    "dataQuality": "Datenqualität"
+  },
+  "strategyLab": {
+    "presets": "Strategie-Preset",
+    "customize": "Anpassen",
+    "presetWeights": "Preset-Gewichte",
+    "pillarWeights": "Pillar-Gewichte",
+    "diversification": "Diversifikation",
+    "runAnalysis": "Analyse starten",
+    "selectPreset": "Preset auswählen",
+    "runtime": "Laufzeit",
+    "start": "Starten",
+    "analysisRunning": "Analyse läuft...",
+    "runNotImplemented": "Analyse-Lauf noch nicht implementiert. Hier wird später der Scoring-Lauf mit deiner Konfiguration gestartet.",
+    "confirmRun": "Analyse-Lauf bestätigen",
+    "confirmCopy": "Dieser Lauf bewertet",
+    "estimatedTime": "Geschätzte Zeit"
+  },
+  "footer": {
+    "disclaimer": "Diese Anwendung dient nur zu Informationszwecken und stellt keine Anlageberatung dar. Vergangene Performance ist keine Garantie für zukünftige Ergebnisse. Führen Sie stets eigene Recherchen durch."
+  }
+}

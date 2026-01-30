@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { DEFAULT_SETTINGS } from "@/lib/settings/defaults";
+import { translate, DEFAULT_LANGUAGE } from "@/lib/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,8 +24,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const lang = (DEFAULT_SETTINGS.general.language || DEFAULT_LANGUAGE) as typeof DEFAULT_LANGUAGE;
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-navy-900`}
       >
@@ -46,19 +49,19 @@ export default function RootLayout({
                     href="/"
                     className="text-text-secondary hover:text-text-primary transition-colors"
                   >
-                    Dashboard
+                    {translate("nav.dashboard", lang)}
                   </a>
                   <a
                     href="/strategy-lab"
                     className="text-text-secondary hover:text-text-primary transition-colors"
                   >
-                    Strategy Lab
+                    {translate("nav.strategyLab", lang)}
                   </a>
                   <a
                     href="/settings"
                     className="text-text-secondary hover:text-text-primary transition-colors"
                   >
-                    Settings
+                    {translate("nav.settings", lang)}
                   </a>
                 </nav>
               </div>
@@ -70,10 +73,7 @@ export default function RootLayout({
           <footer className="border-t border-navy-700 bg-navy-800/50">
             <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
               <p className="text-xs text-text-muted">
-                This application is for informational purposes only and does not
-                constitute investment advice. Past performance does not guarantee
-                future results. Always conduct your own research before making
-                investment decisions.
+                {translate("footer.disclaimer", lang)}
               </p>
             </div>
           </footer>

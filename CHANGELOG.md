@@ -10,6 +10,56 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### 2026-01-30
 
+#### Added
+- **Complete Settings System with Persistence (implemented by Kimi)**:
+  - **Purpose**: Transform Settings from placeholder to production-ready user preferences system
+  - **Core Architecture**:
+    - Type-safe settings with TypeScript interfaces (`src/lib/settings/types.ts`)
+    - localStorage persistence with automatic JSON serialization
+    - Cross-tab synchronization via `storage` events
+    - Deep merge for partial updates preserving nested structure
+  - **Settings Categories** (4 main sections):
+    - **General**: Language (de/en), Theme (dark/light), Default Universe, Date Format (EU/US)
+    - **Analysis**: Default Strategy, Risk Tolerance, Minimum Score Threshold, Deep Analysis Warnings
+    - **Display**: Cards per Page, Score Precision, Show Percentiles, Compact View
+    - **Data**: Cache TTL, Auto-refresh, Performance Tracking
+  - **Components** (`src/app/components/SettingsSection.tsx`):
+    - `SettingsSection` - Reusable card container with icon, title, description
+    - `SettingsRow` - Label + description + control layout
+    - `SettingsSelect` - Styled dropdown for options
+    - `SettingsToggle` - Animated toggle switch for booleans
+    - `SettingsNumberInput` - Number input with validation
+    - `SettingsButton` - Styled action buttons (primary/secondary/danger)
+  - **React Hook** (`src/lib/settings/useSettings.ts`):
+    - Reactive settings with `useSettings()` hook
+    - Convenience setters: `setLanguage()`, `setTheme()`, `setDefaultUniverse()`, etc.
+    - `useSetting(category, key)` for accessing single values
+    - `useSettingsReady()` for loading state
+  - **Store Features** (`src/lib/settings/store.ts`):
+    - `SettingsStore` class with singleton pattern
+    - `update()` - Partial updates with deep merge
+    - `updateCategory()` - Update specific category
+    - `reset()` - Restore defaults
+    - `export()` / `import()` - JSON backup/restore
+    - Listener subscription for reactive updates
+  - **Settings Page** (`src/app/settings/page.tsx`):
+    - Full-featured settings UI with all 4 categories
+    - Loading state while settings initialize
+    - Reset confirmation (3-second double-click)
+    - Export/Import functionality for backup
+    - Responsive layout (mobile-friendly)
+    - German language with i18n-ready structure
+  - **Files Created**:
+    - `src/lib/settings/types.ts` - TypeScript interfaces
+    - `src/lib/settings/defaults.ts` - Default values & options
+    - `src/lib/settings/store.ts` - Persistence & sync
+    - `src/lib/settings/useSettings.ts` - React integration
+    - `src/lib/settings/index.ts` - Public API exports
+    - `src/app/components/SettingsSection.tsx` - UI components
+  - **Files Modified**:
+    - `src/app/settings/page.tsx` - Complete rewrite with full settings UI
+  - **Build**: ✅ Next.js build successful, all TypeScript types correct
+
 #### Fixed
 - **Sector Median Threshold Reduced (implemented by Kimi)**:
   - **Problem**: 47% of stocks fell back to global medians because sector sample size threshold was too high (12)
@@ -86,6 +136,12 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - **README rewrite with current product (authored by Codex)**:
   - Rebased `README.md` on the simplified scoring explainer, added marketing-friendly overview, feature tour, quick start, and new screenshots from `latest screenshots/`.
   - Highlighted shipped features (Stock Briefing, Strategy Lab with live progress, Performance Tracker, offline names, backtesting dashboards) and the new `compare-scores` script.
+
+#### Added
+- **Internationalisierung mit Deutsch als Default (implementiert von Codex)**:
+  - Neues i18n-Framework unter `src/lib/i18n/` mit `de.json` (Default) und `en.json`, Übersetzungs-Utility (`index.ts`) und React-Hook `useTranslation`.
+  - Navigation, Footer, Home/Briefing-Startseite, Run-Progress-Indikator, Strategy Lab Config/Run-Button und Dokumenten-Hinweise auf i18n umgestellt; Default-Sprache auf Deutsch gesetzt (`html lang="de"`).
+  - Fallback auf Englisch bei fehlenden Keys; Terminologie vereinheitlicht (Pillar-Gewichte, Diversifikation, Laufstatus, Fehlermeldungen).
 
 #### Added
 - **Score comparison automation (implemented by Codex)**:

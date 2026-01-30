@@ -8,6 +8,7 @@ import { WeightSliders } from "./WeightSliders";
 import { DiversificationControls } from "./DiversificationControls";
 import { DirtyIndicator } from "./DirtyIndicator";
 import { RunAnalysisButton } from "./RunAnalysisButton";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export interface DraftConfig {
   preset: string | null;
@@ -76,6 +77,7 @@ export function ConfigInspector({
   run: RunV1SchemaJson;
   universe: string;
 }) {
+  const { t } = useTranslation();
   const currentConfig = useMemo(() => getCurrentConfig(run), [run]);
   const { draft, setDraft, reset, dirty } = useDraft(universe, currentConfig);
   const [showCustomControls, setShowCustomControls] = useState(!draft.preset);
@@ -121,7 +123,7 @@ export function ConfigInspector({
       {/* Preset Selector */}
       <div>
         <label className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-3 block">
-          Strategy Preset
+          {t("strategyLab.presets")}
         </label>
         <PresetSelector
           selectedPreset={draft.preset}
@@ -135,14 +137,14 @@ export function ConfigInspector({
         <div className="space-y-6 pt-4 border-t border-border-subtle">
           <div>
             <label className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-3 block">
-              Pillar Weights
+              {t("strategyLab.pillarWeights")}
             </label>
             <WeightSliders weights={draft.weights} onChange={handleWeightChange} />
           </div>
 
           <div>
             <label className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-3 block">
-              Diversification
+              {t("strategyLab.diversification")}
             </label>
             <DiversificationControls
               diversification={draft.diversification}
@@ -157,13 +159,13 @@ export function ConfigInspector({
         <div className="pt-4 border-t border-border-subtle">
           <div className="flex items-center justify-between mb-3">
             <label className="text-xs font-medium text-text-tertiary uppercase tracking-wider">
-              Preset Weights
+              {t("strategyLab.presetWeights")}
             </label>
             <button
               onClick={handleCustomize}
               className="text-xs text-accent-500 hover:text-accent-600 transition"
             >
-              Customize
+              {t("strategyLab.customize")}
             </button>
           </div>
           <div className="space-y-2">

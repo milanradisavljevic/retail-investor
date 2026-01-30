@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Props {
   symbols: string[];
@@ -9,6 +10,7 @@ interface Props {
 
 export function DocumentsBanner({ symbols }: Props) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   if (symbols.length === 0) return null;
 
@@ -16,7 +18,7 @@ export function DocumentsBanner({ symbols }: Props) {
     const symbol = symbols[0];
     return (
       <Link
-        href={`/stock/${symbol}#analysis`}
+        href={`/briefing/${symbol}#analysis`}
         className="block bg-accent-gold/10 border border-accent-gold/30 rounded-xl p-4 mb-8 hover:border-accent-gold/60 transition-colors"
       >
         <div className="flex items-start gap-3">
@@ -35,10 +37,11 @@ export function DocumentsBanner({ symbols }: Props) {
           </svg>
           <div>
             <h3 className="text-sm font-medium text-accent-gold mb-1">
-              Additional Analysis Recommended
+              {t("briefing.additionalAnalysis") || "Zusätzliche Analyse empfohlen"}
             </h3>
             <p className="text-sm text-text-secondary">
-              Open the valuation section for <span className="text-text-primary">{symbol}</span>.
+              {t("briefing.openValuationFor") || "Öffne die Bewertungssektion für"}{" "}
+              <span className="text-text-primary">{symbol}</span>.
             </p>
           </div>
         </div>
@@ -64,16 +67,16 @@ export function DocumentsBanner({ symbols }: Props) {
         </svg>
         <div className="flex-1">
           <h3 className="text-sm font-medium text-accent-gold mb-1">
-            Additional Analysis Recommended
+            {t("briefing.additionalAnalysis") || "Zusätzliche Analyse empfohlen"}
           </h3>
           <p className="text-sm text-text-secondary">
-            {symbols.length} symbols need documents.{" "}
+            {symbols.length} {t("briefing.symbolsNeedDocs") || "Symbole brauchen Dokumente."}{" "}
             <button
               type="button"
               className="text-accent-gold underline ml-1"
               onClick={() => setOpen(true)}
             >
-              View list
+              {t("common.viewList") || "Liste anzeigen"}
             </button>
           </p>
         </div>
@@ -81,20 +84,22 @@ export function DocumentsBanner({ symbols }: Props) {
       {open && (
         <div className="mt-3 bg-navy-900/80 border border-accent-gold/30 rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-text-muted uppercase tracking-wider">Symbols</span>
+            <span className="text-xs text-text-muted uppercase tracking-wider">
+              {t("briefing.symbols")}
+            </span>
             <button
               type="button"
               className="text-xs text-text-muted hover:text-text-primary"
               onClick={() => setOpen(false)}
             >
-              Close
+              {t("common.close")}
             </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {symbols.map((s) => (
               <Link
                 key={s}
-                href={`/stock/${s}#analysis`}
+                href={`/briefing/${s}#analysis`}
                 className="text-sm text-text-primary hover:text-accent-gold"
               >
                 {s}

@@ -1,0 +1,138 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "none": "None",
+    "back": "Back",
+    "viewList": "View list",
+    "with": "with"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "strategyLab": "Strategy Lab",
+    "settings": "Settings",
+    "performance": "Performance",
+    "history": "History"
+  },
+  "briefing": {
+    "title": "Latest Analysis",
+    "lastUpdate": "Last Update",
+    "totalScore": "Total Score",
+    "price": "Price",
+    "return1Y": "1Y Return",
+    "riskScore": "Risk Score",
+    "viewDetails": "View Details",
+    "exportJSON": "Export JSON",
+    "noBriefingTitle": "No briefing available",
+    "noBriefingBody": "Run the daily analysis to generate your first stock briefing with scores and price targets.",
+    "showing": "Showing",
+    "of": "of",
+    "symbols": "symbols",
+    "runSummary": "Run Summary",
+    "universe": "Universe",
+    "provider": "Provider",
+    "requests": "Requests",
+    "dataQuality": "Data Quality",
+    "avgScore": "Average Score",
+    "highQuality": "High Quality",
+    "mediumQuality": "Medium Quality",
+    "lowQuality": "Low Quality",
+    "missingData": "Missing Data",
+    "criticalMissing": "Critical gaps",
+    "additionalAnalysis": "Additional analysis recommended",
+    "openValuationFor": "Open the valuation section for",
+    "symbolsNeedDocs": "symbols need documents"
+  },
+  "scoring": {
+    "pillars": {
+      "valuation": "Valuation",
+      "quality": "Quality",
+      "technical": "Technical",
+      "risk": "Risk"
+    },
+    "strategies": {
+      "compounder": "Compounder",
+      "deepValue": "Deep Value",
+      "quant": "Quant",
+      "rocket": "Rocket",
+      "shield": "Shield",
+      "custom": "Custom"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "general": {
+      "title": "General",
+      "language": "Language",
+      "theme": "Theme",
+      "defaultUniverse": "Default Universe"
+    },
+    "analysis": {
+      "title": "Analysis",
+      "defaultStrategy": "Default Strategy",
+      "minThreshold": "Minimum Score"
+    },
+    "reset": "Reset to defaults"
+  },
+  "progress": {
+    "connecting": "Connecting to run...",
+    "waiting": "Waiting for server",
+    "running": "Running analysis",
+    "phases": {
+      "initializing": "Initializing",
+      "data_fetch": "Fetching data",
+      "scoring": "Scoring symbols",
+      "selection": "Selecting top picks",
+      "persistence": "Saving results",
+      "complete": "Complete",
+      "error": "Error"
+    },
+    "eta": "ETA",
+    "elapsed": "Elapsed",
+    "current": "Current",
+    "cacheHitRate": "Cache Hit Rate",
+    "failed": "Failed",
+    "cacheHits": "Cache Hits",
+    "apiCalls": "API Calls",
+    "liveUpdates": "Live updates",
+    "reconnecting": "Reconnecting",
+    "failedSymbols": "symbols failed but run continues",
+    "operations": "operations",
+    "runFailed": "Run failed",
+    "runId": "Run ID"
+  },
+  "run": {
+    "latest": "Latest Briefing",
+    "analysisAsOf": "Analysis as of",
+    "pickOfDay": "Pick of the Day",
+    "run": "Run",
+    "summary": "Summary",
+    "dataQuality": "Data Quality"
+  },
+  "strategyLab": {
+    "presets": "Strategy Preset",
+    "customize": "Customize",
+    "presetWeights": "Preset Weights",
+    "pillarWeights": "Pillar Weights",
+    "diversification": "Diversification",
+    "runAnalysis": "Run Analysis",
+    "selectPreset": "Select preset",
+    "runtime": "Runtime",
+    "start": "Start",
+    "analysisRunning": "Analysis running...",
+    "runNotImplemented": "Run Analysis not yet implemented. This will trigger a scoring run with your custom configuration.",
+    "confirmRun": "Confirm Analysis Run",
+    "confirmCopy": "This will score",
+    "estimatedTime": "Estimated time"
+  },
+  "footer": {
+    "disclaimer": "This application is for informational purposes only and does not constitute investment advice. Past performance does not guarantee future results. Always conduct your own research before making investment decisions."
+  }
+}
