@@ -90,6 +90,10 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Added npm script `compare-scores` for quick execution and documentation at `docs/score-comparison-guide.md` with usage steps and interpretation tips.
   - Note: `PROJECT_CONTEXT.md` not present; implemented based on current repository state and latest runs.
 
+#### Fixed
+- **Hydration warning in ConfigInspector (fixed by Codex)**:
+  - Added `suppressHydrationWarning` to the inspector wrapper to ignore extension-injected attributes (e.g., password managers like ProtonPass) that caused client/server HTML mismatch on hydrate.
+
 ### 2026-01-30
 
 #### Validated

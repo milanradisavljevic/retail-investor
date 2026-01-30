@@ -114,7 +114,7 @@ export function ConfigInspector({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" suppressHydrationWarning>
       {/* Dirty Indicator */}
       {dirty && <DirtyIndicator onReset={reset} currentConfig={currentConfig} draftConfig={draft} />}
 
