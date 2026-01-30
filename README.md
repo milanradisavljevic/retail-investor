@@ -1,9 +1,9 @@
 # Retail Investor MVP
 
 Deterministic stock briefings, strategy lab, and live run tracking for retail investors. Built with Next.js + TypeScript, offline-first data, and a dark finance UI.
+
+
 <img width="902" height="1341" alt="Screenshot 2026-01-30 at 17-03-00 Privatinvestor MVP" src="https://github.com/user-attachments/assets/ce8145e2-4f82-452f-98b8-f4a106a003e6" />
-
-
 
 ## What this project is
 A quantitative scoring and backtesting toolkit that produces investor-friendly briefings. We score every stock on four pillars (Valuation, Quality, Technical, Risk), backtest the strategies, and stream real-time progress while runs are executing—no guesswork, no LLMs in the scoring path.
