@@ -1,0 +1,36 @@
+<svg width="500" height="121" viewBox="0 0 500 121" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(10,5) scale(0.9)">
+  <!-- Logo (magnifying glass) -->
+  <g transform="translate(0, 0)">
+    <!-- Chart Background (Muted) -->
+    <path d="M10 70 L30 65 L50 75 L70 50 L90 60" stroke="#334155" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Lens Clip -->
+    <defs>
+      <clipPath id="lensCombined">
+        <circle cx="50" cy="50" r="35" />
+      </clipPath>
+    </defs>
+    
+    <!-- Chart Foreground (Emphasized inside lens) -->
+    <g clip-path="url(#lensCombined)">
+      <path d="M10 70 L30 65 L50 75 L70 50 L90 60" stroke="#3B82F6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <!-- Magnifier Frame -->
+    <circle cx="50" cy="50" r="35" stroke="white" stroke-width="2" fill="none"/>
+    
+    <!-- Handle -->
+    <path d="M76 76 L90 90" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Text elements -->
+  <g transform="translate(130, 30)">
+    <!-- Main text "Intrinsic." with the period as a blue dot -->
+    <text x="0" y="40" font-family="Inter, sans-serif" font-size="60" font-weight="600" fill="#FFFFFF" letter-spacing="-1.5">Intrinsic<tspan fill="#3B82F6">.</tspan></text>
+    
+    <!-- Slogan -->
+    <text x="0" y="70" font-family="Inter, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" letter-spacing="0.5">QUANTITATIVE STOCK ANALYSIS PLATFORM</text>
+  </g>
+  </g>
+</svg>
