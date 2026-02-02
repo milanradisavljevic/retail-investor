@@ -8,6 +8,93 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-02-02
+
+#### Performance
+- **Russell 2000 Provider Switch to YFinance (Phase 1 - implemented by Claude)**:
+  - **Issue**: Russell 2000 Full was using Finnhub provider with rate limit of 60 requests/minute, causing 60-90 minute runtime for 1,943 symbols.
+  - **Solution**: Switched Russell 2000 Full universe to YFinance provider (no rate limits), reducing runtime from 60-90 min to ~20-30 min.
+  - **Expected Impact**: Immediate 2-3x speedup; enables Phase 2 batch optimization to reach <15 min target.
+  - **Files Changed**: `config/universes/russell2000_full.json`
+
+#### Fixed
+- **Benchmark Forward-Fill to Prevent Fake S&P 500 Crashes (implemented by Codex)**:
+  - **Issue**: Stock detail charts showed severe S&P 500 drops on EU-only trading days because missing SPY candles were replaced with the stock price.
+  - **Solution**: Forward-fill the latest available SPY close when aligning series and keep a safe fallback only if the benchmark is completely absent; added unit coverage for US-holiday gaps.
+  - **Files Changed**: `src/lib/analysis/timeSeriesAnalysis.ts`, `tests/timeSeriesAnalysis.test.ts`
+
+### 2026-02-01
+
+#### Fixed
+- **Recharts React 19 Compatibility & Final Chart Fix (implemented by Gemini)**:
+  - **Issue**: Backtest charts (Equity Curve, Drawdown) and Strategy Lab charts were failing to render due to silent crashes between Recharts v2.12 and React 19.
+  - **Solution**:
+    - Upgraded `recharts` to `@alpha` version (v2.15+) which officially supports React 19 and resolves the hydration/rendering crashes.
+    - Successfully restored all charts in Strategy Lab (EquityCurve.tsx, DrawdownChart.tsx) with full animation and interactivity.
+    - Applied dynamic imports (`ssr: false`) to prevent future hydration issues in Next.js App Router.
+  - **Files Changed**:
+    - `package.json` (upgraded recharts)
+    - `src/app/components/EquityCurve.tsx`
+    - `src/app/components/DrawdownChart.tsx`
+    - `src/app/backtesting/components/EquityCurveChart.tsx`
+    - `src/app/backtesting/components/DrawdownChart.tsx`
+
+- **Performance Timeline Component Refactor (implemented by Gemini)**:
+  - **Issue**: The "Performance vs. Benchmark" chart in the stock detail view was using a manual SVG implementation that lacked interactivity, animations, and visual polish.
+  - **Solution**:
+    - Completely refactored `PerformanceTimeline.tsx` to use the `recharts` library.
+    - Implemented a high-quality `AreaChart` with gradient fills, matching the professional "fire" style of the Strategy Lab charts.
+    - Added custom interactive tooltips, grid lines, and responsive containers.
+    - Maintained all existing functionality (1Y/3Y/5Y period selection, quarterly breakdown tables).
+  - **Files Changed**:
+    - `src/app/components/PerformanceTimeline.tsx`
+
+#### Added
+- **Performance Fetch Instrumentation (implemented by Codex)**:
+  - **Feature**: Detailed per-phase logging for data fetch operations (fundamentals, prices, metadata)
+  - **Implementation**:
+    - Added performance tracking to `src/scoring/fetch.ts` with NDJSON logging
+    - Created analysis script `scripts/analyze-performance.ts` for aggregation
+    - Outputs markdown report to `docs/performance-audit-report.md`
+    - Tracks: Duration, Cache Hit Rate, Provider, Errors per phase
+  - **Usage**:
+    ```bash
+    PERFORMANCE_LOG=true npm run run:daily -- --universe=russell2000_sample
+    npm run analyze:performance
+    ```
+  - **Files Changed**:
+    - `src/scoring/fetch.ts`
+    - `scripts/analyze-performance.ts`
+    - `docs/performance-audit-report.md` (placeholder)
+
+### 2026-02-01
+
+#### Fixed
+- **Recharts React 19 Compatibility & Final Chart Fix (implemented by Gemini)**:
+  - **Issue**: Backtest charts (Equity Curve, Drawdown) and Strategy Lab charts were failing to render due to silent crashes between Recharts v2.12 and React 19.
+  - **Solution**: 
+    - Upgraded `recharts` to `@alpha` version (v2.15+) which officially supports React 19 and resolves the hydration/rendering crashes.
+    - Successfully restored all charts in Strategy Lab (`EquityCurve.tsx`, `DrawdownChart.tsx`) with full animation and interactivity.
+    - Applied dynamic imports (`ssr: false`) to prevent future hydration issues in Next.js App Router.
+  - **Files Changed**:
+    - `package.json` (upgraded recharts)
+    - `src/app/components/EquityCurve.tsx`
+    - `src/app/components/DrawdownChart.tsx`
+
+- **Performance Timeline Component Refactor (implemented by Gemini)**:
+  - **Issue**: The "Performance vs. Benchmark" chart in the stock detail view was using a manual SVG implementation that lacked interactivity, animations, and visual polish ("lackluster").
+  - **Solution**:
+    - Completely refactored `PerformanceTimeline.tsx` to use the `recharts` library.
+    - Implemented a high-quality `AreaChart` with gradient fills, matching the professional "fire" style of the Strategy Lab charts.
+    - Added custom interactive tooltips, grid lines, and responsive containers.
+    - Maintained all existing functionality (1Y/3Y/5Y period selection, quarterly breakdown tables).
+  - **Files Changed**:
+    - `src/app/components/PerformanceTimeline.tsx`
+
+- **TypeScript type-check now clean (0 errors)**: corrected page prop types, score imports, StockDetailView formatting guards, Settings select option types, and settings type exports.
+- **Restored settings barrel exports** (`UserSettings` aliases) and tightened store typings (AppSettings-based).
+- **Tests stabilized**: vitest types added, async price-target tests awaited, selection/data_quality fixtures completed, FundamentalsData test helpers filled, TechnicalMetrics import fixed.
+
 ### 2026-01-31 (Evening Update)
 
 #### Fixed
