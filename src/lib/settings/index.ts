@@ -26,4 +26,7 @@ export { DEFAULT_SETTINGS, SETTINGS_OPTIONS, SETTINGS_LABELS, SETTINGS_VALIDATIO
 export { SettingsStore, settingsStore } from './store';
 
 // React Hook
-export { useSettings, useSetting, useSettingsReady } from './useSettings';
+export { useSettings } from './useSettings';
+
+// Theme Provider
+export { ThemeProvider } from './ThemeProvider';

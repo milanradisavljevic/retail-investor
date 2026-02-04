@@ -1,4 +1,5 @@
 // tests/unit/advanced-signals.test.ts
+import { describe, expect, it } from 'vitest';
 import {
   momentumSoftCapScore,
   technicalScoreSMA_Min,

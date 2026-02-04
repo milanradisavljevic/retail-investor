@@ -9,6 +9,7 @@ import { loadTimeSeriesData } from '@/lib/analysis/timeSeriesAnalysis';
 import { findPeers } from '@/lib/analysis/peerAnalysis';
 import { buildEnhancedPriceTarget } from '@/lib/analysis/priceTargetAnalysis';
 import { getCompanyName } from '@/core/company';
+import { AddToWatchlistButton } from '@/app/components/AddToWatchlistButton';
 
 export default async function StockDetailPage({
   params
@@ -100,7 +101,12 @@ export default async function StockDetailPage({
             {/* Actions */}
             <div className="flex items-center gap-3">
               <ExportButton symbol={symbol} />
-              <AddToWatchlistButton symbol={symbol} />
+              <AddToWatchlistButton
+                symbol={symbol}
+                companyName={companyName}
+                lastScore={stockScore.total_score}
+                lastPrice={currentPrice ?? undefined}
+              />
             </div>
           </div>
           
@@ -258,17 +264,6 @@ function ExportButton({ symbol }: { symbol: string }) {
     >
       Export JSON
     </a>
-  );
-}
-
-function AddToWatchlistButton({ symbol }: { symbol: string }) {
-  // Logic to be implemented. For now just UI.
-  return (
-    <button
-      className="px-4 py-2 text-sm bg-accent-blue text-white rounded-lg hover:bg-accent-blue/90 transition-colors"
-    >
-      Add to Watchlist
-    </button>
   );
 }
 

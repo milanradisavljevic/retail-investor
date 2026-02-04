@@ -5,6 +5,7 @@ import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import StrategyLabClient from "./StrategyLabClient";
 import { SidebarWrapper } from "./SidebarWrapper";
 import { loadUniversesWithMetadata, loadPresets } from "./loaders";
+import { loadRecentBacktests } from "./loadRecentBacktests";
 
 export default async function StrategyLabPage({
   searchParams,
@@ -25,12 +26,13 @@ export default async function StrategyLabPage({
 
   const run: RunV1SchemaJson | null = runData?.run ?? null;
 
-  // Load universes, presets, initial market context, and history server-side
-  const [universes, presets, marketContext, history] = await Promise.all([
+  // Load universes, presets, initial market context, history, and recent backtests server-side
+  const [universes, presets, marketContext, history, recentBacktests] = await Promise.all([
     loadUniversesWithMetadata(),
     loadPresets(),
     getMarketContext().catch(() => null),
     loadRunHistory(10),
+    Promise.resolve(loadRecentBacktests(5)),
   ]);
 
   return (
@@ -44,6 +46,7 @@ export default async function StrategyLabPage({
             universes={universes}
             presets={presets}
             marketContext={marketContext}
+            recentBacktests={recentBacktests}
           />
         </div>
       </main>

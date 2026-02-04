@@ -8,22 +8,30 @@
 import type { FundamentalsData } from '@/data/repositories/fundamentals_repo';
 
 export interface TechnicalMetrics {
-  currentPrice: number;
-  previousClose: number;
-  dayChange: number;
-  dayChangePercent: number;
-  high52Week: number | null;
-  low52Week: number | null;
-  priceReturn5Day: number | null;
-  priceReturn13Week: number | null;
-  priceReturn26Week: number | null;
-  priceReturn52Week: number | null;
-  priceReturnMTD: number | null;
-  priceReturnYTD: number | null;
+  symbol?: string;
+  currentPrice: number | null;
+  previousClose: number | null;
+  dayChange?: number | null;
+  dayChangePercent?: number | null;
+  change?: number | null;
+  percentChange?: number | null;
+  high?: number | null;
+  low?: number | null;
+  open?: number | null;
+  high52Week?: number | null;
+  low52Week?: number | null;
+  priceReturn5Day?: number | null;
+  priceReturn13Week?: number | null;
+  priceReturn26Week?: number | null;
+  priceReturn52Week?: number | null;
+  priceReturnMTD?: number | null;
+  priceReturnYTD?: number | null;
   volatility3Month: number | null;
   beta: number | null;
-  avgVolume10Day: number | null;
-  avgVolume3Month: number | null;
+  avgVolume10Day?: number | null;
+  avgVolume3Month?: number | null;
+  candles?: any[];
+  marketCap?: number | null;
 }
 
 export interface MarketDataProvider {
@@ -37,12 +45,26 @@ export interface MarketDataProvider {
 export type ProviderType = 'finnhub' | 'yfinance' | 'hybrid';
 
 export interface BasicFinancials {
-  metric: Record<string, number | null>;
-  series: {
+  metric?: Record<string, number | null>;
+  series?: {
     annual?: {
       [key: string]: Array<{ period: string; v: number }>;
     };
   };
+  marketCap?: number | null;
+  enterpriseValue?: number | null;
+  trailingPE?: number | null;
+  forwardPE?: number | null;
+  priceToBook?: number | null;
+  priceToSales?: number | null;
+  profitMargin?: number | null;
+  returnOnEquity?: number | null;
+  returnOnAssets?: number | null;
+  debtToEquity?: number | null;
+  currentRatio?: number | null;
+  quickRatio?: number | null;
+  revenueGrowth?: number | null;
+  earningsGrowth?: number | null;
 }
 
 export interface Quote {

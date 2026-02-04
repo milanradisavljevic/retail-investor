@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface RunTriggerButtonProps {
   universe?: string;
@@ -16,9 +17,10 @@ export function RunTriggerButton({
   const [isTriggering, setIsTriggering] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const { t } = useTranslation();
 
   const formattedUniverse = universe.replace(/[_-]+/g, " ").toUpperCase();
-  const resolvedLabel = label ?? `Run ${formattedUniverse}`;
+  const resolvedLabel = label ?? `${t('run.run')} ${formattedUniverse}`;
   const resolvedSymbolCount = symbolCount ?? 1943;
 
   const handleTrigger = async () => {
@@ -37,15 +39,19 @@ export function RunTriggerButton({
       const data = await response.json();
 
       if (data.success) {
-        setMessage(`✓ Run started! Estimated duration: ${data.estimatedDuration}. Refresh page in ~20 minutes.`);
+        const msg = t('run.success')
+          .replace('{duration}', data.estimatedDuration);
+        setMessage(msg);
         setShowConfirm(false);
         // Auto-hide message after 10 seconds
         setTimeout(() => setMessage(null), 10000);
       } else {
-        setMessage(`✗ Error: ${data.error || 'Failed to start run'}`);
+        const msg = t('run.error').replace('{error}', data.error || 'Failed to start run');
+        setMessage(msg);
       }
     } catch (error) {
-      setMessage(`✗ Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const msg = t('run.networkError').replace('{error}', error instanceof Error ? error.message : 'Unknown error');
+      setMessage(msg);
     } finally {
       setIsTriggering(false);
     }
@@ -56,17 +62,18 @@ export function RunTriggerButton({
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-navy-800 border border-navy-700 rounded-xl p-6 max-w-md mx-4">
           <h3 className="text-lg font-semibold text-text-primary mb-2">
-            Confirm Run
+            {t('run.confirmTitle')}
           </h3>
           <p className="text-sm text-text-secondary mb-4">
-            This will start a {formattedUniverse} analysis run with {resolvedSymbolCount.toLocaleString()} symbols.
+            {t('run.confirmBody')
+              .replace('{universe}', formattedUniverse)
+              .replace('{count}', resolvedSymbolCount.toLocaleString())}
             <br />
             <br />
-            <span className="text-accent-gold">⏱️ Estimated duration: 15-25 minutes</span>
+            <span className="text-accent-gold">⏱️ {t('run.estimatedDuration')}</span>
             <br />
             <br />
-            The run will execute in the background. You can continue using the app
-            and refresh the page after ~20 minutes to see the new results.
+            {t('run.backgroundInfo')}
           </p>
           <div className="flex gap-3">
             <button
@@ -74,13 +81,13 @@ export function RunTriggerButton({
               disabled={isTriggering}
               className="flex-1 bg-accent-blue hover:bg-accent-blue/80 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isTriggering ? 'Starting...' : 'Start Run'}
+              {isTriggering ? t('run.starting') : t('run.start')}
             </button>
             <button
               onClick={() => setShowConfirm(false)}
               className="flex-1 bg-navy-700 hover:bg-navy-600 text-text-primary px-4 py-2 rounded-lg font-medium transition-colors"
             >
-              Cancel
+              {t('run.cancel')}
             </button>
           </div>
         </div>

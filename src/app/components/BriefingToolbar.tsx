@@ -3,20 +3,13 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import type { ScoreFilters, SortOption } from "@/lib/scoreView";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface BriefingToolbarProps {
   basePath?: string;
   initialSort: SortOption;
   initialFilters: ScoreFilters;
 }
-
-const sortOptions: Array<{ value: SortOption; label: string }> = [
-  { value: "total", label: "Total" },
-  { value: "expected_return", label: "Expected Return" },
-  { value: "fundamental", label: "Fundamental" },
-  { value: "technical", label: "Technical" },
-  { value: "confidence", label: "Confidence" },
-];
 
 type FlagKey = keyof Pick<
   ScoreFilters,
@@ -37,6 +30,15 @@ export function BriefingToolbar({
 }: BriefingToolbarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
+
+  const sortOptions: Array<{ value: SortOption; label: string }> = [
+    { value: "total", label: t("dashboard.sort.total") },
+    { value: "expected_return", label: t("dashboard.sort.expected_return") },
+    { value: "fundamental", label: t("dashboard.sort.fundamental") },
+    { value: "technical", label: t("dashboard.sort.technical") },
+    { value: "confidence", label: t("dashboard.sort.confidence") },
+  ];
 
   const params = useMemo(() => new URLSearchParams(searchParams?.toString() ?? ""), [searchParams]);
 
@@ -91,7 +93,7 @@ export function BriefingToolbar({
   return (
     <div className="flex flex-wrap items-center gap-3 bg-navy-800 border border-navy-700 rounded-xl px-4 py-3">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-text-muted uppercase tracking-wider">Sort</span>
+        <span className="text-xs text-text-muted uppercase tracking-wider">{t("dashboard.sort.label")}</span>
         <select
           value={currentSort}
           onChange={(e) => updateParams({ sort: e.target.value })}
@@ -106,7 +108,7 @@ export function BriefingToolbar({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-text-muted uppercase tracking-wider">Filters</span>
+        <span className="text-xs text-text-muted uppercase tracking-wider">{t("dashboard.filters.label")}</span>
         <button
           type="button"
           onClick={() => toggleFlag("deepAnalysis")}
@@ -116,7 +118,7 @@ export function BriefingToolbar({
               : "border-navy-600 text-text-secondary hover:border-navy-500"
           }`}
         >
-          Deep Analysis
+          {t("dashboard.filters.deepAnalysis")}
         </button>
         <button
           type="button"
@@ -127,7 +129,7 @@ export function BriefingToolbar({
               : "border-navy-600 text-text-secondary hover:border-navy-500"
           }`}
         >
-          Confidence: Low
+          {t("dashboard.filters.confidenceLow")}
         </button>
         <button
           type="button"
@@ -138,7 +140,7 @@ export function BriefingToolbar({
               : "border-navy-600 text-text-secondary hover:border-navy-500"
           }`}
         >
-          Missing Data
+          {t("dashboard.filters.missingData")}
         </button>
         <button
           type="button"
@@ -149,14 +151,14 @@ export function BriefingToolbar({
               : "border-navy-600 text-text-secondary hover:border-navy-500"
           }`}
         >
-          Upside Negative
+          {t("dashboard.filters.upsideNegative")}
         </button>
         <button
           type="button"
           onClick={resetFilters}
           className="ml-auto text-xs text-text-muted hover:text-text-primary underline"
         >
-          Reset
+          {t("dashboard.filters.reset")}
         </button>
       </div>
     </div>

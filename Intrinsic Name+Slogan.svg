@@ -1,0 +1,7 @@
+<svg width="500" height="120" viewBox="0 0 500 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main text "Intrinsic." with the period as a blue dot -->
+  <text x="0" y="70" font-family="Inter, sans-serif" font-size="60" font-weight="600" fill="#FFFFFF" letter-spacing="-1.5">Intrinsic<tspan fill="#3B82F6">.</tspan></text>
+  
+  <!-- Slogan -->
+  <text x="0" y="100" font-family="Inter, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" letter-spacing="0.5">QUANTITATIVE STOCK ANALYSIS PLATFORM</text>
+</svg>

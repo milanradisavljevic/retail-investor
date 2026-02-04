@@ -9,7 +9,6 @@ import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import type { ScoreQuery } from "@/lib/scoreView";
 import type { SymbolDelta } from "@/lib/runDelta";
 import { Suspense } from "react";
-import type { ScoreV1SchemaJson } from "@/types/generated/run_v1";
 
 interface ModeBadgeProps {
   mode: RunV1SchemaJson["mode"];
@@ -42,7 +41,7 @@ function ModeBadge({ mode }: ModeBadgeProps) {
 }
 
 interface ScoreItem {
-  score: ScoreV1SchemaJson;
+  score: RunV1SchemaJson['scores'][number];
   rank: number;
   delta: SymbolDelta | undefined;
   isPickOfDay?: boolean;

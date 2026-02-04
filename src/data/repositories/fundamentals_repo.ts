@@ -18,10 +18,13 @@ export interface FundamentalsData {
   pbRatio: number | null;
   psRatio: number | null;
   pegRatio: number | null;
+  forwardPE?: number | null;
   roe: number | null;
   roa: number | null;
   debtToEquity: number | null;
   currentRatio: number | null;
+  quickRatio?: number | null;
+  profitMargin?: number | null;
   grossMargin: number | null;
   operatingMargin: number | null;
   netMargin: number | null;
@@ -36,8 +39,12 @@ export interface FundamentalsData {
   analystTargetLow: number | null;
   analystTargetHigh: number | null;
   analystCount: number | null;
+  analystTargetPrice?: number | null;
+  numberOfAnalysts?: number | null;
   nextEarningsDate: string | null;
   beta: number | null;
+  roic?: number | null;
+  evToEbitda?: number | null;
   // Raw API response for debugging
   raw?: Record<string, unknown>;
 }

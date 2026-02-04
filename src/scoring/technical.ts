@@ -62,21 +62,21 @@ export function calculateTechnicalScore(
   }
 
   const {
-    currentPrice,
-    dayChangePercent,
-    high52Week,
-    low52Week,
-    priceReturn5Day,
-    priceReturn13Week,
-    priceReturn26Week,
-    priceReturn52Week,
-    volatility3Month,
-    beta,
+    currentPrice = null,
+    dayChangePercent = null,
+    high52Week = null,
+    low52Week = null,
+    priceReturn5Day = null,
+    priceReturn13Week = null,
+    priceReturn26Week = null,
+    priceReturn52Week = null,
+    volatility3Month = null,
+    beta = null,
   } = metrics;
 
   // Calculate position within 52-week range (0-100)
   let position52Week: number | null = null;
-  if (high52Week && low52Week && high52Week !== low52Week) {
+  if (currentPrice !== null && high52Week && low52Week && high52Week !== low52Week) {
     position52Week = ((currentPrice - low52Week) / (high52Week - low52Week)) * 100;
   }
 
@@ -185,16 +185,17 @@ export function calculateTechnicalScore(
     assumptions.push('Volatility data unavailable - using neutral score');
   }
 
-  // Adjust based on beta
+  // Adjust based on beta (stronger mapping: low beta => safer => higher score)
   if (beta !== null) {
-    // Beta close to 1 = neutral, lower = less risk, higher = more risk
-    if (beta < 0.8) {
-      volatilityScore = Math.min(100, volatilityScore + 10);
-    } else if (beta > 1.5) {
-      volatilityScore = Math.max(0, volatilityScore - 15);
-    } else if (beta > 1.2) {
-      volatilityScore = Math.max(0, volatilityScore - 5);
-    }
+    let betaAdj = 0;
+    if (beta < 0.6) betaAdj = 20;
+    else if (beta < 0.8) betaAdj = 12;
+    else if (beta <= 1.0) betaAdj = 0;
+    else if (beta <= 1.2) betaAdj = -10;
+    else if (beta <= 1.5) betaAdj = -20;
+    else betaAdj = -30;
+
+    volatilityScore = Math.max(0, Math.min(100, volatilityScore + betaAdj));
   }
 
   // Total technical score (weighted: trend 30%, momentum 40%, volatility 30%)

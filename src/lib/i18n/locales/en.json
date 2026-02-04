@@ -19,7 +19,219 @@
     "strategyLab": "Strategy Lab",
     "settings": "Settings",
     "performance": "Performance",
-    "history": "History"
+    "history": "History",
+    "watchlist": "Watchlist"
+  },
+  "dashboard": {
+    "sort": {
+      "label": "Sort",
+      "total": "Total",
+      "expected_return": "Expected Return",
+      "fundamental": "Fundamental",
+      "technical": "Technical",
+      "confidence": "Confidence"
+    },
+    "filters": {
+      "label": "Filters",
+      "deepAnalysis": "Deep Analysis",
+      "confidenceLow": "Confidence: Low",
+      "missingData": "Missing Data",
+      "upsideNegative": "Upside Negative",
+      "reset": "Reset"
+    }
+  },
+  "strategyLab": {
+    "header": {
+      "eyebrow": "Strategy Lab",
+      "title": "Dual-Mode Playbook",
+      "subtitle": "Clear 3-step flow: Select universe, choose strategy, start analysis.",
+      "weightTotal": "Total Weight",
+      "latest": "Latest",
+      "preset": "Preset"
+    },
+    "modes": {
+      "live": {
+        "title": "Live Analysis",
+        "description": "Analyze current market data and find stocks to buy today."
+      },
+      "backtest": {
+        "title": "Backtest",
+        "description": "Test how the strategy would have performed from 2015–2025."
+      }
+    },
+    "actions": {
+      "running": "Analysis Running...",
+      "findTopStocks": "Find Top Stocks Now",
+      "startBacktest": "Start Backtest (2015–2025)",
+      "exportCSV": "Export CSV",
+      "saveWatchlist": "Save Watchlist",
+      "emailReport": "Email Report",
+      "generatePicks": "Generate Picks",
+      "saveConfig": "Save Configuration",
+      "runBacktest": "Run Backtest"
+    },
+    "sections": {
+      "sharedConfig": {
+        "title": "Shared Configuration",
+        "subtitle": "Follow the three steps – affects both Live & Backtest."
+      },
+      "runProgress": {
+        "title": "Run Progress",
+        "subtitle": "Real-time scoring progress"
+      },
+      "runConfig": {
+        "title": "Run Configuration",
+        "subtitle": "Generate picks as of today.",
+        "labels": {
+          "asOfDate": "As of Date",
+          "estimatedRuntime": "Estimated Runtime",
+          "topPicks": "Top Picks",
+          "exports": "Exports"
+        },
+        "liveRunsNote": "Live runs always use today.",
+        "exportsNote": "CSV, watchlist, and email report."
+      },
+      "topPicks": {
+        "title": "Top {count} Stock Picks",
+        "subtitle": "As of {date}",
+        "subtitleSample": "Sample output until a run is available"
+      },
+      "backtestConfig": {
+        "title": "Backtest Configuration",
+        "subtitle": "Define period, rebalancing, slippage, and capital."
+      },
+      "backtestResults": {
+        "title": "Backtest Results",
+        "subtitle": "Quarterly rebalancing output"
+      }
+    },
+    "steps": {
+      "1": "Select your Investment Universe",
+      "2": "Choose a Strategy (or adjust weights)",
+      "3": "Fine-tune Filters (optional)"
+    },
+    "common": {
+      "stocks": "stocks"
+    },
+    "regions": {
+      "US": "🇺🇸 United States",
+      "Europe": "🇪🇺 Europe",
+      "Asia": "🌏 Asia",
+      "LatAm": "🌎 Latin America"
+    },
+    "presets": {
+      "title": "Strategy Presets",
+      "custom": {
+        "label": "Custom",
+        "subtitle": "Manual Weighting",
+        "description": "Freely adjust pillar weights or use your own presets."
+      },
+      "risk": {
+        "low": "Defensive",
+        "medium": "Balanced",
+        "high": "Aggressive"
+      }
+    },
+    "weights": {
+      "title": "Pillar Weights",
+      "weight": "Weight",
+      "presets": {
+        "conservative": "Conservative",
+        "balanced": "Balanced",
+        "aggressive": "Aggressive",
+        "quality": "Quality Focus",
+        "momentum": "Momentum Focus"
+      }
+    },
+    "filters": {
+      "riskExclusion": {
+        "title": "Risk & Exclusion"
+      },
+      "sizeLiquidity": {
+        "title": "Size & Liquidity Filters"
+      },
+      "presets": {
+        "title": "Quick Presets",
+        "description": "1 click for typical compliance sets.",
+        "institutional": "Institutional Safe (recommended)",
+        "liquidity": "Liquidity First"
+      },
+      "crypto": {
+        "label": "Exclude Crypto Mining Stocks",
+        "tooltip": "Removes MARA, RIOT, HUT, COIN & Co. (very high volatility)."
+      },
+      "defense": {
+        "label": "Exclude Defense Companies",
+        "tooltip": "Removes LMT, RTX, NOC, GD, BA and other defense names (ESG)."
+      },
+      "fossil": {
+        "label": "Exclude Fossil Fuel Companies",
+        "tooltip": "Removes oil and gas producers (XOM, CVX, COP ...)."
+      },
+      "minCap": {
+        "label": "Minimum Market Cap",
+        "options": {
+          "all": "All",
+          "mid": "> 500M (Mid Cap)",
+          "large": "> 2B (Large Cap)",
+          "mega": "> 10B (Mega Cap)"
+        }
+      },
+      "minLiquidity": {
+        "label": "Liquidity (avg daily vol, M USD)",
+        "options": {
+          "none": "None",
+          "low": ">= 5M",
+          "medium": ">= 10M",
+          "high": ">= 25M"
+        }
+      }
+    },
+    "backtest": {
+      "timePeriod": "Time Period",
+      "periodError": "Min. period is 1 year. Ensure start < end and within 2015-01-01 to 2026-01-31.",
+      "periodPresets": {
+        "full": "Full Period (2015-2025)",
+        "decade": "Last 10 Years",
+        "fiveYear": "Last 5 Years (2020-2025)",
+        "threeYear": "Last 3 Years",
+        "preCovid": "Pre-COVID (2015-2019)",
+        "covid": "COVID Era (2020-2021)",
+        "postCovid": "Post-COVID (2022-2025)",
+        "bear2022": "2022 Bear Market",
+        "bull2023": "2023 Bull Market"
+      },
+      "rebalancing": "Rebalancing",
+      "rebalancingOptions": {
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "annually": "Annually"
+      },
+      "slippage": "Slippage Model",
+      "slippageOptions": {
+        "optimistic": "Optimistic (0.1-0.5%)",
+        "realistic": "Realistic (0.5-2.0%)",
+        "conservative": "Conservative (1.0-3.0%)"
+      },
+      "startingCapital": "Starting Capital",
+      "runControl": "Run Control",
+      "table": {
+        "metric": "Metric",
+        "columns": {
+          "strategy": "Your Strategy",
+          "sp500": "S&P 500",
+          "russell": "Russell 2000"
+        }
+      },
+      "charts": {
+        "equity": "Equity Curve",
+        "drawdown": "Drawdown"
+      },
+      "recent": {
+        "title": "Recent Backtests",
+        "empty": "No recent backtests found. Run a backtest to see results here."
+      }
+    }
   },
   "briefing": {
     "title": "Latest Analysis",
@@ -68,18 +280,154 @@
   },
   "settings": {
     "title": "Settings",
+    "description": "Customize your analysis settings and display preferences",
     "general": {
       "title": "General",
-      "language": "Language",
-      "theme": "Theme",
-      "defaultUniverse": "Default Universe"
+      "description": "Basic settings for the application",
+      "language": {
+        "label": "Language",
+        "description": "Interface display language"
+      },
+      "theme": {
+        "label": "Theme",
+        "description": "Application color scheme"
+      },
+      "defaultUniverse": {
+        "label": "Default Universe",
+        "description": "Pre-selected stock universe"
+      },
+      "dateFormat": {
+        "label": "Date Format",
+        "description": "Display format for dates"
+      }
     },
     "analysis": {
       "title": "Analysis",
-      "defaultStrategy": "Default Strategy",
-      "minThreshold": "Minimum Score"
+      "description": "Stock analysis configuration",
+      "defaultStrategy": {
+        "label": "Default Strategy",
+        "description": "Preset scoring strategy"
+      },
+      "riskTolerance": {
+        "label": "Risk Tolerance",
+        "description": "Your preferred risk level"
+      },
+      "minScoreThreshold": {
+        "label": "Minimum Score",
+        "description": "Minimum threshold for displayed stocks (0-100)"
+      },
+      "showDeepAnalysisWarnings": {
+        "label": "Deep Analysis Warnings",
+        "description": "Show warnings for stocks with deep analysis"
+      }
     },
-    "reset": "Reset to defaults"
+    "display": {
+      "title": "Display",
+      "description": "Display settings",
+      "cardsPerPage": {
+        "label": "Cards per Page",
+        "description": "Number of stocks displayed per page"
+      },
+      "scorePrecision": {
+        "label": "Score Precision",
+        "description": "Decimal places for scores"
+      },
+      "showPercentiles": {
+        "label": "Show Percentiles",
+        "description": "Show percentile rankings in display"
+      },
+      "compactView": {
+        "label": "Compact View",
+        "description": "Enable space-saving layout"
+      }
+    },
+    "data": {
+      "title": "Data",
+      "description": "Data and cache settings",
+      "cacheTTLDays": {
+        "label": "Cache Duration",
+        "description": "How long data is cached"
+      },
+      "autoRefresh": {
+        "label": "Auto Refresh",
+        "description": "Automatically refresh data on load"
+      },
+      "performanceTracking": {
+        "label": "Performance Tracking",
+        "description": "Enable detailed performance tracking"
+      }
+    },
+    "options": {
+      "language": {
+        "de": "Deutsch",
+        "en": "English"
+      },
+      "theme": {
+        "dark": "Dark",
+        "light": "Light"
+      },
+      "universe": {
+        "test": "Test (5 Stocks)",
+        "sp500": "S&P 500 (Sample)",
+        "sp500_full": "S&P 500 (Full)",
+        "nasdaq100": "NASDAQ 100",
+        "russell2000": "Russell 2000 (Sample)",
+        "russell2000_full": "Russell 2000 (Full)",
+        "dax_full": "DAX 40",
+        "eurostoxx50": "Euro STOXX 50"
+      },
+      "dateFormat": {
+        "EU": "EU (DD.MM.YYYY)",
+        "US": "US (MM/DD/YYYY)"
+      },
+      "riskTolerance": {
+        "conservative": "Conservative",
+        "balanced": "Balanced",
+        "aggressive": "Aggressive"
+      },
+      "scorePrecision": {
+        "0": "Integer (75)",
+        "1": "One decimal (75.2)",
+        "2": "Two decimals (75.23)"
+      },
+      "cardsPerPage": {
+        "10": "10",
+        "20": "20",
+        "50": "50",
+        "100": "100"
+      },
+      "strategy": {
+        "compounder": "Compounder",
+        "deep_value": "Deep Value",
+        "quant": "Quant",
+        "rocket": "Rocket",
+        "shield": "Shield",
+        "custom": "Custom"
+      },
+      "cacheTTLDays": {
+        "1": "1 Day",
+        "7": "7 Days",
+        "30": "30 Days"
+      }
+    },
+    "actions": {
+      "reset": "Reset",
+      "resetConfirm": "Click to confirm",
+      "export": "Export Settings",
+      "import": "Import Settings",
+      "designSystem": "Design System",
+      "backupRestore": "Backup & Restore",
+      "backupDesc": "Export your settings to restore them on another device or keep as a backup."
+    },
+    "messages": {
+      "loading": "Loading settings...",
+      "saved": "✓ Settings saved",
+      "importSuccess": "✓ Settings imported successfully",
+      "importError": "❌ Import failed",
+      "invalidFile": "❌ Invalid file",
+      "readError": "❌ Error reading file",
+      "localStorage": "Settings are stored locally in your browser (localStorage). They are not synchronized with an account."
+    }
   },
   "progress": {
     "connecting": "Connecting to run...",
@@ -114,25 +462,203 @@
     "pickOfDay": "Pick of the Day",
     "run": "Run",
     "summary": "Summary",
-    "dataQuality": "Data Quality"
-  },
-  "strategyLab": {
-    "presets": "Strategy Preset",
-    "customize": "Customize",
-    "presetWeights": "Preset Weights",
-    "pillarWeights": "Pillar Weights",
-    "diversification": "Diversification",
-    "runAnalysis": "Run Analysis",
-    "selectPreset": "Select preset",
-    "runtime": "Runtime",
-    "start": "Start",
-    "analysisRunning": "Analysis running...",
-    "runNotImplemented": "Run Analysis not yet implemented. This will trigger a scoring run with your custom configuration.",
-    "confirmRun": "Confirm Analysis Run",
-    "confirmCopy": "This will score",
-    "estimatedTime": "Estimated time"
+    "dataQuality": "Data Quality",
+    "confirmTitle": "Confirm Run",
+    "confirmBody": "This will start a {universe} analysis run with {count} symbols.",
+    "estimatedDuration": "Estimated duration: 15-25 minutes",
+    "backgroundInfo": "The run will execute in the background. You can continue using the app.",
+    "starting": "Starting...",
+    "start": "Start Run",
+    "cancel": "Cancel",
+    "success": "✓ Run started! Estimated duration: {duration}. Refresh page in ~20 minutes.",
+    "error": "✗ Error: {error}",
+    "networkError": "✗ Network error: {error}"
   },
   "footer": {
     "disclaimer": "This application is for informational purposes only and does not constitute investment advice. Past performance does not guarantee future results. Always conduct your own research before making investment decisions."
+  },
+  "stockDetail": {
+    "latestBriefing": "Latest Briefing",
+    "back": "Back",
+    "openInHistory": "Open in History",
+    "whyThisScore": "Why this score?",
+    "positives": "Positives",
+    "negatives": "Negatives",
+    "warnings": "Warnings",
+    "noPositives": "No positives identified",
+    "noNegatives": "No negatives identified",
+    "noWarnings": "No warnings",
+    "totalScore": "Total Score",
+    "fundamental": "Fundamental",
+    "technical": "Technical",
+    "valuation": "Valuation",
+    "quality": "Quality",
+    "risk": "Risk",
+    "priceTarget": "Price Target",
+    "priceTargetAnalysis": "Price Target Analysis",
+    "enhancedPriceTargetNotAvailable": "Enhanced price target is not available for this symbol",
+    "peerComparison": "Peer Comparison",
+    "peerDataNotAvailable": "Peer data not available for this symbol",
+    "performanceTimeline": "Performance Timeline",
+    "historicalDataNotAvailable": "Historical data not available for this symbol",
+    "runToFetchHistorical": "Run `python scripts/backtesting/fetch-historical.py` to fetch historical data.",
+    "valuationInputs": "Valuation Inputs",
+    "valueDrivers": "Value Drivers",
+    "dataQuality": "Data Quality",
+    "runContext": "Run Context",
+    "metricQuality": "Metric Quality",
+    "provider": "Provider",
+    "requests": "Requests",
+    "runId": "Run ID",
+    "missing": "Missing",
+    "assumptions": "Assumptions",
+    "metric": "Metric",
+    "value": "Value",
+    "source": "Source",
+    "notes": "Notes",
+    "imputed": "imputed",
+    "na": "n/a",
+    "sectorMedians": "Sector Medians",
+    "globalMedians": "Global Medians",
+    "componentContributions": "Component Contributions",
+    "fairValue": "Fair Value",
+    "bounded": "bounded",
+    "raw": "raw",
+    "range": "range",
+    "clamped": "(clamped)",
+    "weight": "w",
+    "sampleSize": "N=",
+    "median": "median",
+    "pe": "PE",
+    "pb": "PB",
+    "ps": "PS",
+    "eps": "EPS",
+    "bookValue": "Book Value/Share",
+    "revenue": "Revenue/Share",
+    "share": "Share",
+    "included": "included",
+    "reason": "reason",
+    "sector": "Sector",
+    "industry": "Industry",
+    "noRunsAvailable": "No runs available",
+    "generateDailyRun": "Generate a daily run to view stock details.",
+    "notInLatestRun": "not in latest run",
+    "notIncludedInBriefing": "The latest briefing does not include {companyName}.",
+    "scanOnlyPhase": "This symbol was included in scan-only phase; run a deep analysis to compute price targets.",
+    "priceTargetNotAvailable": "Price target not available for this symbol.",
+    "enhancedPriceTarget": "Enhanced Price Target Analysis",
+    "peerData": "Peer data",
+    "historicalData": "Historical data",
+    "notAvailableForSymbol": "not available for this symbol",
+    "enhancedPriceTargetNotAvailableForSymbol": "Enhanced price target is not available for this symbol.",
+    "peerDataNotAvailableForSymbol": "Peer data not available for this symbol.",
+    "historicalDataNotAvailableForSymbol": "Historical data not available for this symbol.",
+    "medianSource": "Median Source",
+    "globalFallback": "Global (fallback)",
+    "fallbackReason": "· {reason}",
+    "componentDetails": "{label} · w{weight}{reasonText}",
+    "componentValue": "{value} {clampedText}",
+    "componentNotIncluded": "{label} ({reason})",
+    "fairValueDetails": "Fair Value: raw {raw} → bounded {bounded} (range {min} - {max})",
+    "requestsNA": "N/A",
+    "metricValueNA": "—",
+    "metricValueNumber": "{value}",
+    "metricNotes": "{notes}{imputedText}",
+    "imputedNote": " · imputed",
+    "sourceNA": "n.v.",
+    "assumptionsList": "Assumptions:",
+    "missingFields": "Missing: {fields}",
+    "qualityScore": "Score: {score}",
+    "runProvider": "Provider: {provider}",
+    "runRequests": "Requests: {requests}",
+    "runIdValue": "Run ID: {id}",
+    "metricQualityHeader": "Metric Quality",
+    "metricQualityDescription": "Metric quality not available for this run.",
+    "valuationInputsHeader": "Valuation Inputs",
+    "valuationInputsDescription": "Valuation inputs not available for this run.",
+    "valueDriversHeader": "Value Drivers",
+    "valueDriversDescription": "Value drivers not available for this run.",
+    "dataQualityHeader": "Data Quality",
+    "runContextHeader": "Run Context",
+    "noDataAvailable": "No data available",
+    "valueCoveragePresent": "Valuation inputs: {present}",
+    "valueCoverageMissing": " (missing: {missing})",
+    "sectorMediansDetails": "PE {pe} · PB {pb} · PS {ps}",
+    "globalMediansDetails": "PE {pe} · PB {pb} · PS {ps}",
+    "componentIncluded": "{label} · w{weight}{reasonSuffix}",
+    "componentNotIncludedWithReason": "{label} · w{weight} ({reason})",
+    "componentValueShown": "{value}{clampedSuffix}",
+    "fairValueRawBounded": "Fair Value: raw {raw} → bounded {bounded}",
+    "fairValueRange": "(range {min} - {max})",
+    "runContextProvider": "Provider",
+    "runContextRequests": "Requests",
+    "runContextRunId": "Run ID",
+    "dataQualityScore": "Score",
+    "dataQualityMissing": "Missing",
+    "dataQualityAssumptions": "Assumptions",
+    "metricQualityMetric": "Metric",
+    "metricQualityValue": "Value",
+    "metricQualitySource": "Source",
+    "metricQualityNotes": "Notes",
+    "valueCoveragePresentEmpty": "—",
+    "valueCoverageMissingEmpty": "",
+    "medianSourceGlobal": "Global (fallback)",
+    "medianSourceSector": "Sector",
+    "medianSourceFallback": " · {reason}",
+    "sectorSampleSize": "N={size}",
+    "globalSampleSize": "N={size}",
+    "componentIncludedYes": "included",
+    "componentIncludedNo": "not included",
+    "componentReason": " ({reason})",
+    "componentClamped": " (clamped)",
+    "fairValueRaw": "raw",
+    "fairValueBounded": "bounded",
+    "fairValueRangeText": "range",
+    "requestMadeNA": "N/A",
+    "valueNullUndefined": "—",
+    "valueNumberFormat": "{value}",
+    "notesText": "{notes}",
+    "isImputedText": "imputed",
+    "sourceText": "{source}",
+    "sourceNaText": "n/a",
+    "assumptionItem": "- {assumption}",
+    "missingFieldsText": "{fields}",
+    "missingFieldsJoin": ", ",
+    "metricValueNull": "—",
+    "metricValueNumberValue": "{value}",
+    "metricValueString": "{value}",
+    "metricSourceNull": "n/a",
+    "metricSourceValue": "{source}",
+    "metricNotesValue": "{notes}",
+    "metricNotesImputed": "imputed",
+    "metricNotesCombined": "{notes}{imputedSuffix}",
+    "imputedSuffix": " · imputed",
+    "metricNotesEmpty": "",
+    "metricNotesImputedOnly": "imputed",
+    "metricNotesWithImputed": "{notes} · imputed",
+    "metricNotesWithoutImputed": "{notes}",
+    "metricNotesOnlyImputed": "imputed",
+    "metricNotesOnlyNotes": "{notes}",
+    "metricNotesBoth": "{notes} · imputed"
+  },
+  "watchlist": {
+    "pageTitle": "Watchlist",
+    "emptyTitle": "Your watchlist is empty.",
+    "emptySubtitle": "Add stocks from the detail page to track them here.",
+    "goToBriefing": "Go to Briefing",
+    "watchedStocks": "{count} {singularPlural} watched",
+    "stock": "stock",
+    "stocks": "stocks",
+    "clearAll": "Clear All",
+    "scoreLabel": "Score:",
+    "priceLabel": "Price:",
+    "addedLabel": "Added:",
+    "detailsButton": "Details",
+    "removeButton": "Remove",
+    "loading": "Loading watchlist...",
+    "addToWatchlist": "☆ Add to Watchlist",
+    "inWatchlist": "★ In Watchlist",
+    "addedToast": "✓ Added to watchlist",
+    "removedToast": "✓ Removed from watchlist"
   }
 }

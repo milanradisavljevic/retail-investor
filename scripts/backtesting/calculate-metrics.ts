@@ -37,6 +37,7 @@ export interface RebalanceEvent {
   sold: string[];
   bought: string[];
   turnover: number; // percentage of portfolio traded
+  kept?: string[];
 }
 
 export interface BacktestSummary {
@@ -45,6 +46,7 @@ export interface BacktestSummary {
   metrics: PerformanceMetrics;
   benchmark: PerformanceMetrics;
   outperformance_pct: number;
+  avgMetrics?: Record<string, number | undefined>;
   costs?: {
     totalSlippageCost: number;
     totalTransactionCost: number;
@@ -176,7 +178,8 @@ function calcMetrics(
 export function calculateMetrics(
   records: DailyRecord[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  strategyName = 'Quarterly Rebalance Top 10 Momentum'
 ): BacktestSummary {
   const portfolioMetrics = calcMetrics(records, 'portfolio_value', startDate, endDate);
   const benchmarkMetrics = calcMetrics(records, 'sp500_value', startDate, endDate);
@@ -185,7 +188,7 @@ export function calculateMetrics(
 
   return {
     period: `${startDate} to ${endDate}`,
-    strategy: 'Quarterly Rebalance Top 10 Momentum',
+    strategy: strategyName,
     metrics: portfolioMetrics,
     benchmark: benchmarkMetrics,
     outperformance_pct: Math.round(outperformance * 100) / 100,

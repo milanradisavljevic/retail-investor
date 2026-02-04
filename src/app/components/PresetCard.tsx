@@ -15,19 +15,21 @@ interface PresetCardProps {
   weights: { v: number; q: number; t: number; r: number };
   selected: boolean;
   onClick: () => void;
+  riskLabels?: Partial<Record<RiskLevel, string>>;
 }
 
-export function PresetCard({ name, subtitle, description, icon, riskLevel, weights, selected, onClick }: PresetCardProps) {
+export function PresetCard({ name, subtitle, description, icon, riskLevel, weights, selected, onClick, riskLabels }: PresetCardProps) {
   const riskColors: Record<RiskLevel, string> = {
     low: 'bg-emerald-500',
     medium: 'bg-amber-500',
     high: 'bg-red-500',
   };
-  const riskLabels: Record<RiskLevel, string> = {
-    low: 'Defensiv',
-    medium: 'Ausgewogen',
-    high: 'Aggressiv',
+  const defaultRiskLabels: Record<RiskLevel, string> = {
+    low: 'Defensive',
+    medium: 'Balanced',
+    high: 'Aggressive',
   };
+  const displayLabel = riskLabels?.[riskLevel] ?? defaultRiskLabels[riskLevel];
 
   return (
     <button
@@ -50,7 +52,7 @@ export function PresetCard({ name, subtitle, description, icon, riskLevel, weigh
         </div>
         <div className="flex items-center gap-1 text-xs text-slate-400">
           <span className={`w-2 h-2 rounded-full ${riskColors[riskLevel]}`} />
-          {riskLabels[riskLevel]}
+          {displayLabel}
         </div>
       </div>
       <p className="text-xs text-slate-400 mb-3 leading-relaxed">{description}</p>

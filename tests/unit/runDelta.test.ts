@@ -13,7 +13,7 @@ function makeDataQuality() {
     missing_critical: [],
     metrics: {},
     missing_fields: [],
-    assumptions: [],
+    assumptions: [] as [],
     adjusted_price_mode: 'adjusted' as const,
   };
 }
@@ -71,6 +71,25 @@ function makeRun(
     string,
     string
   ];
+  const top15 = Array(15).fill(primarySymbol) as [
+    string,string,string,string,string,
+    string,string,string,string,string,
+    string,string,string,string,string
+  ];
+  const top20 = Array(20).fill(primarySymbol) as [
+    string,string,string,string,string,
+    string,string,string,string,string,
+    string,string,string,string,string,
+    string,string,string,string,string
+  ];
+  const top30 = Array(30).fill(primarySymbol) as [
+    string,string,string,string,string,
+    string,string,string,string,string,
+    string,string,string,string,string,
+    string,string,string,string,string,
+    string,string,string,string,string,
+    string,string,string,string,string
+  ];
 
   return {
     run_id: overrides?.run_id ?? 'run-latest',
@@ -119,6 +138,9 @@ function makeRun(
     selections: {
       top5,
       top10,
+      top15,
+      top20,
+      top30,
       pick_of_the_day: primarySymbol,
     },
     flags: {

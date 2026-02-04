@@ -102,6 +102,15 @@ export function RunProgressIndicator({ runId, onComplete, onError }: Props) {
     return () => clearInterval(timer);
   }, [progress?.startTime]);
 
+  const phaseInfo = useMemo(() => {
+    if (!progress) return null;
+    const info = PHASE_LABELS[progress.currentPhase];
+    return {
+      ...info,
+      label: t(info.key),
+    };
+  }, [progress?.currentPhase, t, progress]);
+
   if (error) {
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-900/10 p-4">
@@ -143,14 +152,6 @@ export function RunProgressIndicator({ runId, onComplete, onError }: Props) {
       ? Math.max(0, progress.estimatedCompletion - Date.now())
       : 0;
 
-  const phaseInfo = useMemo(() => {
-    const info = PHASE_LABELS[progress.currentPhase];
-    return {
-      ...info,
-      label: t(info.key),
-    };
-  }, [progress.currentPhase, t]);
-
   return (
     <div className="space-y-4 rounded-xl border border-[#1F2937] bg-[#111827] p-5 shadow-lg">
       {/* Header */}
@@ -164,9 +165,9 @@ export function RunProgressIndicator({ runId, onComplete, onError }: Props) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 animate-pulse rounded-full ${phaseInfo.color}`} />
+          <span className={`h-2 w-2 animate-pulse rounded-full ${phaseInfo?.color ?? 'bg-slate-500'}`} />
           <span className="text-sm text-[#94A3B8]">
-            {phaseInfo.icon} {phaseInfo.label}
+            {phaseInfo?.icon ?? '⌛'} {phaseInfo?.label ?? t('progress.phases.initializing')}
           </span>
         </div>
       </div>

@@ -14,6 +14,7 @@ import { FilterCheckbox } from "@/app/components/FilterCheckbox";
 import { useDraftConfig, type DraftConfig } from "@/hooks/useDraftConfig";
 import { DirtyStateIndicator } from "@/app/components/DirtyStateIndicator";
 import { RunProgressIndicator } from "@/app/components/RunProgressIndicator";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type PillarWeights = {
   valuation: number;
@@ -153,18 +154,7 @@ const SAMPLE_BACKTEST: BacktestMetrics = {
   winRate: 55,
 };
 
-const SAMPLE_RECENT_BACKTESTS = [
-  {
-    title: "Russell2000 4-Pillar (Quality Focus)",
-    ago: "2h ago",
-    metrics: "61.69% Return | -23.86% DD",
-  },
-  {
-    title: "S&P500 Momentum-Only",
-    ago: "Yesterday",
-    metrics: "86.36% Return | -13.72% DD",
-  },
-];
+// Removed SAMPLE_RECENT_BACKTESTS - now loaded server-side from actual backtest files
 
 const SAMPLE_EQUITY: Array<{ date: string; portfolio_value: number; sp500_value: number }> = Array.from({ length: 12 }).map(
   (_, i) => {
@@ -318,10 +308,12 @@ function UniverseSelector({
   value,
   onChange,
   universes,
+  t,
 }: {
   value: string;
   onChange: (id: string) => void;
   universes: UniverseWithMetadata[];
+  t: (key: string) => string;
 }) {
   // Group by region
   const grouped = useMemo(() => {
@@ -366,10 +358,7 @@ function UniverseSelector({
         return (
           <div key={region}>
             <p className="text-xs uppercase tracking-wide text-[#94A3B8] mb-2 font-semibold">
-              {region === 'US' && '🇺🇸 United States'}
-              {region === 'Europe' && '🇪🇺 Europe'}
-              {region === 'Asia' && '🌏 Asia'}
-              {region === 'LatAm' && '🌎 Latin America'}
+              {t(`strategyLab.regions.${region}`)}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {items.map((universe) => (
@@ -401,7 +390,7 @@ function UniverseSelector({
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-[#94A3B8]">
-                    <span>{universe.symbol_count} stocks</span>
+                    <span>{universe.symbol_count} {t('strategyLab.common.stocks')}</span>
                     <span className="font-mono">{formatRuntime(universe.estimatedRuntimeMin)}</span>
                   </div>
                 </button>
@@ -418,10 +407,12 @@ function PresetSelector({
   value,
   onChange,
   presets,
+  t,
 }: {
   value: string | null;
   onChange: (id: string | null, weights?: PillarWeights) => void;
   presets: PresetConfig[];
+  t: (key: string) => string;
 }) {
   const riskMap: Record<string, "low" | "medium" | "high"> = {
     shield: "low",
@@ -439,14 +430,19 @@ function PresetSelector({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-[#E2E8F0] font-semibold">Strategy Presets</p>
+      <p className="text-sm text-[#E2E8F0] font-semibold">{t('strategyLab.presets.title')}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <PresetCard
-          name="Custom"
-          subtitle="Manuelle Gewichtung"
-          description="Passe Pillar-Gewichte frei an oder nutze eigene Vorgaben."
+          name={t('strategyLab.presets.custom.label')}
+          subtitle={t('strategyLab.presets.custom.subtitle')}
+          description={t('strategyLab.presets.custom.description')}
           icon="⚙️"
           riskLevel="medium"
+          riskLabels={{
+            low: t('strategyLab.presets.risk.low'),
+            medium: t('strategyLab.presets.risk.medium'),
+            high: t('strategyLab.presets.risk.high'),
+          }}
           weights={{ v: 25, q: 25, t: 25, r: 25 }}
           selected={value === null}
           onClick={() => onChange(null)}
@@ -459,6 +455,11 @@ function PresetSelector({
             description={preset.description}
             icon={iconFor(preset.id)}
             riskLevel={riskMap[preset.id] ?? "medium"}
+            riskLabels={{
+              low: t('strategyLab.presets.risk.low'),
+              medium: t('strategyLab.presets.risk.medium'),
+              high: t('strategyLab.presets.risk.high'),
+            }}
             weights={{
               v: Math.round(preset.pillar_weights.valuation * 100),
               q: Math.round(preset.pillar_weights.quality * 100),
@@ -477,24 +478,26 @@ function PresetSelector({
 function WeightEditor({
   weights,
   onChange,
+  t,
 }: {
   weights: PillarWeights;
   onChange: (next: PillarWeights) => void;
+  t: (key: string) => string;
 }) {
   const total = weights.valuation + weights.quality + weights.technical + weights.risk;
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[#E2E8F0] font-semibold">Pillar Weights</p>
+        <p className="text-sm text-[#E2E8F0] font-semibold">{t('strategyLab.weights.title')}</p>
         <ValidationBadge total={total} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(
           [
-            { key: "valuation", label: "Valuation", color: "#3B82F6" },
-            { key: "quality", label: "Quality", color: "#10B981" },
-            { key: "technical", label: "Technical", color: "#F59E0B" },
-            { key: "risk", label: "Risk", color: "#EF4444" },
+            { key: "valuation", label: t('scoring.pillars.valuation'), color: "#3B82F6" },
+            { key: "quality", label: t('scoring.pillars.quality'), color: "#10B981" },
+            { key: "technical", label: t('scoring.pillars.technical'), color: "#F59E0B" },
+            { key: "risk", label: t('scoring.pillars.risk'), color: "#EF4444" },
           ] as const
         ).map(({ key, label, color }) => (
           <div
@@ -507,7 +510,7 @@ function WeightEditor({
                 <p className="text-sm font-medium text-[#E2E8F0]">{label}</p>
               </div>
               <div className="flex items-center gap-2">
-                <div className="text-xs text-[#94A3B8]">Weight</div>
+                <div className="text-xs text-[#94A3B8]">{t('strategyLab.weights.weight')}</div>
                 <input
                   type="number"
                   value={weights[key]}
@@ -545,7 +548,7 @@ function WeightEditor({
             onClick={() => onChange(preset.weights)}
             className="text-xs px-3 py-2 rounded-lg border border-[#1F2937] bg-[#0F172A] text-[#E2E8F0] hover:border-[#3B82F6] transition-all"
           >
-            {preset.label}
+            {t(`strategyLab.weights.presets.${key}`) || preset.label}
           </button>
         ))}
       </div>
@@ -553,42 +556,43 @@ function WeightEditor({
   );
 }
 
-function FilterPanel({ filters, onChange }: { filters: FilterState; onChange: (f: FilterState) => void }) {
+function FilterPanel({ filters, onChange, t }: { filters: FilterState; onChange: (f: FilterState) => void; t: (key: string) => string }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 space-y-3">
-        <p className="text-sm font-semibold text-[#E2E8F0]">Risiko & Exklusion</p>
+        <p className="text-sm font-semibold text-[#E2E8F0]">{t('strategyLab.filters.riskExclusion.title')}</p>
         <FilterCheckbox
-          label="Crypto-Mining-Aktien ausschließen"
-          tooltip="Entfernt MARA, RIOT, HUT, COIN & Co. (sehr hohe Volatilität)."
+          label={t('strategyLab.filters.crypto.label')}
+          tooltip={t('strategyLab.filters.crypto.tooltip')}
           checked={filters.excludeCrypto}
           recommended
+          recommendedLabel={t('strategyLab.filters.presets.institutional') || 'Recommended'}
           onChange={(v) => onChange({ ...filters, excludeCrypto: v })}
         />
         <FilterCheckbox
-          label="Rüstungsunternehmen ausschließen"
-          tooltip="Entfernt LMT, RTX, NOC, GD, BA und weitere Defense-Namen (ESG)."
+          label={t('strategyLab.filters.defense.label')}
+          tooltip={t('strategyLab.filters.defense.tooltip')}
           checked={filters.excludeDefense}
           onChange={(v) => onChange({ ...filters, excludeDefense: v })}
         />
         <FilterCheckbox
-          label="Fossil-Fuel-Unternehmen ausschließen"
-          tooltip="Entfernt Öl- und Gasproduzenten (XOM, CVX, COP ...)."
+          label={t('strategyLab.filters.fossil.label')}
+          tooltip={t('strategyLab.filters.fossil.tooltip')}
           checked={filters.excludeFossil}
           onChange={(v) => onChange({ ...filters, excludeFossil: v })}
         />
       </div>
 
       <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 space-y-3">
-        <p className="text-sm font-semibold text-[#E2E8F0]">Größen- & Liquiditätsfilter</p>
+        <p className="text-sm font-semibold text-[#E2E8F0]">{t('strategyLab.filters.sizeLiquidity.title')}</p>
         <div className="space-y-2">
-          <p className="text-xs text-slate-400">Mindest-Marktkapitalisierung</p>
+          <p className="text-xs text-slate-400">{t('strategyLab.filters.minCap.label')}</p>
           <div className="flex flex-wrap gap-2">
             {[
-              { label: "Alle", value: 0 },
-              { label: "> 500M (Mid Cap)", value: 500 },
-              { label: "> 2B (Large Cap)", value: 2000 },
-              { label: "> 10B (Mega Cap)", value: 10000 },
+              { label: t('strategyLab.filters.minCap.options.all'), value: 0 },
+              { label: t('strategyLab.filters.minCap.options.mid'), value: 500 },
+              { label: t('strategyLab.filters.minCap.options.large'), value: 2000 },
+              { label: t('strategyLab.filters.minCap.options.mega'), value: 10000 },
             ].map((opt) => (
               <button
                 key={opt.value}
@@ -606,13 +610,13 @@ function FilterPanel({ filters, onChange }: { filters: FilterState; onChange: (f
           </div>
         </div>
         <div className="space-y-2">
-          <p className="text-xs text-slate-400">Liquidität (ø Tagesumsatz, Mio USD)</p>
+          <p className="text-xs text-slate-400">{t('strategyLab.filters.minLiquidity.label')}</p>
           <div className="flex gap-2">
             {[
-              { label: "None", value: 0 },
-              { label: ">= 5M", value: 5 },
-              { label: ">= 10M", value: 10 },
-              { label: ">= 25M", value: 25 },
+              { label: t('strategyLab.filters.minLiquidity.options.none'), value: 0 },
+              { label: t('strategyLab.filters.minLiquidity.options.low'), value: 5 },
+              { label: t('strategyLab.filters.minLiquidity.options.medium'), value: 10 },
+              { label: t('strategyLab.filters.minLiquidity.options.high'), value: 25 },
             ].map((opt) => (
               <button
                 key={opt.value}
@@ -632,8 +636,8 @@ function FilterPanel({ filters, onChange }: { filters: FilterState; onChange: (f
       </div>
 
       <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 space-y-3">
-        <p className="text-sm font-semibold text-[#E2E8F0] mb-1">Schnell-Presets</p>
-        <p className="text-xs text-slate-500">1 Klick für typische Compliance-Sets.</p>
+        <p className="text-sm font-semibold text-[#E2E8F0] mb-1">{t('strategyLab.filters.presets.title')}</p>
+        <p className="text-xs text-slate-500">{t('strategyLab.filters.presets.description')}</p>
         <div className="flex flex-col gap-2">
           <button
             onClick={() =>
@@ -647,7 +651,7 @@ function FilterPanel({ filters, onChange }: { filters: FilterState; onChange: (f
             }
             className="text-xs px-3 py-2 rounded-lg border border-emerald-500/60 text-emerald-100 bg-emerald-500/10 hover:border-emerald-400"
           >
-            Institutional Safe (empfohlen)
+            {t('strategyLab.filters.presets.institutional')}
           </button>
           <button
             onClick={() =>
@@ -661,7 +665,7 @@ function FilterPanel({ filters, onChange }: { filters: FilterState; onChange: (f
             }
             className="text-xs px-3 py-2 rounded-lg border border-slate-700 text-slate-200 bg-slate-800/60 hover:border-slate-500"
           >
-            Liquidity First
+            {t('strategyLab.filters.presets.liquidity')}
           </button>
         </div>
       </div>
@@ -669,7 +673,7 @@ function FilterPanel({ filters, onChange }: { filters: FilterState; onChange: (f
   );
 }
 
-function LiveRunOutput({ picks }: { picks: LivePick[] }) {
+function LiveRunOutput({ picks, t }: { picks: LivePick[]; t: (key: string) => string }) {
   return (
     <div className="space-y-3">
       {picks.map((pick) => (
@@ -689,7 +693,7 @@ function LiveRunOutput({ picks }: { picks: LivePick[] }) {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Total Score</p>
+              <p className="text-xs text-[#94A3B8] uppercase tracking-wide">{t('briefing.totalScore')}</p>
               <p className="text-2xl font-bold text-[#E2E8F0]">
                 {pick.totalScore !== null ? pick.totalScore.toFixed(1) : "--"}
               </p>
@@ -718,10 +722,10 @@ function LiveRunOutput({ picks }: { picks: LivePick[] }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
             {(
               [
-                { key: "valuation", label: "Valuation", color: "#3B82F6" },
-                { key: "quality", label: "Quality", color: "#10B981" },
-                { key: "technical", label: "Technical", color: "#F59E0B" },
-                { key: "risk", label: "Risk", color: "#EF4444" },
+                { key: "valuation", label: t('scoring.pillars.valuation'), color: "#3B82F6" },
+                { key: "quality", label: t('scoring.pillars.quality'), color: "#10B981" },
+                { key: "technical", label: t('scoring.pillars.technical'), color: "#F59E0B" },
+                { key: "risk", label: t('scoring.pillars.risk'), color: "#EF4444" },
               ] as const
             ).map(({ key, label, color }) => (
               <div
@@ -744,7 +748,7 @@ function LiveRunOutput({ picks }: { picks: LivePick[] }) {
   );
 }
 
-function MetricsTable({ metrics }: { metrics: BacktestMetrics }) {
+function MetricsTable({ metrics, t }: { metrics: BacktestMetrics; t: (key: string) => string }) {
   const rows = [
     { label: "Total Return", value: metrics.totalReturn, benchmark: 95.3, russell: 45.2 },
     { label: "Annualized Return", value: metrics.annualizedReturn, benchmark: 14.32, russell: 7.8 },
@@ -758,10 +762,10 @@ function MetricsTable({ metrics }: { metrics: BacktestMetrics }) {
       <table className="min-w-full bg-[#0F172A]">
         <thead className="bg-[#111827] text-[#E2E8F0] text-xs uppercase tracking-wide">
           <tr>
-            <th className="px-4 py-3 text-left">Metric</th>
-            <th className="px-4 py-3 text-left">Your Strategy</th>
-            <th className="px-4 py-3 text-left">S&P 500</th>
-            <th className="px-4 py-3 text-left">Russell 2000</th>
+            <th className="px-4 py-3 text-left">{t('strategyLab.backtest.table.metric')}</th>
+            <th className="px-4 py-3 text-left">{t('strategyLab.backtest.table.columns.strategy')}</th>
+            <th className="px-4 py-3 text-left">{t('strategyLab.backtest.table.columns.sp500')}</th>
+            <th className="px-4 py-3 text-left">{t('strategyLab.backtest.table.columns.russell')}</th>
           </tr>
         </thead>
         <tbody>
@@ -795,12 +799,15 @@ export default function StrategyLabClient({
   universes,
   presets,
   marketContext,
+  recentBacktests = [],
 }: {
   latestRun: RunV1SchemaJson | null;
   universes: UniverseWithMetadata[];
   presets: PresetConfig[];
   marketContext?: MarketContextResponse | null;
+  recentBacktests?: Array<{ title: string; ago: string; metrics: string }>;
 }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"live" | "backtest">("live");
 
   // Initialize default universe
@@ -1088,10 +1095,10 @@ export default function StrategyLabClient({
       <header className="rounded-2xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#0F172A] px-6 py-5 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#94A3B8]">Strategy Lab</p>
-            <h1 className="text-2xl font-semibold text-[#F8FAFC]">Dual-Mode Playbook</h1>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#94A3B8]">{t('strategyLab.header.eyebrow')}</p>
+            <h1 className="text-2xl font-semibold text-[#F8FAFC]">{t('strategyLab.header.title')}</h1>
             <p className="text-sm text-[#94A3B8]">
-              Klarer 3-Schritte-Flow: Universum wählen, Strategie wählen, Analyse starten.
+              {t('strategyLab.header.subtitle')}
             </p>
           </div>
         </div>
@@ -1108,10 +1115,10 @@ export default function StrategyLabClient({
           >
             <div className="flex items-center gap-2 mb-1">
               <span className="text-emerald-400">⚡</span>
-              <span className="font-semibold text-white">Live-Analyse</span>
+              <span className="font-semibold text-white">{t('strategyLab.modes.live.title')}</span>
             </div>
             <p className="text-xs text-slate-400">
-              Analysiere aktuelle Marktdaten und erhalte heute kaufenswerte Aktien.
+              {t('strategyLab.modes.live.description')}
             </p>
           </div>
           <div
@@ -1125,10 +1132,10 @@ export default function StrategyLabClient({
           >
             <div className="flex items-center gap-2 mb-1">
               <span className="text-blue-400">⏱️</span>
-              <span className="font-semibold text-white">Backtest</span>
+              <span className="font-semibold text-white">{t('strategyLab.modes.backtest.title')}</span>
             </div>
             <p className="text-xs text-slate-400">
-              Teste, wie die Strategie von 2015–2025 performt hätte.
+              {t('strategyLab.modes.backtest.description')}
             </p>
           </div>
         </div>
@@ -1150,16 +1157,16 @@ export default function StrategyLabClient({
           {activeTab === "live" ? (
             currentRunId ? (
               <>
-                <span className="text-lg">⏳</span> Analysis Running...
+                <span className="text-lg">⏳</span> {t('strategyLab.actions.running')}
               </>
             ) : (
               <>
-                <span className="text-lg">⚡</span> Top-Aktien jetzt finden
+                <span className="text-lg">⚡</span> {t('strategyLab.actions.findTopStocks')}
               </>
             )
           ) : (
             <>
-              <span className="text-lg">▶</span> Backtest starten (2015–2025)
+              <span className="text-lg">▶</span> {t('strategyLab.actions.startBacktest')}
             </>
           )}
         </button>
@@ -1170,7 +1177,7 @@ export default function StrategyLabClient({
               <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] flex items-center gap-1.5">
                 <span>{selectedUniverseMeta.flag}</span>
                 <span>{selectedUniverseMeta.name}</span>
-                <span className="text-[#64748B]">({selectedUniverseMeta.symbol_count} stocks)</span>
+                <span className="text-[#64748B]">({selectedUniverseMeta.symbol_count} {t('strategyLab.common.stocks')})</span>
               </span>
               <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] font-mono">
                 Runtime: {formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)}
@@ -1179,15 +1186,15 @@ export default function StrategyLabClient({
           )}
           {selectedPreset && (
             <span className="px-3 py-1 rounded-full border border-[#3B82F6]/30 bg-[#0B1220] text-[#E2E8F0]">
-              Preset: {presets.find(p => p.id === selectedPreset)?.name || selectedPreset}
+              {t('strategyLab.header.preset')}: {presets.find(p => p.id === selectedPreset)?.name || selectedPreset}
             </span>
           )}
           <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220]">
-            Weight total: {weightTotal}%
+            {t('strategyLab.header.weightTotal')}: {weightTotal}%
           </span>
           {latestRun && (
             <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
-              Latest: {latestRun.as_of_date}
+              {t('strategyLab.header.latest')}: {latestRun.as_of_date}
             </span>
           )}
         </div>
@@ -1196,41 +1203,44 @@ export default function StrategyLabClient({
       <MarketContextBar initialData={marketContext ?? undefined} />
 
       <SectionCard
-        title="Shared Configuration"
-        subtitle="Folge den drei Schritten – alles wirkt auf Live & Backtest."
+        title={t('strategyLab.sections.sharedConfig.title')}
+        subtitle={t('strategyLab.sections.sharedConfig.subtitle')}
       >
-        <div className="space-y-6">
+        {/* Proton Pass injects data-protonpass-form on mount in some browsers; suppress hydration diff */}
+        <div className="space-y-6" suppressHydrationWarning>
           <div className="space-y-3">
-            <StepLabel step={1}>Wähle dein Anlageuniversum</StepLabel>
+            <StepLabel step={1}>{t('strategyLab.steps.1')}</StepLabel>
             <UniverseSelector
               value={selectedUniverse}
               onChange={setSelectedUniverse}
               universes={universes}
+              t={t}
             />
           </div>
 
           <div className="space-y-3">
-            <StepLabel step={2}>Wähle eine Strategie (oder passe Gewichte an)</StepLabel>
+            <StepLabel step={2}>{t('strategyLab.steps.2')}</StepLabel>
             <PresetSelector
               value={selectedPreset}
               onChange={handlePresetChange}
               presets={presets}
+              t={t}
             />
           </div>
 
           <div className="space-y-3">
-            <WeightEditor weights={weights} onChange={setWeights} />
+            <WeightEditor weights={weights} onChange={setWeights} t={t} />
           </div>
 
           <div className="space-y-3">
-            <StepLabel step={3}>Feinjustiere Filter (optional)</StepLabel>
-            <FilterPanel filters={filters} onChange={setFilters} />
+            <StepLabel step={3}>{t('strategyLab.steps.3')}</StepLabel>
+            <FilterPanel filters={filters} onChange={setFilters} t={t} />
           </div>
         </div>
       </SectionCard>
 
       {activeTab === "live" && currentRunId && (
-        <SectionCard title="Run Progress" subtitle="Real-time scoring progress">
+        <SectionCard title={t('strategyLab.sections.runProgress.title')} subtitle={t('strategyLab.sections.runProgress.subtitle')}>
           <RunProgressIndicator
             runId={currentRunId}
             onComplete={handleRunComplete}
@@ -1241,15 +1251,15 @@ export default function StrategyLabClient({
 
       {activeTab === "live" && (
         <div className="space-y-6">
-          <SectionCard title="Run Configuration" subtitle="Generate picks as of today.">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <SectionCard title={t('strategyLab.sections.runConfig.title')} subtitle={t('strategyLab.sections.runConfig.subtitle')}>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4" suppressHydrationWarning>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">As of Date</p>
+                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">{t('strategyLab.sections.runConfig.labels.asOfDate')}</p>
                 <p className="text-lg text-[#E2E8F0] font-semibold">{liveAsOfDate}</p>
-                <p className="text-xs text-[#64748B]">Live runs always use today.</p>
+                <p className="text-xs text-[#64748B]">{t('strategyLab.sections.runConfig.liveRunsNote')}</p>
               </div>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Estimated Runtime</p>
+                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">{t('strategyLab.sections.runConfig.labels.estimatedRuntime')}</p>
                 <p className="text-lg text-[#E2E8F0] font-semibold font-mono">
                   {selectedUniverseMeta ? runtimeEstimate(selectedUniverseMeta.symbol_count ?? 0, "live").label : '--'}
                 </p>
@@ -1260,7 +1270,7 @@ export default function StrategyLabClient({
                 </p>
               </div>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Top Picks</p>
+                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">{t('strategyLab.sections.runConfig.labels.topPicks')}</p>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -1270,23 +1280,23 @@ export default function StrategyLabClient({
                     onChange={(e) => setTopK(clampNumber(Number(e.target.value), 1, 20))}
                     className="w-20 bg-[#0B1220] border border-[#1F2937] rounded px-2 py-2 text-sm text-[#E2E8F0]"
                   />
-                  <span className="text-xs text-[#94A3B8]">stocks</span>
+                  <span className="text-xs text-[#94A3B8]">{t('strategyLab.common.stocks')}</span>
                 </div>
               </div>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3 flex flex-col justify-between">
                 <div>
-                  <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Exports</p>
-                  <p className="text-xs text-[#64748B]">CSV, watchlist, and email report.</p>
+                  <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">{t('strategyLab.sections.runConfig.labels.exports')}</p>
+                  <p className="text-xs text-[#64748B]">{t('strategyLab.sections.runConfig.exportsNote')}</p>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <button className="text-xs px-3 py-2 rounded-lg border border-[#3B82F6]/40 text-[#E2E8F0] bg-[#0B1220] hover:border-[#3B82F6]">
-                    Export CSV
+                    {t('strategyLab.actions.exportCSV')}
                   </button>
                   <button className="text-xs px-3 py-2 rounded-lg border border-[#1F2937] text-[#E2E8F0] bg-[#0B1220] hover:border-[#334155]">
-                    Save Watchlist
+                    {t('strategyLab.actions.saveWatchlist')}
                   </button>
                   <button className="text-xs px-3 py-2 rounded-lg border border-[#1F2937] text-[#E2E8F0] bg-[#0B1220] hover:border-[#334155]">
-                    Email Report
+                    {t('strategyLab.actions.emailReport')}
                   </button>
                 </div>
               </div>
@@ -1301,10 +1311,10 @@ export default function StrategyLabClient({
                   ? "Running..."
                   : liveLoading
                     ? "Starting..."
-                    : "Generate Picks"}
+                    : t('strategyLab.actions.generatePicks')}
               </button>
               <button className="px-4 py-2 text-sm rounded-lg border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
-                Save Configuration
+                {t('strategyLab.actions.saveConfig')}
               </button>
             </div>
             {liveError && (
@@ -1313,8 +1323,8 @@ export default function StrategyLabClient({
           </SectionCard>
 
           <SectionCard
-            title={`Top ${topK} Stock Picks`}
-            subtitle={latestRun ? `As of ${liveAsOfDate}` : "Sample output until a run is available"}
+            title={t('strategyLab.sections.topPicks.title').replace('{count}', topK.toString())}
+            subtitle={latestRun ? t('strategyLab.sections.topPicks.subtitle').replace('{date}', liveAsOfDate) : t('strategyLab.sections.topPicks.subtitleSample')}
           >
             <SectorExposure 
               picks={visiblePicks.map(p => ({ 
@@ -1322,17 +1332,17 @@ export default function StrategyLabClient({
                 industry: p.sector || "Unknown" 
               }))} 
             />
-            <LiveRunOutput picks={visiblePicks} />
+            <LiveRunOutput picks={visiblePicks} t={t} />
           </SectionCard>
         </div>
       )}
 
       {activeTab === "backtest" && (
         <div className="space-y-6">
-          <SectionCard title="Backtest Configuration" subtitle="Define period, rebalancing, slippage, and capital.">
+          <SectionCard title={t('strategyLab.sections.backtestConfig.title')} subtitle={t('strategyLab.sections.backtestConfig.subtitle')}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Time Period</p>
+                <p className="text-xs text-[#94A3B8] uppercase tracking-wide">{t('strategyLab.backtest.timePeriod')}</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="date"
@@ -1362,26 +1372,26 @@ export default function StrategyLabClient({
                       }}
                       className="text-xs px-3 py-2 rounded-lg border border-[#1F2937] bg-[#0F172A] text-[#E2E8F0] hover:border-[#3B82F6]"
                     >
-                      {preset.label}
+                      {t(`strategyLab.backtest.periodPresets.${key}`) || preset.label}
                     </button>
                   ))}
                 </div>
                 {!periodValid && (
                   <p className="text-xs text-[#EF4444]">
-                    Min. period is 1 year. Ensure start &lt; end and within 2015-01-01 to 2026-01-31.
+                    {t('strategyLab.backtest.periodError')}
                   </p>
                 )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
                   <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-2">
-                    Rebalancing
+                    {t('strategyLab.backtest.rebalancing')}
                   </p>
                   {(
                     [
-                      { label: "Monthly", value: "monthly" },
-                      { label: "Quarterly", value: "quarterly" },
-                      { label: "Annually", value: "annually" },
+                      { label: t('strategyLab.backtest.rebalancingOptions.monthly'), value: "monthly" },
+                      { label: t('strategyLab.backtest.rebalancingOptions.quarterly'), value: "quarterly" },
+                      { label: t('strategyLab.backtest.rebalancingOptions.annually'), value: "annually" },
                     ] as const
                   ).map((opt) => (
                     <label key={opt.value} className="flex items-center gap-2 text-sm text-[#E2E8F0] mb-1">
@@ -1397,12 +1407,12 @@ export default function StrategyLabClient({
                   ))}
                 </div>
                 <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-                  <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-2">Slippage Model</p>
+                  <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-2">{t('strategyLab.backtest.slippage')}</p>
                   {(
                     [
-                      { label: "Optimistic (0.1-0.5%)", value: "optimistic" },
-                      { label: "Realistic (0.5-2.0%)", value: "realistic" },
-                      { label: "Conservative (1.0-3.0%)", value: "conservative" },
+                      { label: t('strategyLab.backtest.slippageOptions.optimistic'), value: "optimistic" },
+                      { label: t('strategyLab.backtest.slippageOptions.realistic'), value: "realistic" },
+                      { label: t('strategyLab.backtest.slippageOptions.conservative'), value: "conservative" },
                     ] as const
                   ).map((opt) => (
                     <label key={opt.value} className="flex items-center gap-2 text-sm text-[#E2E8F0] mb-1">
@@ -1421,7 +1431,7 @@ export default function StrategyLabClient({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Top Picks</p>
+                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">{t('strategyLab.sections.runConfig.labels.topPicks')}</p>
                 <input
                   type="number"
                   min={5}
@@ -1432,7 +1442,7 @@ export default function StrategyLabClient({
                 />
               </div>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Starting Capital</p>
+                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">{t('strategyLab.backtest.startingCapital')}</p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-[#94A3B8]">$</span>
                   <input
@@ -1445,34 +1455,34 @@ export default function StrategyLabClient({
                 </div>
               </div>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
-                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">Run Control</p>
+                <p className="text-xs text-[#94A3B8] uppercase tracking-wide mb-1">{t('strategyLab.backtest.runControl')}</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={handleBacktestRun}
                     disabled={backtestLoading || !periodValid}
                     className="px-3 py-2 text-xs rounded-lg border border-[#3B82F6] bg-[#3B82F6]/10 text-[#E2E8F0] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {backtestLoading ? "Running..." : "Run Backtest"}
+                    {backtestLoading ? "Running..." : t('strategyLab.actions.runBacktest')}
                   </button>
                   <button className="px-3 py-2 text-xs rounded-lg border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
-                    Save Configuration
+                    {t('strategyLab.actions.saveConfig')}
                   </button>
                 </div>
               </div>
             </div>
           </SectionCard>
 
-          <SectionCard title="Backtest Results" subtitle={backtestError ?? "Quarterly rebalancing output"}>
+          <SectionCard title={t('strategyLab.sections.backtestResults.title')} subtitle={backtestError ?? t('strategyLab.sections.backtestResults.subtitle')}>
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               <div className="xl:col-span-2 space-y-4">
-                <MetricsTable metrics={backtestMetrics} />
+                <MetricsTable metrics={backtestMetrics} t={t} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="rounded-xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#111827] p-4">
-                    <p className="text-sm font-semibold text-[#E2E8F0] mb-3">Equity Curve</p>
+                    <p className="text-sm font-semibold text-[#E2E8F0] mb-3">{t('strategyLab.backtest.charts.equity')}</p>
                     <EquityCurve data={equityCurve.map(d => ({ date: d.date, portfolio: d.portfolio_value, benchmark: d.sp500_value }))} />
                   </div>
                   <div className="rounded-xl border border-[#1F2937] bg-gradient-to-br from-[#0B1220] to-[#111827] p-4">
-                    <p className="text-sm font-semibold text-[#E2E8F0] mb-3">Drawdown</p>
+                    <p className="text-sm font-semibold text-[#E2E8F0] mb-3">{t('strategyLab.backtest.charts.drawdown')}</p>
                     <DrawdownChart 
                       data={drawdown.map(d => ({ date: d.date, drawdown: d.drawdown_pct / 100 }))} 
                       maxDrawdown={backtestMetrics.maxDrawdown / 100} 
@@ -1483,9 +1493,9 @@ export default function StrategyLabClient({
               <div className="space-y-4">
                 
                 <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] p-4">
-                  <p className="text-sm font-semibold text-[#E2E8F0] mb-2">Recent Backtests</p>
+                  <p className="text-sm font-semibold text-[#E2E8F0] mb-2">{t('strategyLab.backtest.recent.title')}</p>
                   <div className="space-y-3">
-                    {SAMPLE_RECENT_BACKTESTS.map((item) => (
+                    {recentBacktests.length > 0 ? recentBacktests.map((item) => (
                       <div
                         key={item.title}
                         className="border border-[#1F2937] bg-[#0B1220] rounded-lg px-3 py-2"
@@ -1494,7 +1504,11 @@ export default function StrategyLabClient({
                         <p className="text-sm text-[#E2E8F0] font-semibold">{item.title}</p>
                         <p className="text-xs text-[#94A3B8]">{item.metrics}</p>
                       </div>
-                    ))}
+                    )) : (
+                      <div className="text-center py-4 text-[#64748B] text-sm">
+                        {t('strategyLab.backtest.recent.empty')}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
