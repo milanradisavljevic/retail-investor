@@ -1,0 +1,22 @@
+<svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Chart Background (Muted) -->
+  <path d="M10 70 L30 65 L50 75 L70 50 L90 60" stroke="#334155" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Lens Clip -->
+  <defs>
+    <clipPath id="lensA">
+      <circle cx="50" cy="50" r="35" />
+    </clipPath>
+  </defs>
+  
+  <!-- Chart Foreground (Emphasized inside lens) -->
+  <g clip-path="url(#lensA)">
+    <path d="M10 70 L30 65 L50 75 L70 50 L90 60" stroke="#3B82F6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <!-- Magnifier Frame -->
+  <circle cx="50" cy="50" r="35" stroke="white" stroke-width="2" fill="none"/>
+  
+  <!-- Handle -->
+  <path d="M76 76 L90 90" stroke="white" stroke-width="4" stroke-linecap="round"/>
+</svg>

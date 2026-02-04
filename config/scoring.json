@@ -25,8 +25,8 @@
     "pipeline": {
       "top_k": 2000,
       "max_symbols_per_run": 2000,
-      "max_concurrency": 4,
-      "throttle_ms": 150,
+      "max_concurrency": 20,
+      "throttle_ms": 50,
       "scan_only_price_target": false
     },
     "diversification": {

@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import path from 'path';
+import * as path from 'path';
 import type { FundamentalsData } from '@/data/repositories/fundamentals_repo';
 import {
   BasicFinancials,
@@ -295,6 +295,8 @@ export class YFinanceProvider implements MarketDataProvider {
       analystCount: this.toNumberOrNull(analystData?.num_analysts),
       nextEarningsDate: analystData?.next_earnings_date ?? null,
       beta: metrics.beta ?? null,
+      roic: this.decimalToPercent((metrics as Record<string, number | null>).roicTTM ?? null),
+      evToEbitda: (metrics as Record<string, number | null>).evToEbitda ?? null,
       raw: this.buildRawMetrics(metrics, analystData),
     };
 

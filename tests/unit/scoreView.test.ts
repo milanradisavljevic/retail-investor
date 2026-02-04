@@ -80,12 +80,19 @@ function makeRun(scores: ScoreEntry[]): RunV1SchemaJson {
       name: 'S&P 500',
       provider_symbol: 'SPY',
     },
-    scores,
-    selections: {
-      top5: ['AAA', 'BBB', 'CCC', 'DDD', 'EEE'],
-      top10: ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III', 'JJJ'],
-      pick_of_the_day: 'AAA',
-    },
+  scores,
+  selections: {
+    top5: ['AAA', 'BBB', 'CCC', 'DDD', 'EEE'],
+    top10: ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III', 'JJJ'],
+    top15: ['AAA','BBB','CCC','DDD','EEE','FFF','GGG','HHH','III','JJJ','KKK','LLL','MMM','NNN','OOO'],
+    top20: ['AAA','BBB','CCC','DDD','EEE','FFF','GGG','HHH','III','JJJ','KKK','LLL','MMM','NNN','OOO','PPP','QQQ','RRR','SSS','TTT'],
+    top30: [
+      'AAA','BBB','CCC','DDD','EEE','FFF','GGG','HHH','III','JJJ',
+      'KKK','LLL','MMM','NNN','OOO','PPP','QQQ','RRR','SSS','TTT',
+      'UUU','VVV','WWW','XXX','YYY','ZZZ','AAA1','BBB1','CCC1','DDD1'
+    ],
+    pick_of_the_day: 'AAA',
+  },
     flags: { user_documents_missing: [], prompt_injection_suspected: [] },
   };
 }

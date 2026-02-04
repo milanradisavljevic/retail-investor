@@ -320,72 +320,163 @@ export async function scoreUniverse(
     perfTracker.startPhase('data_fetch');
     progressStore.updateProgress(runId, { currentPhase: 'data_fetch' });
 
-    let processedCount = 0;
-    await runWithConcurrency(
-      symbolsToScore,
-      async (symbol) => {
+    const BATCH_SIZE = 50; // Fetch 50 symbols per batch
+    const USE_BATCH_MODE = process.env.BATCH_FETCH_ENABLED !== 'false'; // Default: enabled
+    const isYFinanceProvider = provider.constructor.name === 'YFinanceProvider';
+
+    if (USE_BATCH_MODE && isYFinanceProvider) {
+      logger.info({ batchSize: BATCH_SIZE, totalSymbols: symbolsToScore.length }, 'Using batch fetch mode');
+
+      const { fetchSymbolsBatch } = await import('./fetch');
+
+      // Process symbols in batches
+      for (let i = 0; i < symbolsToScore.length; i += BATCH_SIZE) {
+        const batch = symbolsToScore.slice(i, i + BATCH_SIZE);
+
         try {
+          const batchResults = await fetchSymbolsBatch(
+            batch,
+            {
+              fundamentalsTtlMs,
+              technicalTtlSeconds,
+              profileTtlMs,
+            },
+            requestStats
+          );
+
+          // Merge batch results into rawDataMap
+          for (const [symbol, result] of batchResults.entries()) {
+            rawDataMap[symbol] = result.raw;
+            fallbackFundamentalsMap[symbol] = result.fallbackFundamentals;
+            fallbackProfileMap[symbol] = result.fallbackProfile;
+
+            if (result.fromCache) {
+              progressStore.incrementCacheHit(runId);
+            } else {
+              progressStore.incrementCacheMiss(runId);
+            }
+          }
+
           progressStore.updateProgress(runId, {
-            currentSymbol: symbol,
-            processedSymbols: processedCount,
+            processedSymbols: Math.min(i + BATCH_SIZE, symbolsToScore.length),
           });
 
-          const { raw, fallbackFundamentals, fallbackProfile, fromCache } =
-            await fetchSymbolDataWithCache(symbol, {
-              provider,
-              fallbackProvider,
-              throttler,
-              cache: {
-                fundamentalsTtlMs,
-                technicalTtlSeconds,
-                profileTtlMs,
-              },
-              requiredMetrics,
-              stats: requestStats,
-            });
-          rawDataMap[symbol] = raw;
-          fallbackFundamentalsMap[symbol] = fallbackFundamentals ?? null;
-          fallbackProfileMap[symbol] = fallbackProfile ?? null;
-
-          // Update cache stats
-          if (fromCache) {
-            progressStore.incrementCacheHit(runId);
-          } else {
-            progressStore.incrementCacheMiss(runId);
-          }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          errors.push(`${symbol}: ${message}`);
-          logger.error({ symbol, error: message }, 'Failed to fetch raw data');
-          progressStore.addFailedSymbol(runId, symbol);
-          rawDataMap[symbol] = {
-            symbol,
-            fundamentals: null,
-            technical: null,
-            profile: null,
-          };
-          if (fallbackProvider) {
-            fallbackFundamentalsMap[symbol] = null;
-            fallbackProfileMap[symbol] = null;
+          logger.error({ batch, error: message }, 'Batch fetch failed');
+
+          // Add empty results for failed batch
+          for (const symbol of batch) {
+            errors.push(`${symbol}: ${message}`);
+            progressStore.addFailedSymbol(runId, symbol);
+            rawDataMap[symbol] = {
+              symbol,
+              fundamentals: null,
+              technical: null,
+              profile: null,
+            };
+            if (fallbackProvider) {
+              fallbackFundamentalsMap[symbol] = null;
+              fallbackProfileMap[symbol] = null;
+            }
           }
         }
-        processedCount++;
-      },
-      Math.min(MAX_CONCURRENCY, symbolsToScore.length)
-    );
+      }
+
+    } else {
+      // Original per-symbol fetching (fallback for non-YFinance providers or when disabled)
+      logger.info('Using per-symbol fetch mode');
+
+      let processedCount = 0;
+      await runWithConcurrency(
+        symbolsToScore,
+        async (symbol) => {
+          try {
+            progressStore.updateProgress(runId, {
+              currentSymbol: symbol,
+              processedSymbols: processedCount,
+            });
+
+            const { raw, fallbackFundamentals, fallbackProfile, fromCache } =
+              await fetchSymbolDataWithCache(symbol, {
+                provider,
+                fallbackProvider,
+                throttler,
+                cache: {
+                  fundamentalsTtlMs,
+                  technicalTtlSeconds,
+                  profileTtlMs,
+                },
+                requiredMetrics,
+                stats: requestStats,
+              });
+            rawDataMap[symbol] = raw;
+            fallbackFundamentalsMap[symbol] = fallbackFundamentals ?? null;
+            fallbackProfileMap[symbol] = fallbackProfile ?? null;
+
+            // Update cache stats
+            if (fromCache) {
+              progressStore.incrementCacheHit(runId);
+            } else {
+              progressStore.incrementCacheMiss(runId);
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            errors.push(`${symbol}: ${message}`);
+            logger.error({ symbol, error: message }, 'Failed to fetch raw data');
+            progressStore.addFailedSymbol(runId, symbol);
+            rawDataMap[symbol] = {
+              symbol,
+              fundamentals: null,
+              technical: null,
+              profile: null,
+            };
+            if (fallbackProvider) {
+              fallbackFundamentalsMap[symbol] = null;
+              fallbackProfileMap[symbol] = null;
+            }
+          }
+          processedCount++;
+        },
+        Math.min(MAX_CONCURRENCY, symbolsToScore.length)
+      );
+    }
 
     // End data fetch phase
     const totalCacheRequests = requestStats.fundamentalsCacheHits + requestStats.technicalCacheHits + requestStats.profileCacheHits;
     const totalProviderRequests = requestStats.fundamentalsRequests + requestStats.technicalRequests + requestStats.profileRequests;
+    const totalRequests = totalCacheRequests + totalProviderRequests;
     const failedFetches = symbolsToScore.length - Object.keys(rawDataMap).filter(s => rawDataMap[s].fundamentals || rawDataMap[s].technical).length;
+    const cacheHitRate = totalRequests > 0 ? (totalCacheRequests / totalRequests) * 100 : 0;
+    const fundamentalsTotal = requestStats.fundamentalsRequests + requestStats.fundamentalsCacheHits;
+    const technicalTotal = requestStats.technicalRequests + requestStats.technicalCacheHits;
 
     perfTracker.endPhase('data_fetch', {
       symbols_processed: symbolsToScore.length,
+      symbols_failed: failedFetches,
+
+      // Cache metrics
       cache_hits: totalCacheRequests,
       cache_misses: totalProviderRequests,
-      provider_calls: totalProviderRequests,
-      failed_fetches: failedFetches,
-      avg_ms_per_symbol: perfTracker.getPhaseTime('data_fetch') / symbolsToScore.length
+      cache_hit_rate_pct: Math.round(cacheHitRate * 10) / 10,
+
+      // Detailed cache breakdown
+      fundamentals_cache_hits: requestStats.fundamentalsCacheHits,
+      fundamentals_cache_misses: requestStats.fundamentalsRequests,
+      fundamentals_cache_hit_rate_pct: fundamentalsTotal > 0 ? Math.round((requestStats.fundamentalsCacheHits / fundamentalsTotal) * 1000) / 10 : 0,
+
+      technical_cache_hits: requestStats.technicalCacheHits,
+      technical_cache_misses: requestStats.technicalRequests,
+      technical_cache_hit_rate_pct: technicalTotal > 0 ? Math.round((requestStats.technicalCacheHits / technicalTotal) * 1000) / 10 : 0,
+
+      // Performance metrics
+      provider_api_calls: totalProviderRequests,
+      avg_ms_per_symbol: Math.round(perfTracker.getPhaseTime('data_fetch') / symbolsToScore.length),
+
+      // Concurrency info
+      concurrency_limit: MAX_CONCURRENCY,
+      parallel_batches: Math.ceil(symbolsToScore.length / MAX_CONCURRENCY),
+      throttle_ms: pipelineCfg.throttleMs ?? 0,
     });
 
     const medians = buildGroupMedians(asOfDateStr, Object.values(rawDataMap));
@@ -654,10 +745,6 @@ export async function scoreUniverse(
     const actualRequests =
       provider.getRequestCount() + (fallbackProvider ? fallbackProvider.getRequestCount() : 0);
     const estimatedRequests = symbolsToScore.length * 3;
-    const fundamentalsTotal =
-      requestStats.fundamentalsRequests + requestStats.fundamentalsCacheHits;
-    const technicalTotal =
-      requestStats.technicalRequests + requestStats.technicalCacheHits;
     const requestBudget = {
       estimatedRequests,
       actualRequests,

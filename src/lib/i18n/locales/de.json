@@ -19,7 +19,219 @@
     "strategyLab": "Strategy Lab",
     "settings": "Einstellungen",
     "performance": "Performance",
-    "history": "Verlauf"
+    "history": "Verlauf",
+    "watchlist": "Watchlist"
+  },
+  "dashboard": {
+    "sort": {
+      "label": "Sortierung",
+      "total": "Gesamt",
+      "expected_return": "Erwartete Rendite",
+      "fundamental": "Fundamental",
+      "technical": "Technisch",
+      "confidence": "Konfidenz"
+    },
+    "filters": {
+      "label": "Filter",
+      "deepAnalysis": "Tiefenanalyse",
+      "confidenceLow": "Konfidenz: Niedrig",
+      "missingData": "Fehlende Daten",
+      "upsideNegative": "Negatives Potenzial",
+      "reset": "Zurücksetzen"
+    }
+  },
+  "strategyLab": {
+    "header": {
+      "eyebrow": "Strategy Lab",
+      "title": "Dual-Mode Playbook",
+      "subtitle": "Klarer 3-Schritte-Flow: Universum wählen, Strategie wählen, Analyse starten.",
+      "weightTotal": "Gewicht gesamt",
+      "latest": "Latest",
+      "preset": "Preset"
+    },
+    "modes": {
+      "live": {
+        "title": "Live-Analyse",
+        "description": "Analysiere aktuelle Marktdaten und erhalte heute kaufenswerte Aktien."
+      },
+      "backtest": {
+        "title": "Backtest",
+        "description": "Teste, wie die Strategie von 2015–2025 performt hätte."
+      }
+    },
+    "actions": {
+      "running": "Analyse läuft...",
+      "findTopStocks": "Top-Aktien jetzt finden",
+      "startBacktest": "Backtest starten (2015–2025)",
+      "exportCSV": "CSV Exportieren",
+      "saveWatchlist": "Watchlist speichern",
+      "emailReport": "E-Mail Bericht",
+      "generatePicks": "Picks Generieren",
+      "saveConfig": "Konfiguration speichern",
+      "runBacktest": "Backtest starten"
+    },
+    "sections": {
+      "sharedConfig": {
+        "title": "Gemeinsame Konfiguration",
+        "subtitle": "Folge den drei Schritten – alles wirkt auf Live & Backtest."
+      },
+      "runProgress": {
+        "title": "Lauf-Fortschritt",
+        "subtitle": "Echtzeit-Scoring Fortschritt"
+      },
+      "runConfig": {
+        "title": "Lauf-Konfiguration",
+        "subtitle": "Generiere Picks zum heutigen Stand.",
+        "labels": {
+          "asOfDate": "Datum",
+          "estimatedRuntime": "Geschätzte Laufzeit",
+          "topPicks": "Top Picks",
+          "exports": "Exporte"
+        },
+        "liveRunsNote": "Live-Runs nutzen immer das heutige Datum.",
+        "exportsNote": "CSV, Watchlist und E-Mail Bericht."
+      },
+      "topPicks": {
+        "title": "Top {count} Aktien-Picks",
+        "subtitle": "Stand {date}",
+        "subtitleSample": "Beispielausgabe bis ein Lauf verfügbar ist"
+      },
+      "backtestConfig": {
+        "title": "Backtest Konfiguration",
+        "subtitle": "Definiere Zeitraum, Rebalancing, Slippage und Kapital."
+      },
+      "backtestResults": {
+        "title": "Backtest Ergebnisse",
+        "subtitle": "Ausgabe mit vierteljährlichem Rebalancing"
+      }
+    },
+    "steps": {
+      "1": "Wähle dein Anlageuniversum",
+      "2": "Wähle eine Strategie (oder passe Gewichte an)",
+      "3": "Feinjustiere Filter (optional)"
+    },
+    "common": {
+      "stocks": "Aktien"
+    },
+    "regions": {
+      "US": "🇺🇸 Vereinigte Staaten",
+      "Europe": "🇪🇺 Europa",
+      "Asia": "🌏 Asien",
+      "LatAm": "🌎 Lateinamerika"
+    },
+    "presets": {
+      "title": "Strategie-Presets",
+      "custom": {
+        "label": "Benutzerdefiniert",
+        "subtitle": "Manuelle Gewichtung",
+        "description": "Passe Pillar-Gewichte frei an oder nutze eigene Vorgaben."
+      },
+      "risk": {
+        "low": "Defensiv",
+        "medium": "Ausgewogen",
+        "high": "Aggressiv"
+      }
+    },
+    "weights": {
+      "title": "Pillar-Gewichtung",
+      "weight": "Gewicht",
+      "presets": {
+        "conservative": "Konservativ",
+        "balanced": "Ausgewogen",
+        "aggressive": "Aggressiv",
+        "quality": "Qualitätsschwerpunkt",
+        "momentum": "Momentum-Schwerpunkt"
+      }
+    },
+    "filters": {
+      "riskExclusion": {
+        "title": "Risiko & Exklusion"
+      },
+      "sizeLiquidity": {
+        "title": "Größen- & Liquiditätsfilter"
+      },
+      "presets": {
+        "title": "Schnell-Presets",
+        "description": "1 Klick für typische Compliance-Sets.",
+        "institutional": "Institutional Safe (empfohlen)",
+        "liquidity": "Liquidity First"
+      },
+      "crypto": {
+        "label": "Crypto-Mining-Aktien ausschließen",
+        "tooltip": "Entfernt MARA, RIOT, HUT, COIN & Co. (sehr hohe Volatilität)."
+      },
+      "defense": {
+        "label": "Rüstungsunternehmen ausschließen",
+        "tooltip": "Entfernt LMT, RTX, NOC, GD, BA und weitere Defense-Namen (ESG)."
+      },
+      "fossil": {
+        "label": "Fossil-Fuel-Unternehmen ausschließen",
+        "tooltip": "Entfernt Öl- und Gasproduzenten (XOM, CVX, COP ...)."
+      },
+      "minCap": {
+        "label": "Mindest-Marktkapitalisierung",
+        "options": {
+          "all": "Alle",
+          "mid": "> 500M (Mid Cap)",
+          "large": "> 2B (Large Cap)",
+          "mega": "> 10B (Mega Cap)"
+        }
+      },
+      "minLiquidity": {
+        "label": "Liquidität (ø Tagesumsatz, Mio USD)",
+        "options": {
+          "none": "Keine",
+          "low": ">= 5M",
+          "medium": ">= 10M",
+          "high": ">= 25M"
+        }
+      }
+    },
+    "backtest": {
+      "timePeriod": "Zeitraum",
+      "periodError": "Min. Zeitraum ist 1 Jahr. Start < Ende und innerhalb 2015-01-01 bis 2026-01-31.",
+      "periodPresets": {
+        "full": "Ganzer Zeitraum (2015-2025)",
+        "decade": "Letzte 10 Jahre",
+        "fiveYear": "Letzte 5 Jahre (2020-2025)",
+        "threeYear": "Letzte 3 Jahre",
+        "preCovid": "Vor-COVID (2015-2019)",
+        "covid": "COVID-Ära (2020-2021)",
+        "postCovid": "Post-COVID (2022-2025)",
+        "bear2022": "Baisse 2022",
+        "bull2023": "Bullenmarkt 2023"
+      },
+      "rebalancing": "Rebalancing",
+      "rebalancingOptions": {
+        "monthly": "Monatlich",
+        "quarterly": "Vierteljährlich",
+        "annually": "Jährlich"
+      },
+      "slippage": "Slippage-Modell",
+      "slippageOptions": {
+        "optimistic": "Optimistisch (0.1-0.5%)",
+        "realistic": "Realistisch (0.5-2.0%)",
+        "conservative": "Konservativ (1.0-3.0%)"
+      },
+      "startingCapital": "Startkapital",
+      "runControl": "Lauf-Steuerung",
+      "table": {
+        "metric": "Metrik",
+        "columns": {
+          "strategy": "Deine Strategie",
+          "sp500": "S&P 500",
+          "russell": "Russell 2000"
+        }
+      },
+      "charts": {
+        "equity": "Equity Curve",
+        "drawdown": "Drawdown"
+      },
+      "recent": {
+        "title": "Letzte Backtests",
+        "empty": "Keine letzten Backtests gefunden. Starte einen Backtest, um Ergebnisse hier zu sehen."
+      }
+    }
   },
   "briefing": {
     "title": "Aktuelle Analyse",
@@ -68,18 +280,154 @@
   },
   "settings": {
     "title": "Einstellungen",
+    "description": "Passen Sie Ihre Analyse-Einstellungen und Anzeige-Präferenzen an",
     "general": {
       "title": "Allgemein",
-      "language": "Sprache",
-      "theme": "Design",
-      "defaultUniverse": "Standard-Universum"
+      "description": "Grundlegende Einstellungen für die Anwendung",
+      "language": {
+        "label": "Sprache",
+        "description": "Anzeigesprache der Benutzeroberfläche"
+      },
+      "theme": {
+        "label": "Design",
+        "description": "Farbschema der Anwendung"
+      },
+      "defaultUniverse": {
+        "label": "Standard-Universum",
+        "description": "Vorausgewähltes Aktien-Universum"
+      },
+      "dateFormat": {
+        "label": "Datumsformat",
+        "description": "Darstellung von Daten"
+      }
     },
     "analysis": {
       "title": "Analyse",
-      "defaultStrategy": "Standard-Strategie",
-      "minThreshold": "Minimaler Score"
+      "description": "Einstellungen für die Aktienanalyse",
+      "defaultStrategy": {
+        "label": "Standard-Strategie",
+        "description": "Voreingestellte Scoring-Strategie"
+      },
+      "riskTolerance": {
+        "label": "Risikotoleranz",
+        "description": "Ihr bevorzugtes Risikoniveau"
+      },
+      "minScoreThreshold": {
+        "label": "Minimaler Score",
+        "description": "Mindestschwelle für angezeigte Aktien (0-100)"
+      },
+      "showDeepAnalysisWarnings": {
+        "label": "Tiefenanalyse-Warnungen",
+        "description": "Warnungen für Aktien mit tiefer Analyse anzeigen"
+      }
     },
-    "reset": "Auf Standard zurücksetzen"
+    "display": {
+      "title": "Anzeige",
+      "description": "Einstellungen für die Darstellung",
+      "cardsPerPage": {
+        "label": "Karten pro Seite",
+        "description": "Anzahl der angezeigten Aktien pro Seite"
+      },
+      "scorePrecision": {
+        "label": "Score-Genauigkeit",
+        "description": "Nachkommastellen bei Scores"
+      },
+      "showPercentiles": {
+        "label": "Perzentile anzeigen",
+        "description": "Perzentil-Rankings in der Anzeige"
+      },
+      "compactView": {
+        "label": "Kompaktansicht",
+        "description": "Platzsparende Darstellung aktivieren"
+      }
+    },
+    "data": {
+      "title": "Daten",
+      "description": "Einstellungen für Daten und Cache",
+      "cacheTTLDays": {
+        "label": "Cache-Dauer",
+        "description": "Wie lange Daten zwischengespeichert werden"
+      },
+      "autoRefresh": {
+        "label": "Auto-Aktualisierung",
+        "description": "Daten automatisch beim Laden aktualisieren"
+      },
+      "performanceTracking": {
+        "label": "Performance-Tracking",
+        "description": "Detaillierte Performance-Messung aktivieren"
+      }
+    },
+    "options": {
+      "language": {
+        "de": "Deutsch",
+        "en": "English"
+      },
+      "theme": {
+        "dark": "Dunkel",
+        "light": "Hell"
+      },
+      "universe": {
+        "test": "Test (5 Aktien)",
+        "sp500": "S&P 500 (Beispiel)",
+        "sp500_full": "S&P 500 (Voll)",
+        "nasdaq100": "NASDAQ 100",
+        "russell2000": "Russell 2000 (Beispiel)",
+        "russell2000_full": "Russell 2000 (Voll)",
+        "dax_full": "DAX 40",
+        "eurostoxx50": "Euro STOXX 50"
+      },
+      "dateFormat": {
+        "EU": "EU (TT.MM.JJJJ)",
+        "US": "US (MM/TT/JJJJ)"
+      },
+      "riskTolerance": {
+        "conservative": "Konservativ",
+        "balanced": "Ausgewogen",
+        "aggressive": "Aggressiv"
+      },
+      "scorePrecision": {
+        "0": "Ganzzahl (75)",
+        "1": "Eine Stelle (75.2)",
+        "2": "Zwei Stellen (75.23)"
+      },
+      "cardsPerPage": {
+        "10": "10",
+        "20": "20",
+        "50": "50",
+        "100": "100"
+      },
+      "strategy": {
+        "compounder": "Compounder",
+        "deep_value": "Deep Value",
+        "quant": "Quant",
+        "rocket": "Rocket",
+        "shield": "Shield",
+        "custom": "Benutzerdefiniert"
+      },
+      "cacheTTLDays": {
+        "1": "1 Tag",
+        "7": "7 Tage",
+        "30": "30 Tage"
+      }
+    },
+    "actions": {
+      "reset": "Zurücksetzen",
+      "resetConfirm": "Klicken zum Bestätigen",
+      "export": "Einstellungen exportieren",
+      "import": "Einstellungen importieren",
+      "designSystem": "Design System",
+      "backupRestore": "Backup & Wiederherstellung",
+      "backupDesc": "Exportieren Sie Ihre Einstellungen, um sie auf einem anderen Gerät wiederherzustellen oder als Backup zu speichern."
+    },
+    "messages": {
+      "loading": "Einstellungen laden...",
+      "saved": "✓ Einstellungen gespeichert",
+      "importSuccess": "✓ Einstellungen erfolgreich importiert",
+      "importError": "❌ Import fehlgeschlagen",
+      "invalidFile": "❌ Ungültige Datei",
+      "readError": "❌ Fehler beim Lesen der Datei",
+      "localStorage": "Einstellungen werden lokal in Ihrem Browser gespeichert (localStorage). Sie sind nicht mit einem Konto synchronisiert."
+    }
   },
   "progress": {
     "connecting": "Verbindung zum Lauf...",
@@ -114,25 +462,203 @@
     "pickOfDay": "Pick des Tages",
     "run": "Lauf starten",
     "summary": "Zusammenfassung",
-    "dataQuality": "Datenqualität"
-  },
-  "strategyLab": {
-    "presets": "Strategie-Preset",
-    "customize": "Anpassen",
-    "presetWeights": "Preset-Gewichte",
-    "pillarWeights": "Pillar-Gewichte",
-    "diversification": "Diversifikation",
-    "runAnalysis": "Analyse starten",
-    "selectPreset": "Preset auswählen",
-    "runtime": "Laufzeit",
-    "start": "Starten",
-    "analysisRunning": "Analyse läuft...",
-    "runNotImplemented": "Analyse-Lauf noch nicht implementiert. Hier wird später der Scoring-Lauf mit deiner Konfiguration gestartet.",
-    "confirmRun": "Analyse-Lauf bestätigen",
-    "confirmCopy": "Dieser Lauf bewertet",
-    "estimatedTime": "Geschätzte Zeit"
+    "dataQuality": "Datenqualität",
+    "confirmTitle": "Analyse bestätigen",
+    "confirmBody": "Dies startet eine Analyse für {universe} mit {count} Symbolen.",
+    "estimatedDuration": "Geschätzte Dauer: 15-25 Minuten",
+    "backgroundInfo": "Der Lauf wird im Hintergrund ausgeführt. Sie können die App weiter nutzen.",
+    "starting": "Startet...",
+    "start": "Lauf starten",
+    "cancel": "Abbrechen",
+    "success": "✓ Lauf gestartet! Geschätzte Dauer: {duration}. Seite in ~20 Minuten neu laden.",
+    "error": "✗ Fehler: {error}",
+    "networkError": "✗ Netzwerkfehler: {error}"
   },
   "footer": {
     "disclaimer": "Diese Anwendung dient nur zu Informationszwecken und stellt keine Anlageberatung dar. Vergangene Performance ist keine Garantie für zukünftige Ergebnisse. Führen Sie stets eigene Recherchen durch."
+  },
+  "stockDetail": {
+    "latestBriefing": "Aktuelle Analyse",
+    "back": "Zurück",
+    "openInHistory": "In Verlauf öffnen",
+    "whyThisScore": "Warum dieser Score?",
+    "positives": "Positiv",
+    "negatives": "Negativ",
+    "warnings": "Warnungen",
+    "noPositives": "Keine Positiva identifiziert",
+    "noNegatives": "Keine Negativa identifiziert",
+    "noWarnings": "Keine Warnungen",
+    "totalScore": "Gesamtscore",
+    "fundamental": "Fundamental",
+    "technical": "Technisch",
+    "valuation": "Bewertung",
+    "quality": "Qualität",
+    "risk": "Risiko",
+    "priceTarget": "Kursziel",
+    "priceTargetAnalysis": "Kursziel-Analyse",
+    "enhancedPriceTargetNotAvailable": "Erweitertes Kursziel ist für dieses Symbol nicht verfügbar",
+    "peerComparison": "Peer-Vergleich",
+    "peerDataNotAvailable": "Peer-Daten sind für dieses Symbol nicht verfügbar",
+    "performanceTimeline": "Performance-Zeitleiste",
+    "historicalDataNotAvailable": "Historische Daten sind für dieses Symbol nicht verfügbar",
+    "runToFetchHistorical": "Führen Sie `python scripts/backtesting/fetch-historical.py` aus, um historische Daten abzurufen.",
+    "valuationInputs": "Bewertungsinputs",
+    "valueDrivers": "Werttreiber",
+    "dataQuality": "Datenqualität",
+    "runContext": "Lauf-Kontext",
+    "metricQuality": "Metrische Qualität",
+    "provider": "Anbieter",
+    "requests": "Anfragen",
+    "runId": "Lauf-ID",
+    "missing": "Fehlt",
+    "assumptions": "Annahmen",
+    "metric": "Metrik",
+    "value": "Wert",
+    "source": "Quelle",
+    "notes": "Notizen",
+    "imputed": "ersetzt",
+    "na": "n.v.",
+    "sectorMedians": "Sektor-Mediane",
+    "globalMedians": "Global-Mediane",
+    "componentContributions": "Komponentenbeiträge",
+    "fairValue": "Fair Value",
+    "bounded": "begrenzt",
+    "raw": "roh",
+    "range": "Bereich",
+    "clamped": "(begrenzt)",
+    "weight": "w",
+    "sampleSize": "N=",
+    "median": "Median",
+    "pe": "PE",
+    "pb": "PB",
+    "ps": "PS",
+    "eps": "EPS",
+    "bookValue": "Buchwert/Anteil",
+    "revenue": "Umsatz/Anteil",
+    "share": "Anteil",
+    "included": "enthalten",
+    "reason": "Grund",
+    "sector": "Sektor",
+    "industry": "Branche",
+    "noRunsAvailable": "Keine Läufe verfügbar",
+    "generateDailyRun": "Generieren Sie einen täglichen Lauf, um Aktiendetails anzuzeigen.",
+    "notInLatestRun": "nicht im neuesten Lauf enthalten",
+    "notIncludedInBriefing": "Die neueste Analyse enthält nicht {companyName}.",
+    "scanOnlyPhase": "Dieses Symbol wurde in der Scan-Only-Phase enthalten; führen Sie eine Tiefenanalyse durch, um Kursziele zu berechnen.",
+    "priceTargetNotAvailable": "Kursziel ist für dieses Symbol nicht verfügbar.",
+    "enhancedPriceTarget": "Erweiterte Kursziel-Analyse",
+    "peerData": "Peer-Daten",
+    "historicalData": "Historische Daten",
+    "notAvailableForSymbol": "nicht verfügbar für dieses Symbol",
+    "enhancedPriceTargetNotAvailableForSymbol": "Erweitertes Kursziel ist für dieses Symbol nicht verfügbar.",
+    "peerDataNotAvailableForSymbol": "Peer-Daten sind für dieses Symbol nicht verfügbar.",
+    "historicalDataNotAvailableForSymbol": "Historische Daten sind für dieses Symbol nicht verfügbar.",
+    "medianSource": "Medianquelle",
+    "globalFallback": "Global (Ersatz)",
+    "fallbackReason": "· {reason}",
+    "componentDetails": "{label} · w{weight}{reasonText}",
+    "componentValue": "{value} {clampedText}",
+    "componentNotIncluded": "{label} ({reason})",
+    "fairValueDetails": "Fair Value: roh {raw} → begrenzt {bounded} (Bereich {min} - {max})",
+    "requestsNA": "N/A",
+    "metricValueNA": "—",
+    "metricValueNumber": "{value}",
+    "metricNotes": "{notes}{imputedText}",
+    "imputedNote": " · ersetzt",
+    "sourceNA": "n.v.",
+    "assumptionsList": "Annahmen:",
+    "missingFields": "Fehlende Felder: {fields}",
+    "qualityScore": "Qualitätsscore: {score}",
+    "runProvider": "Anbieter: {provider}",
+    "runRequests": "Anfragen: {requests}",
+    "runIdValue": "Lauf-ID: {id}",
+    "metricQualityHeader": "Metrische Qualität",
+    "metricQualityDescription": "Metrische Qualität ist nicht verfügbar für diesen Lauf.",
+    "valuationInputsHeader": "Bewertungsinputs",
+    "valuationInputsDescription": "Bewertungsinputs sind nicht verfügbar für diesen Lauf.",
+    "valueDriversHeader": "Werttreiber",
+    "valueDriversDescription": "Werttreiber sind nicht verfügbar für diesen Lauf.",
+    "dataQualityHeader": "Datenqualität",
+    "runContextHeader": "Lauf-Kontext",
+    "noDataAvailable": "Keine Daten verfügbar",
+    "valueCoveragePresent": "Bewertungsinputs: {present}",
+    "valueCoverageMissing": " (fehlend: {missing})",
+    "sectorMediansDetails": "PE {pe} · PB {pb} · PS {ps}",
+    "globalMediansDetails": "PE {pe} · PB {pb} · PS {ps}",
+    "componentIncluded": "{label} · w{weight}{reasonSuffix}",
+    "componentNotIncludedWithReason": "{label} · w{weight} ({reason})",
+    "componentValueShown": "{value}{clampedSuffix}",
+    "fairValueRawBounded": "Fair Value: roh {raw} → begrenzt {bounded}",
+    "fairValueRange": "(Bereich {min} - {max})",
+    "runContextProvider": "Anbieter",
+    "runContextRequests": "Anfragen",
+    "runContextRunId": "Lauf-ID",
+    "dataQualityScore": "Score",
+    "dataQualityMissing": "Fehlt",
+    "dataQualityAssumptions": "Annahmen",
+    "metricQualityMetric": "Metrik",
+    "metricQualityValue": "Wert",
+    "metricQualitySource": "Quelle",
+    "metricQualityNotes": "Notizen",
+    "valueCoveragePresentEmpty": "—",
+    "valueCoverageMissingEmpty": "",
+    "medianSourceGlobal": "Global (Ersatz)",
+    "medianSourceSector": "Sektor",
+    "medianSourceFallback": " · {reason}",
+    "sectorSampleSize": "N={size}",
+    "globalSampleSize": "N={size}",
+    "componentIncludedYes": "enthalten",
+    "componentIncludedNo": "nicht enthalten",
+    "componentReason": " ({reason})",
+    "componentClamped": " (begrenzt)",
+    "fairValueRaw": "roh",
+    "fairValueBounded": "begrenzt",
+    "fairValueRangeText": "Bereich",
+    "requestMadeNA": "N/A",
+    "valueNullUndefined": "—",
+    "valueNumberFormat": "{value}",
+    "notesText": "{notes}",
+    "isImputedText": "ersetzt",
+    "sourceText": "{source}",
+    "sourceNaText": "n/a",
+    "assumptionItem": "- {assumption}",
+    "missingFieldsText": "{fields}",
+    "missingFieldsJoin": ", ",
+    "metricValueNull": "—",
+    "metricValueNumberValue": "{value}",
+    "metricValueString": "{value}",
+    "metricSourceNull": "n/a",
+    "metricSourceValue": "{source}",
+    "metricNotesValue": "{notes}",
+    "metricNotesImputed": "ersetzt",
+    "metricNotesCombined": "{notes}{imputedSuffix}",
+    "imputedSuffix": " · ersetzt",
+    "metricNotesEmpty": "",
+    "metricNotesImputedOnly": "ersetzt",
+    "metricNotesWithImputed": "{notes} · ersetzt",
+    "metricNotesWithoutImputed": "{notes}",
+    "metricNotesOnlyImputed": "ersetzt",
+    "metricNotesOnlyNotes": "{notes}",
+    "metricNotesBoth": "{notes} · ersetzt"
+  },
+  "watchlist": {
+    "pageTitle": "Watchlist",
+    "emptyTitle": "Ihre Watchlist ist leer.",
+    "emptySubtitle": "Fügen Sie Aktien auf der Detailseite hinzu, um sie hier zu verfolgen.",
+    "goToBriefing": "Zur Analyse",
+    "watchedStocks": "{count} {singularPlural} beobachtet",
+    "stock": "Aktie",
+    "stocks": "Aktien",
+    "clearAll": "Alle entfernen",
+    "scoreLabel": "Score:",
+    "priceLabel": "Preis:",
+    "addedLabel": "Hinzugefügt:",
+    "detailsButton": "Details",
+    "removeButton": "Entfernen",
+    "loading": "Lädt Watchlist...",
+    "addToWatchlist": "☆ Zur Watchlist hinzufügen",
+    "inWatchlist": "★ In Watchlist",
+    "addedToast": "✓ Zur Watchlist hinzugefügt",
+    "removedToast": "✓ Von Watchlist entfernt"
   }
 }

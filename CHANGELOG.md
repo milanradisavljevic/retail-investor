@@ -8,6 +8,140 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-02-03
+
+#### Changed
+- **Shield risk scoring fixed (Codex):** Beta scoring now rewards low beta instead of high beta in `src/scoring/technical.ts`, removing the inversion that let high-volatility micro-caps pass the Shield filter.
+- **Backtest engine updates (Codex):**
+  - Coverage filter + hold buffer now enabled in `scripts/backtesting/run-backtest.ts`; valid Russell 2000 universe shrinks to ~1,393/1,944 symbols (72%) with 252-day pre-2020 lookback.
+  - Rebalance “hold zone” keeps TopK+5 to cut turnover; applies to Shield/Compounder/Deep Value presets.
+  - Runtime bundling via esbuild (`/tmp/run-backtest-bundle.cjs`) to avoid `tsx` import issues in CI/CLI.
+  - Monte‑Carlo size filter temporarily capped/disabled for Shield while debugging; fundamentals avgMetrics fetching can be skipped with `SKIP_AVG_METRICS=true` to prevent YFinance timeouts (MC path still considered unstable).
+
+#### Results (post-fix re-runs, coverage + hold buffer, avgMetrics skipped)
+- **Shield (Low Vol)**: Total Return -3.01%, Sharpe -0.23, Max DD -36.95%, Vol 11.6%, Trades ~325 → defensive drawdown improved vs prior -54% but still fails return/Sharpe targets; holdings no longer SPAC-heavy.
+- **Compounder (Quality)**: Total Return 103.48%, Sharpe 0.41, Max DD -41.52%, Vol 32.19%, Trades 225 → return recovered, Sharpe slightly below goal (0.5 target).
+- **Deep Value**: Total Return 128.99%, Sharpe 0.43, Max DD -43.38%, Vol 37.26%, Trades 330 → maintains strong returns; turnover still high but reduced via buffer.
+- **Known gaps:** avgMetrics (ROE/ROIC/PE/PB) not written in these runs (skipped to keep runtime under control); Monte‑Carlo market-cap filter remains unstable/disabled and needs follow-up.
+
+#### Added
+- **Shield Strategy Backtest (implemented by Codex)**:
+  - Backtest run for `russell2000_full` (2020-01-01–2024-12-31), quarterly rebalance, Top 10, preset `shield`.
+  - Results (prototype low-vol scoring): Total Return -28.77%, Sharpe -0.31, Max DD -54.03%, Vol 27.79% → **fails defensive targets**, requires scoring refinement.
+  - Outputs: `data/backtesting/backtest-summary-shield.json`, `data/backtesting/backtest-results-shield.csv`, `data/backtesting/backtest-results-shield.csv` (preset copy).
+  - Validation: Added `scripts/validate-shield.ts` (currently ❌ FAIL against thresholds >0.5 Sharpe, >-30% Max DD, <25% Vol).
+- **Compounder (Quality) Strategy Backtest (implemented by Codex)**:
+  - Backtest run for `russell2000_full` (2020-01-01–2024-12-31), semiannual rebalance, Top 15, preset `compounder`.
+  - Results (hybrid proxy scoring only): Total Return 28.08%, Sharpe 0.10, Max DD -43.28%, Vol 29.75%, Turnover 79.8% → **fails quality targets** and lacks ROE/ROIC aggregation.
+  - Outputs: `data/backtesting/backtest-summary-compounder.json`, `data/backtesting/backtest-results-compounder.csv`.
+  - Validation: Added `scripts/validate-compounder.ts` (currently ❌ FAIL due to low Sharpe/MaxDD and missing avgMetrics.roE/roic).
+- **Deep Value Strategy Backtest (implemented by Codex)**:
+  - Backtest run for `russell2000_full` (2020-01-01–2024-12-31), quarterly rebalance, Top 10, preset `deep-value`.
+  - Results (hybrid proxy scoring only): Total Return 132.63%, Sharpe 0.45, Max DD -39.00%, Vol 36.74%, Turnover 84.9% → passes return/Sharpe/DD targets but lacks P/E and P/B aggregation in summary.
+  - Outputs: `data/backtesting/backtest-summary-deep-value.json`, `data/backtesting/backtest-results-deep-value.csv`.
+  - Validation: Added `scripts/validate-deep-value.ts` (currently ❌ FAIL due to missing avgMetrics.pe/pb data; numeric thresholds otherwise met).
+- **Data Coverage Filter for Backtests (implemented by Codex)**:
+  - Added `scripts/backtesting/filter-universe-by-coverage.ts` to report and filter symbols with <252 pre-start trading days; writes `coverage-report.json` and filtered symbol list.
+  - Integrated optional coverage gating in `scripts/backtesting/run-backtest.ts` (enable via `APPLY_COVERAGE_FILTER=true` or `--apply-coverage-filter`) to drop thin-data symbols before loading prices.
+- **Hold Buffer in Backtests (implemented by Codex)**:
+  - Backtest engine now supports a hold-zone buffer (`HOLD_BUFFER`, default 5) so positions are only sold if they fall below rank TopK+buffer; drastically reduces turnover and slippage.
+  - Rebalance events now record kept positions; turnover calculation unchanged.
+
+### 2026-02-02
+
+#### Performance
+- **🚀 Data Fetch Performance Optimization - 18x Speedup (implemented by Claude)**:
+  - **Phase 1 - Provider Switch**: Changed Russell 2000 from Finnhub (60 req/min rate limit) to YFinance (no limits)
+    - Files: `config/universes/russell2000_full.json`
+  - **Phase 2 - Batch Fetching**: Implemented batch Python process for YFinance to eliminate spawning overhead
+    - Files: `src/data_py/yfinance_batch.py`, `src/providers/yfinance_batch_provider.ts`, `src/scoring/engine.ts`, `src/scoring/fetch.ts`
+    - Batch size: 50 symbols per Python process (vs 1 symbol per process before)
+    - Auto-detection: Batch mode enabled for YFinance provider only
+    - Fallback: Per-symbol mode for Finnhub and other providers
+  - **Results**:
+    - NASDAQ 100 (102 symbols): 25 min → 1.36 min (**18.4x speedup**)
+    - Russell 2000 Full (1943 symbols): 60-90 min → **12-15 min (warm cache)** ✅ Target achieved!
+    - Process spawns reduced: ~9,715 → ~200 (48x reduction)
+  - **Configuration**: Enable/disable via `BATCH_FETCH_ENABLED` env var (default: true)
+
+#### Fixed
+- **Benchmark Forward-Fill to Prevent Fake S&P 500 Crashes (implemented by Codex)**:
+  - **Issue**: Stock detail charts showed severe S&P 500 drops on EU-only trading days because missing SPY candles were replaced with the stock price.
+  - **Solution**: Forward-fill the latest available SPY close when aligning series and keep a safe fallback only if the benchmark is completely absent; added unit coverage for US-holiday gaps.
+  - **Files Changed**: `src/lib/analysis/timeSeriesAnalysis.ts`, `tests/timeSeriesAnalysis.test.ts`
+
+### 2026-02-01
+
+#### Fixed
+- **Recharts React 19 Compatibility & Final Chart Fix (implemented by Gemini)**:
+  - **Issue**: Backtest charts (Equity Curve, Drawdown) and Strategy Lab charts were failing to render due to silent crashes between Recharts v2.12 and React 19.
+  - **Solution**:
+    - Upgraded `recharts` to `@alpha` version (v2.15+) which officially supports React 19 and resolves the hydration/rendering crashes.
+    - Successfully restored all charts in Strategy Lab (EquityCurve.tsx, DrawdownChart.tsx) with full animation and interactivity.
+    - Applied dynamic imports (`ssr: false`) to prevent future hydration issues in Next.js App Router.
+  - **Files Changed**:
+    - `package.json` (upgraded recharts)
+    - `src/app/components/EquityCurve.tsx`
+    - `src/app/components/DrawdownChart.tsx`
+    - `src/app/backtesting/components/EquityCurveChart.tsx`
+    - `src/app/backtesting/components/DrawdownChart.tsx`
+
+- **Performance Timeline Component Refactor (implemented by Gemini)**:
+  - **Issue**: The "Performance vs. Benchmark" chart in the stock detail view was using a manual SVG implementation that lacked interactivity, animations, and visual polish.
+  - **Solution**:
+    - Completely refactored `PerformanceTimeline.tsx` to use the `recharts` library.
+    - Implemented a high-quality `AreaChart` with gradient fills, matching the professional "fire" style of the Strategy Lab charts.
+    - Added custom interactive tooltips, grid lines, and responsive containers.
+    - Maintained all existing functionality (1Y/3Y/5Y period selection, quarterly breakdown tables).
+  - **Files Changed**:
+    - `src/app/components/PerformanceTimeline.tsx`
+
+#### Added
+- **Performance Fetch Instrumentation (implemented by Codex)**:
+  - **Feature**: Detailed per-phase logging for data fetch operations (fundamentals, prices, metadata)
+  - **Implementation**:
+    - Added performance tracking to `src/scoring/fetch.ts` with NDJSON logging
+    - Created analysis script `scripts/analyze-performance.ts` for aggregation
+    - Outputs markdown report to `docs/performance-audit-report.md`
+    - Tracks: Duration, Cache Hit Rate, Provider, Errors per phase
+  - **Usage**:
+    ```bash
+    PERFORMANCE_LOG=true npm run run:daily -- --universe=russell2000_sample
+    npm run analyze:performance
+    ```
+  - **Files Changed**:
+    - `src/scoring/fetch.ts`
+    - `scripts/analyze-performance.ts`
+    - `docs/performance-audit-report.md` (placeholder)
+
+### 2026-02-01
+
+#### Fixed
+- **Recharts React 19 Compatibility & Final Chart Fix (implemented by Gemini)**:
+  - **Issue**: Backtest charts (Equity Curve, Drawdown) and Strategy Lab charts were failing to render due to silent crashes between Recharts v2.12 and React 19.
+  - **Solution**: 
+    - Upgraded `recharts` to `@alpha` version (v2.15+) which officially supports React 19 and resolves the hydration/rendering crashes.
+    - Successfully restored all charts in Strategy Lab (`EquityCurve.tsx`, `DrawdownChart.tsx`) with full animation and interactivity.
+    - Applied dynamic imports (`ssr: false`) to prevent future hydration issues in Next.js App Router.
+  - **Files Changed**:
+    - `package.json` (upgraded recharts)
+    - `src/app/components/EquityCurve.tsx`
+    - `src/app/components/DrawdownChart.tsx`
+
+- **Performance Timeline Component Refactor (implemented by Gemini)**:
+  - **Issue**: The "Performance vs. Benchmark" chart in the stock detail view was using a manual SVG implementation that lacked interactivity, animations, and visual polish ("lackluster").
+  - **Solution**:
+    - Completely refactored `PerformanceTimeline.tsx` to use the `recharts` library.
+    - Implemented a high-quality `AreaChart` with gradient fills, matching the professional "fire" style of the Strategy Lab charts.
+    - Added custom interactive tooltips, grid lines, and responsive containers.
+    - Maintained all existing functionality (1Y/3Y/5Y period selection, quarterly breakdown tables).
+  - **Files Changed**:
+    - `src/app/components/PerformanceTimeline.tsx`
+
+- **TypeScript type-check now clean (0 errors)**: corrected page prop types, score imports, StockDetailView formatting guards, Settings select option types, and settings type exports.
+- **Restored settings barrel exports** (`UserSettings` aliases) and tightened store typings (AppSettings-based).
+- **Tests stabilized**: vitest types added, async price-target tests awaited, selection/data_quality fixtures completed, FundamentalsData test helpers filled, TechnicalMetrics import fixed.
+
 ### 2026-01-31 (Evening Update)
 
 #### Fixed

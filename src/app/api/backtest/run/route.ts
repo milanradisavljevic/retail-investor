@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Weights must sum to 100%' }, { status: 400 });
     }
 
-    // Use local tsx binary to avoid PATH/npx issues in server runtimes
+    // Use Node with tsx loader (CLI mode opens an IPC pipe that can be blocked in some sandboxes)
     const tsxPath = path.join(process.cwd(), 'node_modules', '.bin', 'tsx');
     if (!fs.existsSync(tsxPath)) {
       return NextResponse.json(
@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    const cmd = `${tsxPath} scripts/backtesting/run-backtest.ts`;
+    const scriptPath = path.join(process.cwd(), 'scripts', 'backtesting', 'run-backtest.ts');
+    const cmd = `${process.execPath} --import tsx ${scriptPath}`;
     const env = {
       ...process.env,
       SCORING_MODE: strategy,

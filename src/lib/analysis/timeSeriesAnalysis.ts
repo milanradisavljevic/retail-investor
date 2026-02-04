@@ -102,14 +102,18 @@ export async function loadTimeSeriesData(
   const benchmark = filteredSpy.length > 0 ? filteredSpy : spyData;
 
   // 4. Merge data by date
-  const timeSeries: TimeSeriesPoint[] = series.map(point => {
-    const spyPoint = benchmark.find(s => s.date === point.date);
-    return {
+  let timeSeries = mergeWithBenchmark(series, benchmark);
+
+  // Defensive fallback: if merge drops everything (e.g. exotic calendars),
+  // keep the raw series to avoid crashing the page. This still keeps
+  // stock vs. market flat instead of introducing artificial jumps.
+  if (!timeSeries.length && series.length) {
+    timeSeries = series.map(point => ({
       date: point.date,
       price: point.close,
-      sp500: spyPoint?.close ?? point.close
-    };
-  }).filter(p => p.sp500 > 0); // Remove dates without S&P data
+      sp500: point.close
+    }));
+  }
 
   // 5. Calculate quarterly performance
   const quarterlyPerformance = calculateQuarterlyReturns(timeSeries);
@@ -134,6 +138,50 @@ export async function loadTimeSeriesData(
     quarterlyPerformance,
     summary
   };
+}
+
+/**
+ * Merge stock series with benchmark (SPY) while forward-filling the latest
+ * available benchmark close for dates where the markets don't share
+ * trading sessions (e.g. US holidays vs EU trading days).
+ * This prevents artificial drops caused by falling back to the stock price.
+ */
+export function mergeWithBenchmark(
+  series: { date: string; close: number }[],
+  benchmark: { date: string; close: number }[]
+): TimeSeriesPoint[] {
+  if (!series.length) return [];
+  if (!benchmark.length) {
+    return series.map(point => ({
+      date: point.date,
+      price: point.close,
+      sp500: point.close
+    }));
+  }
+
+  const sortedSeries = [...series].sort((a, b) => a.date.localeCompare(b.date));
+  const sortedBenchmark = [...benchmark].sort((a, b) => a.date.localeCompare(b.date));
+
+  const result: TimeSeriesPoint[] = [];
+  let spyIdx = 0;
+  let lastSpyClose: number | null = null;
+
+  for (const point of sortedSeries) {
+    while (spyIdx < sortedBenchmark.length && sortedBenchmark[spyIdx].date <= point.date) {
+      lastSpyClose = sortedBenchmark[spyIdx].close;
+      spyIdx += 1;
+    }
+
+    if (lastSpyClose == null) continue; // no benchmark yet for this date
+
+    result.push({
+      date: point.date,
+      price: point.close,
+      sp500: lastSpyClose
+    });
+  }
+
+  return result;
 }
 
 /**

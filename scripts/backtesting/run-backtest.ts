@@ -11,22 +11,40 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { calculateMetrics, type DailyRecord, type BacktestSummary, type RebalanceEvent } from './calculate-metrics';
 import { calculateHybridScore, type HybridScoreInput } from './hybrid-scoring';
+import { calculateAvgMetrics } from './avg-metrics';
+import { YFinanceProvider } from '../../src/providers/yfinance_provider';
+import type { FundamentalsData } from '../../src/data/repositories/fundamentals_repo';
+import type { TechnicalMetrics } from '../../src/providers/types';
 
 // Configuration
 const HISTORICAL_DIR = path.join(process.cwd(), 'data/backtesting/historical');
 const OUTPUT_DIR = path.join(process.cwd(), 'data/backtesting');
-const START_DATE = '2020-01-01';
-const END_DATE = '2024-12-31';
+const START_DATE = process.env.BACKTEST_START || '2015-01-01';
+const END_DATE = process.env.BACKTEST_END || '2025-12-31';
 const INITIAL_CAPITAL = 100_000;
-const TOP_N = 10;
+const TOP_N = Number(process.env.TOP_N || 10);
+const MIN_MARKET_CAP = Number(process.env.MIN_MARKET_CAP || 1_000_000_000); // $1B default
+const MAX_ANNUALIZED_VOL = Number(process.env.MAX_ANNUALIZED_VOL || 25); // % cap for shield-style filters
+const MC_CANDIDATE_LIMIT = Number(process.env.MC_CANDIDATE_LIMIT || 200);
+const FUND_FETCH_TIMEOUT_MS = Number(process.env.FUND_FETCH_TIMEOUT_MS || 4000);
 
-// Scoring mode: 'momentum' (legacy) or 'hybrid' (new)
-const SCORING_MODE = process.env.SCORING_MODE === 'momentum' ? 'momentum' : 'hybrid';
+// Preset + scoring mode
+const PRESET = (process.env.PRESET || process.env.SCORING_PRESET || '').toLowerCase();
+const HOLD_BUFFER = Number(process.env.HOLD_BUFFER || 5); // how many extra ranks we allow before selling
+type ScoringMode = 'momentum' | 'hybrid' | 'shield';
+const SCORING_MODE: ScoringMode = (() => {
+  const env = (process.env.SCORING_MODE || '').toLowerCase();
+  if (env === 'momentum') return 'momentum';
+  if (env === 'shield') return 'shield';
+  if (PRESET === 'shield') return 'shield';
+  return 'hybrid';
+})();
 
-type RebalanceFrequency = 'monthly' | 'quarterly' | 'annually';
+type RebalanceFrequency = 'monthly' | 'quarterly' | 'annually' | 'semiannual';
 const REBALANCE_FREQUENCY: RebalanceFrequency = (() => {
   const env = (process.env.REBALANCING || 'quarterly').toLowerCase();
   if (env === 'monthly' || env === 'quarterly' || env === 'annually') return env;
+  if (env === 'semi-annual' || env === 'semiannual' || env === 'semi') return 'semiannual';
   return 'quarterly';
 })();
 
@@ -98,6 +116,54 @@ function loadUniverseConfig(): { universeName: string; symbols: string[]; benchm
   return { universeName, symbols, benchmark };
 }
 
+function countPricesBefore(symbol: string, startDate: string): number {
+  const csvPath = path.join(HISTORICAL_DIR, `${symbol}.csv`);
+  if (!fs.existsSync(csvPath)) return 0;
+  const lines = fs.readFileSync(csvPath, 'utf-8').trim().split(/\r?\n/);
+  let count = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const [date] = lines[i].split(',');
+    if (!date) continue;
+    if (date < startDate) count++;
+  }
+  return count;
+}
+
+function filterByCoverage(symbols: string[], startDate: string, requiredDays = 252): string[] {
+  const valid: string[] = [];
+  const dropped: string[] = [];
+
+  for (const sym of symbols) {
+    const days = countPricesBefore(sym, startDate);
+    if (days >= requiredDays) valid.push(sym);
+    else dropped.push(sym);
+  }
+
+  if (dropped.length > 0) {
+    console.log(
+      `Coverage filter: ${valid.length}/${symbols.length} symbols have >=${requiredDays} days before ${startDate}.`
+    );
+    console.log(`Dropping ${dropped.length} symbols (first 5): ${dropped.slice(0, 5).join(', ')}`);
+  }
+
+  return valid;
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    promise
+      .then((v) => {
+        clearTimeout(t);
+        resolve(v);
+      })
+      .catch((e) => {
+        clearTimeout(t);
+        reject(e);
+      });
+  });
+}
+
 function shouldRebalance(
   currentDate: Date,
   lastRebalanceDate: Date,
@@ -114,6 +180,8 @@ function shouldRebalance(
       return monthsDiff >= 3;
     case 'annually':
       return monthsDiff >= 12;
+    case 'semiannual':
+      return monthsDiff >= 6;
     default:
       return false;
   }
@@ -332,25 +400,117 @@ function calculateHybridScoreForDate(
 }
 
 /**
+ * Calculate Shield (Low Volatility) score.
+ * - 60% weight to low volatility (lower vol = higher score)
+ * - 40% weight to momentum (same calc as hybrid)
+ */
+function calculateShieldScoreForDate(
+  symbolData: SymbolData,
+  asOfDate: string,
+  allDates: string[]
+): number | null {
+  const dateIdx = allDates.indexOf(asOfDate);
+  if (dateIdx < 130) return null; // need ~6 months
+
+  const currentPrice = symbolData.prices.get(asOfDate)?.close;
+  if (!currentPrice) return null;
+
+  // Momentum piece (reuse hybrid 13/26w)
+  const date13w = allDates[Math.max(0, dateIdx - 65)];
+  const date26w = allDates[Math.max(0, dateIdx - 130)];
+  const price13w = symbolData.prices.get(date13w)?.close;
+  const price26w = symbolData.prices.get(date26w)?.close;
+
+  const return13w = price13w ? (currentPrice - price13w) / price13w : null;
+  const return26w = price26w ? (currentPrice - price26w) / price26w : null;
+
+  // Require positive 26-week trend to avoid falling knives
+  if (return26w !== null && return26w < 0) return null;
+
+  const momentumScore = calculateHybridScore({
+    symbol: symbolData.symbol,
+    currentPrice,
+    high52Week: currentPrice,
+    low52Week: currentPrice,
+    return13Week: return13w,
+    return26Week: return26w,
+    return52Week: null,
+  }).components.momentum;
+
+  // Volatility over last 90 trading days
+  const lookbackStart = Math.max(0, dateIdx - 90);
+  const prices: number[] = [];
+  for (let i = lookbackStart + 1; i <= dateIdx; i++) {
+    const p = symbolData.prices.get(allDates[i])?.close;
+    if (p) prices.push(p);
+  }
+  if (prices.length < 30) return null;
+
+  const returns: number[] = [];
+  for (let i = 1; i < prices.length; i++) {
+    returns.push((prices[i] - prices[i - 1]) / prices[i - 1]);
+  }
+  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
+  const dailyStd = Math.sqrt(variance);
+  const annualizedVolPct = dailyStd * Math.sqrt(252) * 100;
+
+  // Hard filter: drop if above max allowed volatility (environment override)
+  if (annualizedVolPct > MAX_ANNUALIZED_VOL) return null;
+
+  // Map volatility to score: 10% => 100, 20% => 70, 25% => 50, 30% => 20, 40% => 0
+  const volScore = (() => {
+    if (annualizedVolPct <= 10) return 100;
+    if (annualizedVolPct <= 20) return 70 + (20 - annualizedVolPct) * 2;
+    if (annualizedVolPct <= 25) return 50 + (25 - annualizedVolPct) * 4;
+    if (annualizedVolPct <= 30) return 20 + (30 - annualizedVolPct) * 6;
+    if (annualizedVolPct <= 40) return Math.max(0, (40 - annualizedVolPct) * 2);
+    return 0;
+  })();
+
+  return volScore * 0.7 + momentumScore * 0.3;
+}
+
+/**
  * Select top N stocks based on score at given date
  */
-function selectTopStocks(
+type RankedStock = { symbol: string; score: number };
+
+type FundamentalsFetcher = (symbol: string) => Promise<FundamentalsData | null>;
+
+async function rankStocks(
   dataMap: Map<string, SymbolData>,
   asOfDate: string,
   allDates: string[],
-  n: number,
-  benchmarkSymbol: string
-): string[] {
+  benchmarkSymbol: string,
+  fundamentalsFetcher: FundamentalsFetcher | null
+): Promise<RankedStock[]> {
   const scores: Array<{ symbol: string; score: number }> = [];
 
   for (const [symbol, data] of dataMap) {
     if (symbol === benchmarkSymbol) continue; // Exclude benchmark
 
-    const score = SCORING_MODE === 'hybrid'
-      ? calculateHybridScoreForDate(data, asOfDate, allDates)
-      : calculateMomentumScore(data, asOfDate, allDates);
+    let score: number | null = null;
+    if (SCORING_MODE === 'shield') {
+      score = calculateShieldScoreForDate(data, asOfDate, allDates);
+    } else if (SCORING_MODE === 'hybrid') {
+      score = calculateHybridScoreForDate(data, asOfDate, allDates);
+    } else {
+      score = calculateMomentumScore(data, asOfDate, allDates);
+    }
 
     if (score !== null) {
+      // Market cap filter for shield mode (requires fundamentals)
+      if (SCORING_MODE === 'shield' && fundamentalsFetcher && MIN_MARKET_CAP > 0) {
+        try {
+          const f = await fundamentalsFetcher(symbol);
+          if (f?.marketCap !== null && f?.marketCap !== undefined && f.marketCap < MIN_MARKET_CAP) {
+            continue; // drop microcaps
+          }
+        } catch {
+          // on fetch failure, keep symbol to avoid over-pruning
+        }
+      }
       scores.push({ symbol, score });
     }
   }
@@ -361,18 +521,38 @@ function selectTopStocks(
     return a.symbol.localeCompare(b.symbol);
   });
 
-  return scores.slice(0, n).map((s) => s.symbol);
+  // Fundamentals-based market-cap filter (only for shield), limited to top N to avoid timeouts
+  if (SCORING_MODE === 'shield' && fundamentalsFetcher && MIN_MARKET_CAP > 0) {
+    const limited = scores.slice(0, Math.min(MC_CANDIDATE_LIMIT, 30)); // hard cap at 30 for speed
+    const kept: RankedStock[] = [];
+    for (const item of limited) {
+      try {
+        const f = await withTimeout(fundamentalsFetcher(item.symbol), FUND_FETCH_TIMEOUT_MS);
+        if (f?.marketCap !== null && f?.marketCap !== undefined && f.marketCap < MIN_MARKET_CAP) {
+          continue; // drop microcaps
+        }
+      } catch {
+        // On timeout or failure: keep (fail-open) to avoid over-pruning
+      }
+      kept.push(item);
+    }
+    // merge kept (filtered top slice) with rest (unfiltered tail)
+    return kept.concat(scores.slice(MC_CANDIDATE_LIMIT));
+  }
+
+  return scores;
 }
 
 /**
  * Find nearest trading day on or after given date
  */
 // Run the backtest simulation
-function runBacktest(
+async function runBacktest(
   dataMap: Map<string, SymbolData>,
   benchmarkSymbol: string,
-  rebalanceFrequency: RebalanceFrequency = REBALANCE_FREQUENCY
-): BacktestResult {
+  rebalanceFrequency: RebalanceFrequency = REBALANCE_FREQUENCY,
+  fundamentalsFetcher: FundamentalsFetcher | null = null
+): Promise<BacktestResult> {
   console.log('\nRunning backtest simulation...');
   console.log(`Period: ${START_DATE} to ${END_DATE}`);
   console.log(`Initial capital: $${INITIAL_CAPITAL.toLocaleString()}`);
@@ -448,15 +628,63 @@ function runBacktest(
       }
       portfolio.positions = [];
 
-      // Select new top stocks
-      const topStocks = selectTopStocks(dataMap, date, allDates, TOP_N, benchmarkSymbol);
-      console.log(`\n${date}: Rebalancing to ${topStocks.length} stocks (${rebalanceFrequency})`);
-      console.log(`  Top 5: ${topStocks.slice(0, 5).join(', ')}`);
+      // Rank all stocks
+      const ranking = await rankStocks(dataMap, date, allDates, benchmarkSymbol, fundamentalsFetcher);
+      const holdZone = TOP_N + HOLD_BUFFER;
+
+      // Determine keep vs sell using hold buffer
+      const kept: Position[] = [];
+      const toSellPositions: Position[] = [];
+      const keptSymbols: string[] = [];
+
+      for (const pos of portfolio.positions) {
+        const rankIdx = ranking.findIndex((r) => r.symbol === pos.symbol);
+        const price = dataMap.get(pos.symbol)?.prices.get(date)?.close;
+        const tradable = price !== undefined && price > 0;
+
+        if (!tradable || rankIdx === -1 || rankIdx >= holdZone) {
+          toSellPositions.push(pos);
+        } else {
+          kept.push(pos);
+          keptSymbols.push(pos.symbol);
+        }
+      }
+
+      // Sell positions outside hold zone
+      for (const pos of toSellPositions) {
+        const price = dataMap.get(pos.symbol)?.prices.get(date)?.close;
+        if (price) {
+          const sellResult = executeSell(price, pos.shares, slippageModel);
+          portfolio.cash += sellResult.proceeds;
+
+          const grossProceeds = price * pos.shares;
+          soldNotional += grossProceeds;
+          totalSlippageCost += (grossProceeds - sellResult.proceeds) - (grossProceeds * TRANSACTION_COST_PCT);
+          totalTransactionCost += grossProceeds * TRANSACTION_COST_PCT;
+          totalTrades++;
+        }
+        soldSymbols.push(pos.symbol);
+      }
+      portfolio.positions = kept;
+
+      // Target buys up to TOP_N
+      const currentSymbols = new Set(portfolio.positions.map((p) => p.symbol));
+      const toBuySymbols: string[] = [];
+      for (const { symbol } of ranking) {
+        if (toBuySymbols.length + portfolio.positions.length >= TOP_N) break;
+        if (!currentSymbols.has(symbol)) {
+          toBuySymbols.push(symbol);
+        }
+      }
+
+      console.log(`\n${date}: Rebalancing to ${TOP_N} stocks (${rebalanceFrequency})`);
+      console.log(`  Keeping: ${portfolio.positions.map((p) => p.symbol).join(', ') || 'none'}`);
+      console.log(`  Buying: ${toBuySymbols.slice(0, 5).join(', ')}${toBuySymbols.length > 5 ? '...' : ''}`);
 
       // Buy equal weight positions with slippage and transaction costs
-      if (topStocks.length > 0) {
-        const cashPerPosition = portfolio.cash / topStocks.length;
-        for (const symbol of topStocks) {
+      if (toBuySymbols.length > 0) {
+        const cashPerPosition = portfolio.cash / toBuySymbols.length;
+        for (const symbol of toBuySymbols) {
           const price = dataMap.get(symbol)?.prices.get(date)?.close;
           if (price && price > 0) {
             const estimatedShares = Math.floor(
@@ -489,6 +717,7 @@ function runBacktest(
         action: 'rebalance',
         sold: soldSymbols,
         bought: boughtSymbols,
+        kept: keptSymbols,
         turnover: Math.round(turnoverPct * 100) / 100,
       });
 
@@ -541,7 +770,7 @@ function runBacktest(
 /**
  * Write results to CSV and JSON
  */
-function writeResults(dailyRecords: DailyRecord[], summary: BacktestSummary): void {
+function writeResults(dailyRecords: DailyRecord[], summary: BacktestSummary, suffix?: string): void {
   // Ensure output directory exists
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -564,6 +793,12 @@ function writeResults(dailyRecords: DailyRecord[], summary: BacktestSummary): vo
   fs.writeFileSync(csvModePath, csvContent);
   console.log(`CSV written: ${csvModePath}`);
 
+  if (suffix) {
+    const csvPresetPath = path.join(OUTPUT_DIR, `backtest-results-${suffix}.csv`);
+    fs.writeFileSync(csvPresetPath, csvContent);
+    console.log(`CSV written: ${csvPresetPath}`);
+  }
+
   // Write JSON summary
   const jsonPath = path.join(OUTPUT_DIR, 'backtest-summary.json');
   fs.writeFileSync(jsonPath, JSON.stringify(summary, null, 2));
@@ -572,6 +807,12 @@ function writeResults(dailyRecords: DailyRecord[], summary: BacktestSummary): vo
   const jsonModePath = path.join(OUTPUT_DIR, `backtest-summary-${SCORING_MODE}.json`);
   fs.writeFileSync(jsonModePath, JSON.stringify(summary, null, 2));
   console.log(`JSON written: ${jsonModePath}`);
+
+  if (suffix) {
+    const jsonPresetPath = path.join(OUTPUT_DIR, `backtest-summary-${suffix}.json`);
+    fs.writeFileSync(jsonPresetPath, JSON.stringify(summary, null, 2));
+    console.log(`JSON written: ${jsonPresetPath}`);
+  }
 }
 
 /**
@@ -585,27 +826,86 @@ async function main(): Promise<void> {
   const universe = loadUniverseConfig();
   console.log(`Universe: ${universe.universeName}`);
 
+  const applyCoverage =
+    process.env.APPLY_COVERAGE_FILTER === 'true' ||
+    process.argv.includes('--apply-coverage-filter');
+  if (applyCoverage) {
+    universe.symbols = filterByCoverage(universe.symbols, START_DATE, 252);
+  }
+
+  // Fundamentals cache (lazy)
+  const yf = new YFinanceProvider();
+  const fundamentalsCache = new Map<string, Promise<FundamentalsData | null>>();
+  const getFundamentalsCached: FundamentalsFetcher = async (symbol: string) => {
+    if (!fundamentalsCache.has(symbol)) {
+      fundamentalsCache.set(
+        symbol,
+        yf
+          .getFundamentals(symbol)
+          .catch(() => null)
+      );
+    }
+    return fundamentalsCache.get(symbol)!;
+  };
+
   // Load data
   const dataMap = loadHistoricalData(universe.symbols);
   console.log(`Loaded data for ${dataMap.size} symbols`);
 
   // Run backtest
-  const { dailyRecords, costs, rebalanceEvents } = runBacktest(
+  const { dailyRecords, costs, rebalanceEvents } = await runBacktest(
     dataMap,
     universe.benchmark,
-    REBALANCE_FREQUENCY
+    REBALANCE_FREQUENCY,
+    getFundamentalsCached
   );
 
-  const summary = calculateMetrics(dailyRecords, START_DATE, END_DATE);
+  const strategyName = (() => {
+    if (PRESET) return `${PRESET} preset - ${REBALANCE_FREQUENCY} Top ${TOP_N}`;
+    if (SCORING_MODE === 'shield') return 'Shield (Low Volatility) - Quarterly Top 10';
+    if (SCORING_MODE === 'momentum') return 'Quarterly Rebalance Top 10 Momentum';
+    return 'Quarterly Rebalance Top 10 Hybrid';
+  })();
+
+  const summary = calculateMetrics(dailyRecords, START_DATE, END_DATE, strategyName);
 
   // Add cost information to the summary
   summary.costs = costs;
   summary.rebalance_events = rebalanceEvents;
   summary.rebalance_frequency = REBALANCE_FREQUENCY;
   summary.top_n = TOP_N;
+  if (rebalanceEvents.length > 0) {
+    const avgTurnover =
+      rebalanceEvents.reduce((a, b) => a + (b.turnover ?? 0), 0) / rebalanceEvents.length;
+    (summary as any).turnover_pct = Math.round(avgTurnover * 10) / 10;
+  }
+
+  // Avg fundamentals/technical metrics across symbols ever held
+  if (process.env.SKIP_AVG_METRICS === 'true') {
+    summary.avgMetrics = { dataPoints: 0 };
+  } else {
+    const symbolsHeld = new Set<string>();
+    rebalanceEvents.forEach((e) => {
+      e.bought?.forEach((s) => symbolsHeld.add(s));
+      e.kept?.forEach((s) => symbolsHeld.add(s));
+    });
+    const fundamentalsMap = new Map<string, FundamentalsData>();
+    const technicalMap = new Map<string, TechnicalMetrics>();
+    for (const sym of symbolsHeld) {
+      try {
+        const [f, t] = await Promise.all([getFundamentalsCached(sym), yf.getTechnicalMetrics(sym)]);
+        if (f) fundamentalsMap.set(sym, f);
+        if (t) technicalMap.set(sym, t);
+      } catch {
+        // ignore individual failures
+      }
+    }
+    summary.avgMetrics = calculateAvgMetrics(Array.from(symbolsHeld), fundamentalsMap, technicalMap);
+  }
 
   // Write results
-  writeResults(dailyRecords, summary);
+  const suffix = SCORING_MODE === 'shield' ? 'shield' : PRESET || undefined;
+  writeResults(dailyRecords, summary, suffix);
 
   // Print summary
   console.log('\n' + '='.repeat(60));

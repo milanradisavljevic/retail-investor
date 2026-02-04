@@ -5,9 +5,9 @@
  */
 
 import { DEFAULT_SETTINGS } from './defaults';
-import type { UserSettings, PartialUserSettings, SettingsListener } from './types';
+import type { AppSettings, PartialAppSettings, SettingsListener } from './types';
 
-const SETTINGS_KEY = 'privatinvestor_settings_v1';
+const SETTINGS_KEY = 'intrinsic_settings_v1';
 
 /**
  * Deep merge two objects
@@ -49,7 +49,7 @@ function deepMerge<T extends Record<string, unknown>>(
  * Settings store class with persistence and sync
  */
 export class SettingsStore {
-  private settings: UserSettings;
+  private settings: AppSettings;
   private listeners: Set<SettingsListener> = new Set();
   private isClient = false;
 
@@ -68,19 +68,19 @@ export class SettingsStore {
   /**
    * Load settings from localStorage
    */
-  private loadFromStorage(): UserSettings {
+  private loadFromStorage(): AppSettings {
     try {
       const stored = localStorage.getItem(SETTINGS_KEY);
       if (!stored) {
         return DEFAULT_SETTINGS;
       }
 
-      const parsed = JSON.parse(stored) as PartialUserSettings;
+      const parsed = JSON.parse(stored) as PartialAppSettings;
       const merged = deepMerge(
         DEFAULT_SETTINGS as Record<string, unknown>,
         parsed as Record<string, unknown>
       );
-      return merged as unknown as UserSettings;
+      return merged as unknown as AppSettings;
     } catch (error) {
       console.error('[SettingsStore] Failed to load settings:', error);
       return DEFAULT_SETTINGS;
@@ -106,11 +106,11 @@ export class SettingsStore {
   private handleStorageEvent = (event: StorageEvent): void => {
     if (event.key === SETTINGS_KEY && event.newValue) {
       try {
-        const parsed = JSON.parse(event.newValue) as PartialUserSettings;
+        const parsed = JSON.parse(event.newValue) as PartialAppSettings;
         this.settings = deepMerge(
           DEFAULT_SETTINGS as Record<string, unknown>,
           parsed as Record<string, unknown>
-        ) as unknown as UserSettings;
+        ) as unknown as AppSettings;
         this.notifyListeners();
       } catch (error) {
         console.error('[SettingsStore] Failed to parse storage event:', error);
@@ -134,18 +134,18 @@ export class SettingsStore {
   /**
    * Get current settings (immutable copy)
    */
-  get(): UserSettings {
+  get(): AppSettings {
     return { ...this.settings };
   }
 
   /**
    * Update settings with partial changes
    */
-  update(updates: PartialUserSettings): void {
+  update(updates: PartialAppSettings): void {
     this.settings = deepMerge(
       this.settings as Record<string, unknown>,
       updates as Record<string, unknown>
-    ) as unknown as UserSettings;
+    ) as unknown as AppSettings;
     this.saveToStorage();
     this.notifyListeners();
   }
@@ -153,11 +153,11 @@ export class SettingsStore {
   /**
    * Update a specific category
    */
-  updateCategory<K extends keyof UserSettings>(
+  updateCategory<K extends keyof AppSettings>(
     category: K,
-    values: Partial<UserSettings[K]>
+    values: Partial<AppSettings[K]>
   ): void {
-    this.update({ [category]: values } as PartialUserSettings);
+    this.update({ [category]: values } as PartialAppSettings);
   }
 
   /**
@@ -189,10 +189,10 @@ export class SettingsStore {
   /**
    * Get a specific setting value
    */
-  getValue<K extends keyof UserSettings, SK extends keyof UserSettings[K]>(
+  getValue<K extends keyof AppSettings, SK extends keyof AppSettings[K]>(
     category: K,
     key: SK
-  ): UserSettings[K][SK] {
+  ): AppSettings[K][SK] {
     return this.settings[category][key];
   }
 
@@ -208,7 +208,7 @@ export class SettingsStore {
    */
   import(json: string): boolean {
     try {
-      const parsed = JSON.parse(json) as PartialUserSettings;
+      const parsed = JSON.parse(json) as PartialAppSettings;
       this.update(parsed);
       return true;
     } catch (error) {

@@ -3,34 +3,26 @@
  * System-wide default values for all user preferences
  */
 
-import type { UserSettings } from './types';
+import type { AppSettings } from './types';
 
 /**
  * Default settings applied on first use or after reset
  */
-export const DEFAULT_SETTINGS: UserSettings = {
+export const DEFAULT_SETTINGS: AppSettings = {
   general: {
     language: 'de',
     theme: 'dark',
     defaultUniverse: 'russell2000_full',
-    dateFormat: 'EU',
   },
   analysis: {
     defaultStrategy: 'compounder',
     riskTolerance: 'balanced',
     minScoreThreshold: 70,
-    showDeepAnalysisWarnings: true,
   },
   display: {
     cardsPerPage: 20,
     scorePrecision: 1,
     showPercentiles: true,
-    compactView: false,
-  },
-  data: {
-    cacheTTLDays: 7,
-    autoRefresh: true,
-    performanceTracking: true,
   },
 };
 
@@ -56,10 +48,6 @@ export const SETTINGS_OPTIONS = {
     { value: 'dax_full', label: 'DAX 40' },
     { value: 'eurostoxx50', label: 'Euro STOXX 50' },
   ],
-  dateFormat: [
-    { value: 'EU', label: 'EU (DD.MM.YYYY)' },
-    { value: 'US', label: 'US (MM/DD/YYYY)' },
-  ],
   strategy: [
     { value: 'compounder', label: 'Compounder' },
     { value: 'deep_value', label: 'Deep Value' },
@@ -83,11 +71,6 @@ export const SETTINGS_OPTIONS = {
     { value: 0, label: 'Ganzzahl (75)' },
     { value: 1, label: 'Eine Stelle (75.2)' },
     { value: 2, label: 'Zwei Stellen (75.23)' },
-  ],
-  cacheTTLDays: [
-    { value: 1, label: '1 Tag' },
-    { value: 7, label: '7 Tage' },
-    { value: 30, label: '30 Tage' },
   ],
 } as const;
 
@@ -119,10 +102,6 @@ export const SETTINGS_LABELS = {
       label: 'Standard-Universe',
       description: 'Vorausgewähltes Aktien-Universe',
     },
-    dateFormat: {
-      label: 'Datumsformat',
-      description: 'Darstellung von Daten',
-    },
   },
   analysis: {
     title: 'Analyse',
@@ -139,10 +118,6 @@ export const SETTINGS_LABELS = {
       label: 'Minimaler Score',
       description: 'Mindestschwelle für angezeigte Aktien (0-100)',
     },
-    showDeepAnalysisWarnings: {
-      label: 'Tiefenanalyse-Warnungen',
-      description: 'Warnungen für Aktien mit tiefer Analyse anzeigen',
-    },
   },
   display: {
     title: 'Anzeige',
@@ -158,26 +133,6 @@ export const SETTINGS_LABELS = {
     showPercentiles: {
       label: 'Perzentile anzeigen',
       description: 'Perzentil-Rankings in der Anzeige',
-    },
-    compactView: {
-      label: 'Kompaktansicht',
-      description: 'Platzsparende Darstellung aktivieren',
-    },
-  },
-  data: {
-    title: 'Daten',
-    description: 'Einstellungen für Daten und Cache',
-    cacheTTLDays: {
-      label: 'Cache-Dauer',
-      description: 'Wie lange Daten zwischengespeichert werden',
-    },
-    autoRefresh: {
-      label: 'Auto-Aktualisierung',
-      description: 'Daten automatisch beim Laden aktualisieren',
-    },
-    performanceTracking: {
-      label: 'Performance-Tracking',
-      description: 'Detaillierte Performance-Messung aktivieren',
     },
   },
 };

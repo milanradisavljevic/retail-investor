@@ -7,7 +7,7 @@ import {
   getCachedTechnicalMetrics,
   saveTechnicalMetricsCache,
 } from '@/data/repositories/technical_metrics_repo';
-import type { TechnicalMetrics } from '@/providers/finnhub/client';
+import type { TechnicalMetrics } from '@/providers/types';
 
 let originalCwd: string;
 let tempDir: string;

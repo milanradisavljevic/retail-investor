@@ -1,5 +1,5 @@
 'use client';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid, Brush } from 'recharts';
 
 interface DataPoint {
   date: string;
@@ -11,10 +11,25 @@ interface EquityCurveProps {
   data: DataPoint[];
 }
 
-export function EquityCurve({ data }: EquityCurveProps) {
-  // Debug logging
-  console.log('[EquityCurve] Received data points:', data?.length || 0);
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-slate-800 border border-slate-700 p-3 rounded-lg shadow-lg text-sm">
+      <p className="text-slate-400 mb-2">{label}</p>
+      {payload.map((entry: any) => (
+        <div key={entry.name} className="flex items-center gap-2 mb-1">
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span className="text-slate-300">{entry.name}:</span>
+          <span className="font-mono text-white font-medium">
+            ${entry.value?.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
+export function EquityCurve({ data }: EquityCurveProps) {
   if (!data || data.length === 0) {
     return (
       <div className="h-[250px] flex items-center justify-center text-slate-500 border border-dashed border-slate-700 rounded">
@@ -29,58 +44,59 @@ export function EquityCurve({ data }: EquityCurveProps) {
     : data;
 
   return (
-    <ResponsiveContainer width="100%" height={250}>
-      <LineChart
-        data={sampledData}
-        margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-      >
-        <XAxis
-          dataKey="date"
-          tick={{ fill: '#94a3b8', fontSize: 10 }}
-          tickFormatter={(d) => {
-            try {
-              const date = new Date(d);
-              return `${date.getMonth()+1}/${date.getFullYear().toString().slice(2)}`;
-            } catch { return d; }
-          }}
-          interval="preserveStartEnd"
-          minTickGap={50}
-        />
-        <YAxis
-          tick={{ fill: '#94a3b8', fontSize: 10 }}
-          tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`}
-          width={60}
-          domain={['auto', 'auto']}
-        />
-        <Tooltip
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-          labelStyle={{ color: '#94a3b8' }}
-          formatter={(value: number, name: string) => [
-            `$${value?.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || 'N/A'}`,
-            name === 'portfolio' ? 'Strategy' : 'Benchmark'
-          ]}
-        />
-        <Legend wrapperStyle={{ color: '#94a3b8' }} />
-        <Line
-          type="monotone"
-          dataKey="portfolio"
-          name="Strategy"
-          stroke="#10b981"
-          strokeWidth={2}
-          dot={false}
-          isAnimationActive={false}
-        />
-        <Line
-          type="monotone"
-          dataKey="benchmark"
-          name="Benchmark"
-          stroke="#64748b"
-          strokeWidth={1.5}
-          dot={false}
-          strokeDasharray="5 5"
-          isAnimationActive={false}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="h-[300px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={sampledData}
+          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
+          <XAxis
+            dataKey="date"
+            tick={{ fill: '#94a3b8', fontSize: 10 }}
+            tickFormatter={(d) => {
+              try {
+                const date = new Date(d);
+                return `${date.getMonth()+1}/${date.getFullYear().toString().slice(2)}`;
+              } catch { return d; }
+            }}
+            interval="preserveStartEnd"
+            minTickGap={50}
+            stroke="#475569"
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: '#94a3b8', fontSize: 10 }}
+            tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`}
+            width={50}
+            domain={['auto', 'auto']}
+            stroke="#475569"
+            tickLine={false}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend wrapperStyle={{ paddingTop: '10px' }} />
+          <Line
+            type="monotone"
+            dataKey="portfolio"
+            name="Strategy"
+            stroke="#10b981"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 6, fill: '#10b981' }}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="benchmark"
+            name="Benchmark"
+            stroke="#64748b"
+            strokeWidth={1.5}
+            dot={false}
+            strokeDasharray="5 5"
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

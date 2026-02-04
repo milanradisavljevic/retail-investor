@@ -33,7 +33,7 @@ function makeStockMetrics(partial: Partial<StockMetrics>): StockMetrics {
 }
 
 describe('price target diagnostics and fallback', () => {
-  it('falls back to global medians when sector sample is too small and downgrades confidence', () => {
+  it('falls back to global medians when sector sample is too small and downgrades confidence', async () => {
     const config = makeConfig({ minSectorSampleSize: 4 });
     const stockMetrics: StockMetrics[] = [
       makeStockMetrics({ symbol: 'AAA' }),
@@ -45,7 +45,7 @@ describe('price target diagnostics and fallback', () => {
     expect(selection.source).toBe('global');
     expect(selection.fallbackReason).toBe('sector_sample_too_small');
 
-    const result = calculatePriceTargets(
+    const result = await calculatePriceTargets(
       stockMetrics[0],
       selection,
       {
@@ -63,7 +63,7 @@ describe('price target diagnostics and fallback', () => {
     expect(result.diagnostics?.medians.fallback_reason).toBe('sector_sample_too_small');
   });
 
-  it('captures missing component diagnostics without crashing when revenue_per_share is null', () => {
+  it('captures missing component diagnostics without crashing when revenue_per_share is null', async () => {
     const config = makeConfig({ minSectorSampleSize: 1 });
     const medians: SectorMedianSet = {
       sectors: new Map([
@@ -91,7 +91,7 @@ describe('price target diagnostics and fallback', () => {
     });
 
     const selection = getSectorMediansForStock(metrics, medians, config);
-    const result = calculatePriceTargets(
+    const result = await calculatePriceTargets(
       metrics,
       selection,
       {

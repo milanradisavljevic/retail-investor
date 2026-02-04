@@ -164,3 +164,42 @@ body {
 @theme inline {
   --color-accent-orange: var(--accent-orange);
 }
+
+/* Light Theme Variables */
+[data-theme="light"] {
+  /* Light background colors */
+  --background: #f8fafc;
+  --foreground: #0a0e1a;
+  
+  /* Navy palette for light theme */
+  --navy-900: #ffffff;
+  --navy-800: #f8fafc;
+  --navy-700: #e2e8f0;
+  --navy-600: #cbd5e1;
+  --navy-500: #94a3b8;
+  
+  /* Text colors for light theme */
+  --text-primary: #0f172a;
+  --text-secondary: #1e293b;
+  --text-muted: #475569;
+  
+  /* Border colors for light theme */
+  --border-subtle: hsl(240 8% 85%);
+  --border-default: hsl(240 8% 75%);
+  --border-emphasis: hsl(240 8% 60%);
+  
+  /* Surface colors for light theme */
+  --surface-0: hsl(240 8% 98%);
+  --surface-1: hsl(240 8% 96%);
+  --surface-2: hsl(240 8% 94%);
+  --surface-3: hsl(240 8% 92%);
+}
+
+/* Smooth theme transitions */
+.theme-transition {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.theme-transition * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

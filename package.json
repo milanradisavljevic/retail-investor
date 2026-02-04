@@ -20,8 +20,13 @@
     "backtest:run": "tsx scripts/backtesting/run-backtest.ts",
     "backtest:momentum": "SCORING_MODE=momentum tsx scripts/backtesting/run-backtest.ts",
     "backtest:hybrid": "SCORING_MODE=hybrid tsx scripts/backtesting/run-backtest.ts",
+    "backtest:full": "BACKTEST_START=2015-01-01 BACKTEST_END=2025-12-31 tsx scripts/backtesting/run-backtest.ts",
     "backtest:russell2000": "python scripts/backtesting/fetch-historical.py russell2000 && SCORING_MODE=momentum tsx scripts/backtesting/run-backtest.ts",
+    "backtest:russell2000:full": "BACKTEST_START=2015-01-01 BACKTEST_END=2025-12-31 UNIVERSE=russell2000_full SCORING_MODE=hybrid tsx scripts/backtesting/run-backtest.ts",
     "backtest:nasdaq100": "python scripts/backtesting/fetch-historical.py nasdaq100 && SCORING_MODE=momentum tsx scripts/backtesting/run-backtest.ts",
+    "backtest:nasdaq100:full": "BACKTEST_START=2015-01-01 BACKTEST_END=2025-12-31 UNIVERSE=nasdaq100 SCORING_MODE=hybrid tsx scripts/backtesting/run-backtest.ts",
+    "refetch:incomplete": "python3 scripts/backtesting/refetch-incomplete.py",
+    "audit:historical": "npx tsx scripts/audit/historical-data-audit.ts",
     "stress-test": "tsx scripts/stress-test.ts",
     "stress-test:quick": "tsx scripts/stress-test.ts -- --symbols=50",
     "audit:coverage": "tsx scripts/universe/coverage_audit.ts",
@@ -29,7 +34,10 @@
     "audit:fields": "tsx scripts/universe/field_coverage_audit.ts",
     "audit:fields:all": "tsx scripts/universe/field_coverage_audit.ts --all",
     "perf:report": "tsx scripts/performance-report.ts",
-    "compare-scores": "tsx scripts/compare-scores.ts"
+    "analyze:performance": "tsx scripts/analyze-performance.ts",
+    "compare-scores": "tsx scripts/compare-scores.ts",
+    "test:perf": "vitest tests/performance --run",
+    "test:perf:watch": "vitest tests/performance"
   },
   "dependencies": {
     "ajv": "^8.17.1",
@@ -41,7 +49,7 @@
     "pino": "^10.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "recharts": "^2.12.7",
+    "recharts": "^3.0.0-alpha.9",
     "technicalindicators": "^3.1.0"
   },
   "devDependencies": {

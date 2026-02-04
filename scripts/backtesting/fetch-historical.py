@@ -115,6 +115,46 @@ def fetch_symbol(symbol: str) -> pd.DataFrame | None:
     return None
 
 
+def check_file_completeness(file_path: Path, required_start: str, required_end: str) -> tuple[bool, str]:
+    """
+    Check if a CSV file has complete data for the required period.
+
+    Returns: (is_complete, reason)
+    """
+    try:
+        df = pd.read_csv(file_path)
+        if df.empty or "date" not in df.columns:
+            return False, "empty or no date column"
+
+        first_date = df["date"].iloc[0]
+        last_date = df["date"].iloc[-1]
+        row_count = len(df)
+
+        # Expected: ~2,500+ rows for 10 years of trading days
+        min_expected_rows = 2500
+
+        # Parse dates
+        start_dt = datetime.strptime(required_start, "%Y-%m-%d")
+        end_dt = datetime.strptime(required_end, "%Y-%m-%d")
+        file_start_dt = datetime.strptime(first_date, "%Y-%m-%d")
+        file_end_dt = datetime.strptime(last_date, "%Y-%m-%d")
+
+        # Allow 5-day tolerance for market holidays/weekends
+        start_tolerance = 5
+        end_tolerance = 5
+
+        if (file_start_dt - start_dt).days > start_tolerance:
+            return False, f"starts {first_date} (need {required_start})"
+        if (end_dt - file_end_dt).days > end_tolerance:
+            return False, f"ends {last_date} (need {required_end})"
+        if row_count < min_expected_rows:
+            return False, f"only {row_count} rows (need {min_expected_rows}+)"
+
+        return True, ""
+    except Exception as e:
+        return False, f"read error: {e}"
+
+
 def main():
     """Main entry point."""
     print("=" * 60)
@@ -138,6 +178,7 @@ def main():
     success_count = 0
     fail_count = 0
     skip_count = 0
+    refetch_count = 0
 
     # Fetch each symbol
     for i, symbol in enumerate(symbols, 1):
@@ -145,10 +186,21 @@ def main():
         fetch_symbol_name = YAHOO_ALIASES.get(symbol, symbol)
         alias_note = f" (alias {fetch_symbol_name})" if fetch_symbol_name != symbol else ""
 
-        # Skip if already exists (incremental mode)
+        # Check if file exists and is complete
+        should_fetch = True
         if output_file.exists():
-            skip_count += 1
-            print(f"[{i}/{len(symbols)}] {symbol}: Skipped (already exists)")
+            is_complete, reason = check_file_completeness(output_file, START_DATE, END_DATE)
+            if is_complete:
+                skip_count += 1
+                print(f"[{i}/{len(symbols)}] {symbol}: Skipped (complete)")
+                should_fetch = False
+            else:
+                refetch_count += 1
+                print(f"[{i}/{len(symbols)}] {symbol}: Re-fetching (incomplete: {reason})")
+        else:
+            print(f"[{i}/{len(symbols)}] {symbol}: Fetching...{alias_note}")
+
+        if not should_fetch:
             continue
 
         print(f"[{i}/{len(symbols)}] {symbol}: Fetching...{alias_note}")
@@ -171,6 +223,7 @@ def main():
     print("=" * 60)
     print(f"  Total symbols:  {len(symbols)}")
     print(f"  Downloaded:     {success_count}")
+    print(f"  Re-fetched:     {refetch_count}")
     print(f"  Skipped:        {skip_count}")
     print(f"  Failed:         {fail_count}")
     print(f"  Output dir:     {OUTPUT_DIR.absolute()}")

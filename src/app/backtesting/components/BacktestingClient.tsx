@@ -6,6 +6,7 @@ import DrawdownChart from './DrawdownChart';
 import MetricsCards from './MetricsCards';
 import StrategyComparison from './StrategyComparison';
 import ParameterControls from './ParameterControls';
+import TestChart from './TestChart';
 import type { BacktestSummary, TimeSeriesPoint, StrategyComparisonRow } from '../utils/loadBacktestData';
 
 type ModelStatus = 'done' | 'pending' | 'failed';
@@ -95,7 +96,15 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
       })
       .then((data) => {
         if (cancelled) return;
-        const equityCurve: TimeSeriesPoint[] = Array.isArray(data?.equityCurve)
+        const equityCurve: TimeSeriesPoint[] = Array.isArray(data?.equity)
+          ? data.equity.map((p: any) => ({
+              date: String(p.date),
+              portfolio_value: Number(p.portfolio ?? p.portfolio_value ?? p.value ?? 0),
+              sp500_value: Number(p.benchmark ?? p.benchmark_value ?? 0),
+              daily_return_pct: Number(p.daily_return_pct ?? 0),
+              drawdown_pct: Number(p.drawdown_pct ?? 0),
+            }))
+          : Array.isArray(data?.equityCurve)
           ? data.equityCurve.map((p: any) => ({
               date: String(p.date),
               portfolio_value: Number(p.portfolio_value ?? p.value ?? 0),
@@ -111,14 +120,34 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
               portfolio_value: equityCurve[idx]?.portfolio_value ?? 0,
               sp500_value: equityCurve[idx]?.sp500_value ?? 0,
               daily_return_pct: equityCurve[idx]?.daily_return_pct ?? 0,
-              drawdown_pct: Number(p.drawdown_pct ?? p.value ?? 0),
+              // API returns decimal (-0.12). Convert to percent.
+              drawdown_pct: Number(p.drawdown ?? p.drawdown_pct ?? p.value ?? 0) * (Math.abs(p.drawdown ?? p.drawdown_pct ?? p.value ?? 0) <= 1 ? 100 : 1),
             }))
           : [];
 
+        const fallbackEquity =
+          equityCurve.length > 0
+            ? equityCurve
+            : activeModel?.timeSeries && activeModel.timeSeries.length > 0
+            ? activeModel.timeSeries
+            : [];
+        const fallbackDrawdown =
+          drawdown.length > 0
+            ? drawdown
+            : (activeModel?.timeSeries ?? []).map((p) => ({
+                ...p,
+                drawdown_pct:
+                  typeof p.drawdown_pct === 'number'
+                    ? p.drawdown_pct
+                    : typeof p.daily_return_pct === 'number'
+                    ? p.daily_return_pct
+                    : 0,
+              }));
+
         setChartData({
           summary: data?.summary ?? null,
-          equityCurve,
-          drawdown,
+          equityCurve: fallbackEquity,
+          drawdown: fallbackDrawdown,
         });
       })
       .catch((err) => {
@@ -142,11 +171,15 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
     chartData?.drawdown && chartData.drawdown.length > 0 ? chartData.drawdown : equitySeriesSource;
 
   const equitySeries = convertSeries(equitySeriesSource, currency, eurRate);
-  const drawdownSeries = drawdownSeriesSource.map((p, idx) => ({
-    ...p,
-    // Keep drawdown_pct but ensure we have a value for tooltip / ref line
-    drawdown_pct: typeof p.drawdown_pct === 'number' ? p.drawdown_pct : (equitySeriesSource[idx]?.drawdown_pct ?? 0),
-  }));
+  const drawdownSeries = drawdownSeriesSource.map((p, idx) => {
+    const raw = typeof p.drawdown_pct === 'number' ? p.drawdown_pct : equitySeriesSource[idx]?.drawdown_pct;
+    // If value is a decimal like -0.12 convert to percent
+    const pct = raw !== undefined && Math.abs(raw) <= 1 ? raw * 100 : raw ?? 0;
+    return {
+      ...p,
+      drawdown_pct: pct,
+    };
+  });
   const currencySymbol = currency === 'EUR' ? '€' : '$';
   const maxDrawdown = drawdownSeries.length
     ? Math.min(...drawdownSeries.map((d) => d.drawdown_pct))
@@ -276,20 +309,32 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
           </div>
         )}
 
+        <div className="rounded-2xl border border-slate-800 bg-slate-800/50 p-4">
+          <h3 className="mb-2 text-slate-100 font-semibold">Test Chart (debug)</h3>
+          <TestChart />
+        </div>
+
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-800 bg-slate-800/50 p-6">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-100">Equity Curve</h3>
               <span className="text-xs text-slate-400">{currencySymbol}</span>
             </div>
-            <EquityCurveChart data={equitySeries} currencySymbol={currencySymbol} />
+            <EquityCurveChart
+              key={`equity-${activeKey}-${selectedUniverse}-${equitySeries.length}`}
+              data={equitySeries}
+              currencySymbol={currencySymbol}
+            />
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-800/50 p-6">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-100">Drawdown</h3>
               <span className="text-xs text-slate-400">Max DD: {maxDrawdown.toFixed(2)}%</span>
             </div>
-            <DrawdownChart data={drawdownSeries} />
+            <DrawdownChart
+              key={`drawdown-${activeKey}-${selectedUniverse}-${drawdownSeries.length}`}
+              data={drawdownSeries}
+            />
           </div>
         </div>
 

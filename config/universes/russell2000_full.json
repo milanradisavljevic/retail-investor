@@ -2,6 +2,7 @@
   "name": "Russell 2000 Full",
   "description": "Expanded Russell 2000 universe with 250+ symbols for maximum Small-Cap coverage",
   "benchmark": "IWM",
+  "provider": "yfinance",
   "region": "US",
   "min_market_cap": 300000000,
   "max_market_cap": 10000000000,
