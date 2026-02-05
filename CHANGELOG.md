@@ -8,6 +8,23 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-02-05
+
+#### Added
+- **fundamentals_avg table schema extension (Claude):** Extended `data/market-data-schema.sql` with new `fundamentals_avg` table to cache pre-computed avgMetrics (ROE, ROIC, PE, PB) for fast offline backtesting. Includes `fetched_at` timestamp for cache invalidation and indexed for efficient lookups. This is Task 1/8 of the avgMetrics ETL Integration plan to eliminate YFinance timeouts during backtest runs.
+
+### 2026-02-04
+
+#### Added
+- **SQLite market-data ETL (Codex):** New schema at `data/market-data-schema.sql` plus `scripts/etl/daily_data_pipeline.py` to scrape universes into `data/market-data.db` (fundamentals, OHLCV, technicals, metadata) for the 6am cron run.
+- **Local DB provider for backtests (Codex):** Added `src/data/market-data-db.ts` with universe, price, fundamentals, and technical readers using `better-sqlite3`.
+- **DB smoke tests & sample universe (Codex):** Added `scripts/test-db-provider.ts` and `data/universes/test-10.json` for quick validation of the cache.
+- **Python 3.11 runtime for ChatDev (Codex):** Installed CPython 3.11 via `uv` into `.local/bin/python3.11` and created `.venv-chatdev` virtualenv to satisfy ChatDev's version requirement.
+- **ChatDev multi-agent plan (Codex):** Saved `docs/chatdev-multi-agent-plan.md` outlining how to wire multiple coding agents (Codex/Gemini/Qwen/CLI via MCP) and next steps.
+
+#### Changed
+- **Backtest runner now prefers SQLite (Codex):** `scripts/backtesting/run-backtest.ts` automatically uses `data/market-data.db` when present (or `USE_MARKET_DB/DATA_SOURCE=db`), falling back to CSV/YFinance otherwise; coverage filtering works against DB, market-cap filter and avg metrics read from cached fundamentals/technicals to avoid live API calls.
+
 ### 2026-02-03
 
 #### Changed
