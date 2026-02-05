@@ -12,6 +12,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 #### Added
 - **fundamentals_avg table schema extension (Claude):** Extended `data/market-data-schema.sql` with new `fundamentals_avg` table to cache pre-computed avgMetrics (ROE, ROIC, PE, PB) for fast offline backtesting. Includes `fetched_at` timestamp for cache invalidation and indexed for efficient lookups. This is Task 1/8 of the avgMetrics ETL Integration plan to eliminate YFinance timeouts during backtest runs.
+- **Batch avgMetrics fetcher in ETL pipeline (Claude):** Added `fetch_avg_metrics_batch()` and `upsert_avg_metrics()` methods to `scripts/etl/daily_data_pipeline.py` to populate the `fundamentals_avg` table. Processes symbols in batches of 50 to avoid YFinance API timeouts, runs after main ETL pipeline, uses ROA as ROIC proxy due to YFinance limitations, and logs coverage statistics showing percentage of symbols with complete metrics. This is Task 2/8 of the avgMetrics ETL Integration plan.
 
 ### 2026-02-04
 
