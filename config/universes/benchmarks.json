@@ -1,0 +1,6 @@
+{
+  "name": "Benchmarks",
+  "provider": "yfinance",
+  "benchmark": "IWM",
+  "symbols": ["IWM"]
+}
