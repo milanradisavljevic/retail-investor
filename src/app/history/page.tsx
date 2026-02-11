@@ -49,18 +49,20 @@ function getRunHistory(symbolFilter?: string, universeFilter?: string): RunSumma
   });
 }
 
-export default function HistoryPage({
+export default async function HistoryPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const symbolParam = Array.isArray(searchParams?.symbol)
-    ? searchParams?.symbol[0]
-    : searchParams?.symbol;
+  const resolvedSearchParams = (await searchParams) ?? {};
+
+  const symbolParam = Array.isArray(resolvedSearchParams.symbol)
+    ? resolvedSearchParams.symbol[0]
+    : resolvedSearchParams.symbol;
   const symbolFilter = symbolParam?.trim() || undefined;
-  const universeParam = Array.isArray(searchParams?.universe)
-    ? searchParams?.universe[0]
-    : searchParams?.universe;
+  const universeParam = Array.isArray(resolvedSearchParams.universe)
+    ? resolvedSearchParams.universe[0]
+    : resolvedSearchParams.universe;
   const universeFilter = universeParam?.trim() || undefined;
 
   const runs = getRunHistory(symbolFilter, universeFilter);

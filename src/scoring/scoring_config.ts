@@ -3,6 +3,7 @@
  */
 
 import { existsSync, readFileSync } from 'fs';
+import crypto from 'crypto';
 import { join } from 'path';
 import { getConfig } from '@/core/config';
 
@@ -118,11 +119,12 @@ interface RawScoringConfig {
   >;
 }
 
-interface RawPresetConfig {
+export interface RawPresetConfig {
   name?: string;
   description?: string;
   pillar_weights?: Partial<PillarWeights>;
   fundamental_thresholds?: Partial<FundamentalThresholds>;
+  filters?: Record<string, unknown>;
   diversification?: {
     enabled?: boolean;
     max_per_sector?: number;
@@ -174,25 +176,81 @@ function loadRawConfig(): RawScoringConfig | null {
   }
 }
 
-function loadPresetConfig(projectRoot: string): RawPresetConfig | null {
-  const presetName = (process.env.SCORING_PRESET || process.env.PRESET || '').trim();
-  if (!presetName) return null;
+export interface LoadedPreset {
+  name: string;
+  path: string;
+  hash: string;
+  config: RawPresetConfig;
+}
 
-  const presetPath = join(projectRoot, 'config', 'presets', `${presetName}.json`);
+function validatePreset(preset: RawPresetConfig, presetPath: string): void {
+  if (!preset.pillar_weights) {
+    const msg = `preset_invalid_schema: missing pillar_weights in ${presetPath}`;
+    throw new Error(msg);
+  }
+  const keys: Array<keyof PillarWeights> = ['valuation', 'quality', 'technical', 'risk'];
+  for (const key of keys) {
+    const val = preset.pillar_weights[key];
+    if (val === undefined || val === null || Number.isNaN(Number(val))) {
+      const msg = `preset_invalid_schema: pillar_weights.${key} missing or not numeric in ${presetPath}`;
+      throw new Error(msg);
+    }
+  }
+}
+
+export function loadPresetConfig(
+  projectRoot: string,
+  { failFast = false, presetName }: { failFast?: boolean; presetName?: string } = {}
+): RawPresetConfig | null {
+  const name = (presetName || process.env.SCORING_PRESET || process.env.PRESET || '').trim();
+  if (!name) return null;
+
+  const presetPath = join(projectRoot, 'config', 'presets', `${name}.json`);
   if (!existsSync(presetPath)) {
+    const message = `preset_not_found: ${presetPath}`;
+    if (failFast) throw new Error(message);
     // eslint-disable-next-line no-console
-    console.warn(`Preset not found: ${presetPath}`);
+    console.warn(message);
     return null;
   }
 
   try {
     const json = readFileSync(presetPath, 'utf-8');
-    return JSON.parse(json) as RawPresetConfig;
-  } catch {
+    const parsed = JSON.parse(json) as RawPresetConfig;
+    validatePreset(parsed, presetPath);
+    return parsed;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : `preset_invalid_json: ${presetPath}`;
+    if (failFast) throw new Error(message);
     // eslint-disable-next-line no-console
-    console.warn(`Failed to load preset: ${presetPath}`);
+    console.warn(message);
     return null;
   }
+}
+
+export function loadPresetStrict(
+  projectRoot: string,
+  presetName?: string
+): LoadedPreset {
+  const name = (presetName || process.env.SCORING_PRESET || process.env.PRESET || '').trim();
+  if (!name) {
+    throw new Error('preset_missing: PRESET/SCORING_PRESET not set');
+  }
+  const presetPath = join(projectRoot, 'config', 'presets', `${name}.json`);
+  if (!existsSync(presetPath)) {
+    throw new Error(`preset_not_found: ${presetPath}`);
+  }
+  const json = readFileSync(presetPath, 'utf-8');
+  let parsed: RawPresetConfig;
+  try {
+    parsed = JSON.parse(json) as RawPresetConfig;
+  } catch {
+    throw new Error(`preset_invalid_json: ${presetPath}`);
+  }
+  validatePreset(parsed, presetPath);
+  const hash = crypto.createHash('sha1').update(json).digest('hex');
+  return { name, path: presetPath, hash, config: parsed };
 }
 
 function mergeThresholds(

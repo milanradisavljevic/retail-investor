@@ -11,12 +11,6 @@ import { formatPercent } from '@/lib/percent';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
 import type { SymbolDelta } from '@/lib/runDelta';
 
-const interpretationColors = {
-  high: 'border-accent-green/50 bg-accent-green/10 text-accent-green',
-  medium: 'border-accent-gold/50 bg-accent-gold/10 text-accent-gold',
-  low: 'border-accent-red/50 bg-accent-red/10 text-accent-red',
-};
-
 function getScoreColor(value: number): string {
   if (value >= 70) return 'text-accent-green';
   if (value >= 50) return 'text-accent-gold';
@@ -30,7 +24,12 @@ function getScoreBgColor(value: number): string {
 }
 
 function DataQualityBadge({ score }: { score: number }) {
-  const label = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
+  const label = score >= 90 ? 'high' : score >= 70 ? 'medium' : 'low';
+  const interpretationColors = {
+    high: 'border-accent-green/50 bg-accent-green/10 text-accent-green',
+    medium: 'border-accent-gold/50 bg-accent-gold/10 text-accent-gold',
+    low: 'border-accent-red/50 bg-accent-red/10 text-accent-red',
+  };
   return (
     <span
       className={`text-[10px] px-2 py-0.5 rounded border ${interpretationColors[label]}`}
@@ -45,7 +44,10 @@ function DeltaLabel({ value, isPercent = false }: { value: number | null | undef
   if (value === null || value === undefined) {
     return <span className="text-[10px] text-text-muted">—</span>;
   }
-  const color = value > 0 ? 'text-accent-green' : value < 0 ? 'text-accent-red' : 'text-text-secondary';
+  if (Math.abs(value) < 0.01) {
+    return <span className="text-[10px] text-text-muted">—</span>;
+  }
+  const color = value > 0 ? 'text-accent-green' : 'text-accent-red';
   const formatted = isPercent ? formatPercent(value, { signed: true }) : `${value >= 0 ? '+' : ''}${value.toFixed(1)}`;
   return <span className={`text-[11px] font-semibold ${color}`}>Δ {formatted}</span>;
 }
@@ -94,12 +96,20 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
         {topScores.map(({ score, rank, delta, isPickOfDay }) => {
           const { valuation, quality, technical, risk } = score.evidence;
           const companyName = score.company_name || score.symbol;
-          const dqScore = score.data_quality?.data_quality_score ?? 0;
+          const dqScore = score.data_quality?.data_quality_score ?? null;
+          const dqForBadge = dqScore ?? 0;
           const priceTarget = score.price_target ?? null;
           const deltaTotal = delta?.deltaTotal ?? null;
           const deltaReturn = delta?.deltaReturn ?? null;
           const confidenceChange = delta?.changedConfidence ?? null;
           const deepAnalysisChange = delta?.changedDeepAnalysis ?? null;
+          const missingCritical = score.data_quality?.missing_critical?.length ?? 0;
+          const dataWarning = (() => {
+            if (missingCritical > 0) return '⚠ Missing fundamentals';
+            if (dqScore !== null && dqScore < 40) return '⚠ Incomplete data';
+            if (dqScore !== null && dqScore < 70) return '⚠ Limited data';
+            return null;
+          })();
 
           return (
             <Link
@@ -119,7 +129,7 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                         TOP CONVICTION
                       </span>
                     )}
-                    <DataQualityBadge score={dqScore} />
+                    <DataQualityBadge score={dqForBadge} />
                   </div>
                   <p className="mt-0.5 truncate text-sm text-text-secondary">{companyName}</p>
                     </div>
@@ -176,7 +186,7 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                 </div>
               )}
 
-              {score.data_quality?.missing_fields && score.data_quality.missing_fields.length > 0 && (
+              {dataWarning && (
                 <p className="mt-3 flex items-center gap-1 text-xs text-accent-gold">
                   <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                     <path
@@ -185,7 +195,7 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                       clipRule="evenodd"
                     />
                   </svg>
-                  Some data unavailable
+                  {dataWarning}
                 </p>
               )}
             </Link>

@@ -1,11 +1,12 @@
 {
   "name": "Compounder (Buffett Style)",
+  "tier": "validated",
   "description": "Quality-first approach focusing on high ROE, low debt, and sustainable competitive advantages. Inspired by Warren Buffett's investment philosophy.",
   "pillar_weights": {
-    "valuation": 0.30,
-    "quality": 0.40,
+    "valuation": 0.20,
+    "quality": 0.55,
     "technical": 0.15,
-    "risk": 0.15
+    "risk": 0.10
   },
   "fundamental_thresholds": {
     "pe": { "low": 10, "high": 25 },

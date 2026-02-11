@@ -85,7 +85,15 @@ export function generateSymbolNarrative(
   if (risk < 40) {
     riskBullets.push(`Elevated risk profile`);
   }
-  if ((score.data_quality.missing_fields?.length ?? 0) > 0) {
+  
+  // Data quality warnings
+  const strategy = score.valuation_input_coverage?.strategy_used;
+  if (strategy === 'partial') {
+     const missing = score.valuation_input_coverage?.missing?.join(', ') || 'metrics';
+     riskBullets.push(`Valuation based on partial data (missing ${missing})`);
+  } else if (strategy === 'insufficient_data') {
+     riskBullets.push(`CRITICAL: Insufficient data for reliable scoring`);
+  } else if ((score.data_quality.missing_fields?.length ?? 0) > 0) {
     riskBullets.push(`Incomplete data for some metrics`);
   }
 

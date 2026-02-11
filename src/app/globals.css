@@ -5,6 +5,10 @@
   --background: #0a0e1a;
   --foreground: #f8fafc;
 
+  /* Local font fallbacks (no external downloads required) */
+  --font-geist-sans: "Inter", "Segoe UI", -apple-system, system-ui, sans-serif;
+  --font-geist-mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+
   /* Navy Palette */
   --navy-900: #0a0e1a;
   --navy-800: #111827;

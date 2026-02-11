@@ -1,0 +1,24 @@
+{
+  "name": "Deep Value",
+  "tier": "validated",
+  "description": "Value-heavy blend: favors low PE/PB/EV/EBITDA with moderate quality and risk guards.",
+  "pillar_weights": {
+    "valuation": 0.60,
+    "quality": 0.20,
+    "technical": 0.05,
+    "risk": 0.15
+  },
+  "fundamental_thresholds": {
+    "pe": { "low": 4, "high": 18 },
+    "pb": { "low": 0.4, "high": 2.2 },
+    "evEbitda": { "low": 3, "high": 12 }
+  },
+  "filters": {
+    "min_valuation_score": 55,
+    "max_debt_equity": 3.0
+  },
+  "notes": [
+    "Penalizes missing value metrics instead of hard-excluding.",
+    "Technical pillar minimal; uses risk pillar to down-rank fragile balance sheets."
+  ]
+}

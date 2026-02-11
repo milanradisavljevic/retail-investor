@@ -1,11 +1,11 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useSettings } from '@/lib/settings/useSettings';
+import { useUnifiedSettings } from '@/lib/settings/useUnifiedSettings';
 import { translate, type SupportedLanguage, DEFAULT_LANGUAGE } from './index';
 
 export function useTranslation() {
-  const { settings } = useSettings();
+  const { settings } = useUnifiedSettings();
   const lang = (settings.general.language ?? DEFAULT_LANGUAGE) as SupportedLanguage;
 
   const t = useMemo(

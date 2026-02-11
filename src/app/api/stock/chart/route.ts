@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { YFinanceProvider } from '@/providers/yfinance_provider';
+import { MarketDataDB } from '@/data/market-data-db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,9 +15,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Try local database first (much faster, avoids API limits)
+    try {
+      const db = new MarketDataDB();
+      const prices = db.getPrices(symbol, days);
+      db.close();
+
+      if (prices && prices.length > 0) {
+        // Convert to chart format (most recent first)
+        const chartData = prices.map((row) => ({
+          date: row.date,
+          close: row.close ?? row.adjusted_close
+        })).reverse();
+
+        return NextResponse.json(chartData);
+      }
+    } catch (dbError) {
+      console.warn(`Failed to read prices from DB for ${symbol}:`, dbError);
+      // Continue to fallback
+    }
+
+    // Fallback to live YFinance API
     const provider = new YFinanceProvider();
     const candles = await provider.getCandles(symbol, days);
-    
+
     if (!candles || !candles.t || candles.t.length === 0) {
       return NextResponse.json(
         { error: 'No data available' },

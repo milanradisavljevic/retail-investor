@@ -16,6 +16,8 @@ import argparse
 import json
 import logging
 import sqlite3
+import subprocess
+import sys
 import time
 from datetime import date, datetime
 from pathlib import Path
@@ -68,6 +70,22 @@ def ensure_parent(path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
 
 
+def migrate_add_peg_dividend_columns(conn: sqlite3.Connection) -> None:
+    cursor = conn.execute("PRAGMA table_info(fundamentals)")
+    existing = {row[1] for row in cursor.fetchall()}
+    new_cols = {
+        "trailing_pe": "REAL",
+        "earnings_growth": "REAL",
+        "dividend_yield": "REAL",
+        "payout_ratio": "REAL",
+    }
+    for col, typ in new_cols.items():
+        if col not in existing:
+            conn.execute(f"ALTER TABLE fundamentals ADD COLUMN {col} {typ}")
+            logger.info("Added column %s to fundamentals", col)
+    conn.commit()
+
+
 class DailyDataPipeline:
     def __init__(self, db_path: Path, schema_path: Path) -> None:
         self.db_path = db_path
@@ -77,12 +95,33 @@ class DailyDataPipeline:
         self.conn.execute("PRAGMA synchronous = NORMAL;")
         self.cursor = self.conn.cursor()
         self._apply_schema(schema_path)
+        self.ensure_columns()
 
     def _apply_schema(self, schema_path: Path) -> None:
         with schema_path.open("r") as f:
             schema_sql = f.read()
         self.conn.executescript(schema_sql)
         logger.info("Schema ensured at %s", schema_path)
+        
+    def ensure_columns(self):
+        """Add missing columns to fundamentals table."""
+        cursor = self.conn.execute("PRAGMA table_info(fundamentals)")
+        existing = {row[1] for row in cursor.fetchall()}
+        
+        new_columns = {
+            "eps": "REAL",
+            "book_value_per_share": "REAL",
+            "revenue_per_share": "REAL",
+            "current_price": "REAL",
+        }
+        
+        for col, col_type in new_columns.items():
+            if col not in existing:
+                self.conn.execute(f"ALTER TABLE fundamentals ADD COLUMN {col} {col_type}")
+                logger.info(f"Added column: fundamentals.{col}")
+
+        migrate_add_peg_dividend_columns(self.conn)
+        self.conn.commit()
 
     def close(self) -> None:
         self.conn.commit()
@@ -105,13 +144,44 @@ class DailyDataPipeline:
             except Exception:  # noqa: BLE001
                 return None
 
+        def as_float(value: Optional[float]) -> Optional[float]:
+            if value is None:
+                return None
+            try:
+                num = float(value)
+                if pd.isna(num):
+                    return None
+                return num
+            except Exception:  # noqa: BLE001
+                return None
+
+        trailing_pe = as_float(info.get("trailingPE"))
+        earnings_growth = as_float(info.get("earningsGrowth"))  # decimal (0.15 = 15%)
+        dividend_yield = as_float(info.get("dividendYield"))    # decimal (0.025 = 2.5%)
+        payout_ratio = as_float(info.get("payoutRatio"))        # decimal (0.35 = 35%)
+
+        if payout_ratio is None:
+            dividend_per_share = as_float(info.get("dividendRate"))
+            eps = as_float(info.get("trailingEps"))
+            if (
+                dividend_per_share is not None
+                and eps is not None
+                and dividend_per_share > 0
+                and eps > 0
+            ):
+                payout_ratio = dividend_per_share / eps
+
         fundamentals = {
             "symbol": symbol,
             "date": date.today().isoformat(),
             "pe": info.get("trailingPE"),
+            "trailing_pe": trailing_pe,
             "pb": info.get("priceToBook"),
             "ps": info.get("priceToSalesTrailing12Months"),
             "peg": info.get("pegRatio"),
+            "earnings_growth": earnings_growth,
+            "dividend_yield": dividend_yield,
+            "payout_ratio": payout_ratio,
             "ev_ebitda": info.get("enterpriseToEbitda"),
             "roe": pct(info.get("returnOnEquity")),
             "roic": pct(info.get("returnOnAssets")),  # approximation
@@ -120,11 +190,17 @@ class DailyDataPipeline:
             "debt_equity": info.get("debtToEquity"),
             "current_ratio": info.get("currentRatio"),
             "market_cap": info.get("marketCap"),
+            # Per-Share metrics for price targets
+            "eps": info.get("trailingEps"),
+            "book_value_per_share": info.get("bookValue"),
+            "revenue_per_share": info.get("revenuePerShare"),
+            "current_price": info.get("regularMarketPrice") or info.get("currentPrice"),
         }
 
         total_fields = len(fundamentals) - 2  # exclude symbol/date
         available = sum(
-            1 for key, value in fundamentals.items() if key not in {"symbol", "date"} and value not in (None, 0)
+            1 for key, value in fundamentals.items() 
+            if key not in {"symbol", "date"} and value is not None and value != 0
         )
         fundamentals["data_completeness"] = round(available / total_fields * 100, 2) if total_fields else None
         return fundamentals
@@ -236,14 +312,16 @@ class DailyDataPipeline:
         self.cursor.executemany(
             """
             INSERT OR REPLACE INTO fundamentals (
-              symbol, date, pe, pb, ps, peg, ev_ebitda,
+              symbol, date, pe, trailing_pe, pb, ps, peg, earnings_growth, dividend_yield, payout_ratio, ev_ebitda,
               roe, roic, gross_margin, operating_margin,
               debt_equity, current_ratio, market_cap,
+              eps, book_value_per_share, revenue_per_share, current_price,
               data_completeness
             ) VALUES (
-              :symbol, :date, :pe, :pb, :ps, :peg, :ev_ebitda,
+              :symbol, :date, :pe, :trailing_pe, :pb, :ps, :peg, :earnings_growth, :dividend_yield, :payout_ratio, :ev_ebitda,
               :roe, :roic, :gross_margin, :operating_margin,
               :debt_equity, :current_ratio, :market_cap,
+              :eps, :book_value_per_share, :revenue_per_share, :current_price,
               :data_completeness
             )
             """,
@@ -310,7 +388,11 @@ class DailyDataPipeline:
         for idx, symbol in enumerate(symbols, 1):
             logger.info("(%s/%s) Processing %s", idx, len(symbols), symbol)
 
-            hist = self.fetch_prices(symbol, start, end)
+            try:
+                hist = self.fetch_prices(symbol, start, end)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("(%s/%s) fetch_prices failed for %s: %s", idx, len(symbols), symbol, e)
+                hist = pd.DataFrame()
             if not hist.empty:
                 price_rows = [
                     {
@@ -365,6 +447,27 @@ class DailyDataPipeline:
 
         elapsed = time.time() - start_time
         logger.info("ETL finished in %.1f minutes", elapsed / 60)
+
+        # Optionally fetch FRED data after the main ETL process
+        self.fetch_fred_data()
+
+    def fetch_fred_data(self) -> None:
+        """Fetch FRED economic indicators after the main ETL process"""
+        logger.info("Starting FRED data fetch...")
+        try:
+            # Call the FRED fetch script
+            result = subprocess.run([
+                sys.executable, 
+                str(ROOT / "scripts/etl/fetch_fred.py"),
+                "--db-path", str(self.db_path)
+            ], capture_output=True, text=True, cwd=ROOT)
+            
+            if result.returncode == 0:
+                logger.info("FRED data fetch completed successfully")
+            else:
+                logger.error(f"FRED data fetch failed: {result.stderr}")
+        except Exception as e:
+            logger.error(f"Error running FRED fetch script: {e}")
 
     def _flush_batches(
         self,

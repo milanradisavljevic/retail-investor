@@ -115,7 +115,7 @@ export interface RunV1SchemaJson {
     valuation_input_coverage?: {
       present?: string[];
       missing?: string[];
-      strategy_used?: 'full' | 'partial' | 'fallback_neutral';
+      strategy_used?: 'full' | 'partial' | 'fallback_neutral' | 'insufficient_data';
     } | null;
     /**
      * Deprecated alias for valuation_input_coverage
@@ -123,7 +123,7 @@ export interface RunV1SchemaJson {
     value_input_coverage?: {
       present?: string[];
       missing?: string[];
-      strategy_used?: 'full' | 'partial' | 'fallback_neutral';
+      strategy_used?: 'full' | 'partial' | 'fallback_neutral' | 'insufficient_data';
     } | null;
     data_quality: {
       data_quality_score: number;

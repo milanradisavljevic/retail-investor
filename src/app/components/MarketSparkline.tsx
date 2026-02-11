@@ -42,8 +42,10 @@ export default function MarketSparkline({ name, value, changePercent, data }: Ma
           {formatChange(changePercent)}
         </span>
       </div>
-      <div className="text-lg font-semibold text-slate-100 leading-tight">{formatValue(value)}</div>
-      <div className="h-10">
+      <div className="flex items-baseline justify-between">
+        <span className="text-lg font-semibold text-slate-100 leading-tight">{formatValue(value)}</span>
+      </div>
+      <div className="h-14">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={sparkData} margin={{ top: 4, left: 0, right: 0, bottom: 0 }}>
             <Tooltip

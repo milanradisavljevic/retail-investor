@@ -45,6 +45,10 @@ export interface FundamentalsData {
   beta: number | null;
   roic?: number | null;
   evToEbitda?: number | null;
+  eps?: number | null;
+  bookValuePerShare?: number | null;
+  revenuePerShare?: number | null;
+  currentPrice?: number | null;
   // Raw API response for debugging
   raw?: Record<string, unknown>;
 }

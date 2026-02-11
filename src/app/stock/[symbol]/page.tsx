@@ -12,11 +12,12 @@ import type { RunV1SchemaJson } from '@/types/generated/run_v1';
 import { notFound } from 'next/navigation';
 
 type Params = {
-  params?: { symbol?: string | string[] };
+  params?: Promise<{ symbol?: string | string[] }>;
 };
 
 export default async function StockDetailPage({ params }: Params) {
-  const symbolParam = Array.isArray(params?.symbol) ? params?.symbol[0] : params?.symbol;
+  const resolvedParams = (await params) ?? {};
+  const symbolParam = Array.isArray(resolvedParams.symbol) ? resolvedParams.symbol[0] : resolvedParams.symbol;
   const symbol = symbolParam?.toUpperCase();
 
   if (!symbol) {
@@ -35,6 +36,7 @@ export default async function StockDetailPage({ params }: Params) {
 
   const run = latest.run as RunV1SchemaJson;
   const score = run.scores.find((s) => s.symbol === symbol);
+  const companyName = score?.company_name ?? (symbol ? getCompanyName(symbol) : undefined);
 
   if (!score) {
     return (
@@ -88,7 +90,7 @@ export default async function StockDetailPage({ params }: Params) {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <StockDetailView run={run} score={score} />
+      <StockDetailView run={run} score={score} companyName={companyName} />
 
       {enhancedPriceTarget ? (
         <div className="mt-6 rounded-xl border border-navy-700 bg-navy-800 p-4">

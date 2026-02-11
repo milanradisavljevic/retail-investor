@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useSettings } from './useSettings';
+import { useUnifiedSettings } from './useUnifiedSettings';
 
 interface ThemeProviderProps {
   children: React.ReactNode;
@@ -15,7 +15,7 @@ interface ThemeProviderProps {
  * CSS variable changes for light/dark mode.
  */
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const { settings } = useSettings();
+  const { settings } = useUnifiedSettings();
 
   useEffect(() => {
     // Check if running in browser

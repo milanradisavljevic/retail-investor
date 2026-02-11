@@ -143,8 +143,26 @@ export function applyDiversification(
 }
 
 export function selectTopSymbols(scores: SymbolScore[]): SelectionResult {
+  // Filter out stocks with insufficient data before selection
+  const validScores = scores.filter((s) => {
+    // Exclude if explicitly marked as insufficient strategy
+    if (s.valuationInputCoverage?.strategy_used === 'insufficient_data') {
+      return false;
+    }
+    // Safety net: exclude if total score is 0 (likely failed/insufficient)
+    if (s.totalScore === 0) {
+      return false;
+    }
+    return true;
+  });
+
+  const excludedCount = scores.length - validScores.length;
+  if (excludedCount > 0) {
+    logger.info({ excludedCount }, 'Excluded symbols with insufficient data from selection');
+  }
+
   // Sort deterministically (by score desc, then symbol asc for ties)
-  const sorted = sortScoresDeterministic(scores);
+  const sorted = sortScoresDeterministic(validScores);
 
   const diversificationConfig = resolveDiversificationConfig();
   const diversifiedScores = sorted.map((s) => ({

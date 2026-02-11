@@ -19,9 +19,13 @@ type FundamentalsRow = {
   symbol: string;
   date: string;
   pe: number | null;
+  trailing_pe?: number | null;
   pb: number | null;
   ps: number | null;
   peg: number | null;
+  earnings_growth?: number | null;
+  dividend_yield?: number | null;
+  payout_ratio?: number | null;
   ev_ebitda: number | null;
   roe: number | null;
   roic: number | null;
@@ -30,6 +34,8 @@ type FundamentalsRow = {
   debt_equity: number | null;
   current_ratio: number | null;
   market_cap: number | null;
+  eps: number | null;
+  current_price: number | null;
   data_completeness: number | null;
 };
 
@@ -94,10 +100,14 @@ export class MarketDataDB {
     };
 
     const dataCompleteness = toNumber(row.data_completeness) ?? undefined;
+    const trailingPe = toNumber(row.trailing_pe ?? row.pe);
+    const earningsGrowth = toNumber(row.earnings_growth);
+    const dividendYield = toNumber(row.dividend_yield);
+    const payoutRatio = toNumber(row.payout_ratio);
 
     return {
       symbol,
-      peRatio: toNumber(row.pe),
+      peRatio: trailingPe,
       pbRatio: toNumber(row.pb),
       psRatio: toNumber(row.ps),
       pegRatio: toNumber(row.peg),
@@ -111,18 +121,26 @@ export class MarketDataDB {
       marketCap: toNumber(row.market_cap),
       enterpriseValue: null,
       evToEbitda: toNumber(row.ev_ebitda),
-      dividendYield: null,
-      payoutRatio: null,
+      dividendYield,
+      payoutRatio,
       freeCashFlow: null,
       netMargin: null,
       revenueGrowth: null,
-      earningsGrowth: null,
+      earningsGrowth,
       analystTargetMean: null,
       analystTargetLow: null,
       analystTargetHigh: null,
       analystCount: null,
       nextEarningsDate: null,
       beta: null,
+      eps: toNumber(row.eps),
+      currentPrice: toNumber(row.current_price),
+      raw: {
+        trailing_pe: trailingPe,
+        earnings_growth: earningsGrowth,
+        dividend_yield: dividendYield,
+        payout_ratio: payoutRatio,
+      },
       dataCompleteness,
       // Legacy snake_case accessor for quick debugging scripts
       data_completeness: dataCompleteness as any,

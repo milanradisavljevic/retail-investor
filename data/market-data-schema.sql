@@ -6,9 +6,14 @@ CREATE TABLE IF NOT EXISTS fundamentals (
   date TEXT NOT NULL,
   -- Valuation
   pe REAL,
+  -- Added via ETL migration for existing DBs: trailing_pe, earnings_growth, dividend_yield, payout_ratio
+  trailing_pe REAL,
   pb REAL,
   ps REAL,
   peg REAL,
+  earnings_growth REAL,
+  dividend_yield REAL,
+  payout_ratio REAL,
   ev_ebitda REAL,
   -- Quality
   roe REAL,
@@ -19,6 +24,11 @@ CREATE TABLE IF NOT EXISTS fundamentals (
   current_ratio REAL,
   -- Size
   market_cap REAL,
+  -- Per-share metrics for price targets
+  eps REAL,
+  book_value_per_share REAL,
+  revenue_per_share REAL,
+  current_price REAL,
   -- Meta
   data_completeness REAL,
   last_updated TEXT DEFAULT CURRENT_TIMESTAMP,

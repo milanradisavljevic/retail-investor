@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { loadAllPresets } from '@/lib/presets/loader';
+import type { PresetConfig } from '@/lib/presets/loader';
 
 export type UniverseConfig = {
   id: string;
@@ -12,21 +14,6 @@ export type UniverseConfig = {
   symbol_count?: number;
 };
 
-export type PresetConfig = {
-  id: string;
-  name: string;
-  description: string;
-  pillar_weights: {
-    valuation: number;
-    quality: number;
-    technical: number;
-    risk: number;
-  };
-  fundamental_thresholds?: Record<string, unknown>;
-  filters?: Record<string, unknown>;
-  diversification?: Record<string, unknown>;
-};
-
 export type UniverseStatus = 'TEST' | 'SAMPLE' | 'FULL';
 
 export type UniverseRegion = 'US' | 'Europe' | 'Asia' | 'LatAm';
@@ -37,6 +24,8 @@ export type UniverseWithMetadata = UniverseConfig & {
   flag: string;
   estimatedRuntimeMin: number;
 };
+
+export type { PresetConfig };
 
 /**
  * Load all universe configs from config/universes/
@@ -73,30 +62,7 @@ export async function loadUniverses(): Promise<UniverseConfig[]> {
  * Load all preset configs from config/presets/
  */
 export async function loadPresets(): Promise<PresetConfig[]> {
-  const dir = path.join(process.cwd(), 'config/presets');
-
-  if (!fs.existsSync(dir)) {
-    console.warn(`Presets directory not found: ${dir}`);
-    return [];
-  }
-
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
-
-  return files.map(f => {
-    try {
-      const filePath = path.join(dir, f);
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(content) as Omit<PresetConfig, 'id'>;
-
-      return {
-        id: f.replace('.json', ''),
-        ...parsed,
-      };
-    } catch (error) {
-      console.error(`Failed to load preset ${f}:`, error);
-      return null;
-    }
-  }).filter(Boolean) as PresetConfig[];
+  return loadAllPresets();
 }
 
 /**
@@ -192,14 +158,14 @@ export async function loadUniversesWithMetadata(): Promise<UniverseWithMetadata[
   // Only show production-ready universes (per 2026-01-26 cleanup plan in CHANGELOG)
   const PRODUCTION_WHITELIST = new Set([
     'sp500-full',
-    'nasdaq100',
+    'nasdaq100-full',
     'russell2000_full',
     'russell2000_full_yf',
     'russell2000_full_clean',
-    'cac40_full',
-    'dax_full',
-    'ftse100_full',
-    'eurostoxx50_full',
+    'cac40-full',
+    'dax40-full',
+    'ftse100-full',
+    'eurostoxx50-full',
     'test',
   ]);
 

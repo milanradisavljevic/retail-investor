@@ -1,10 +1,10 @@
 {
   "name": "Test",
-  "provider": "finnhub",
+  "provider": "yfinance",
   "benchmark": "SPY",
   "selection_rule": "Fixed list for tests",
-  "description": "Small test universe",
+  "description": "Small test universe with mixed data quality",
   "version": "1",
   "survivorship_bias_note": "Test-only",
-  "symbols": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+  "symbols": ["AAPL", "MOGA", "PCVX"]
 }

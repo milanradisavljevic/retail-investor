@@ -9,6 +9,7 @@ import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import type { ScoreQuery } from "@/lib/scoreView";
 import type { SymbolDelta } from "@/lib/runDelta";
 import { Suspense } from "react";
+import { useEtlStatus } from "@/hooks/useEtlStatus";
 
 interface ModeBadgeProps {
   mode: RunV1SchemaJson["mode"];
@@ -65,6 +66,36 @@ export function DashboardClient({
   totalCount,
 }: DashboardClientProps) {
   const { t } = useTranslation();
+  const { status: etlStatus, loading: etlLoading } = useEtlStatus();
+
+  const renderEtlBadge = () => {
+    if (etlLoading) return null;
+    const freshness = etlStatus?.freshness ?? 'unknown';
+    const ageHours = etlStatus?.data_age_hours ?? null;
+    const ageText = ageHours !== null ? `vor ${ageHours.toFixed(1)}h` : 'Zeit unbekannt';
+    const badgeText =
+      freshness === 'fresh'
+        ? `Daten aktuell (${ageText})`
+        : freshness === 'stale'
+          ? `Daten leicht veraltet (${ageText})`
+          : freshness === 'critical'
+            ? `Daten veraltet (${ageText})`
+            : 'ETL-Status unbekannt';
+    const color =
+      freshness === 'fresh'
+        ? 'border-accent-green/40 bg-accent-green/10 text-accent-green'
+        : freshness === 'stale'
+          ? 'border-accent-gold/40 bg-accent-gold/10 text-accent-gold'
+          : freshness === 'critical'
+            ? 'border-accent-red/40 bg-accent-red/10 text-accent-red'
+            : 'border-navy-700 bg-navy-800 text-text-muted';
+    return (
+      <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] border ${color}`}>
+        <span>●</span>
+        <span>{badgeText}</span>
+      </span>
+    );
+  };
 
   if (!run) {
     return (
@@ -121,7 +152,8 @@ export function DashboardClient({
           <span className="text-text-primary font-medium">
             {run.as_of_date}
           </span>{" "}
-          <span className="text-text-muted">|</span>{" "}
+          {renderEtlBadge()}
+          <span className="text-text-muted"> | </span>
           <span className="text-text-muted font-mono text-xs">{run.run_id}</span>
         </p>
         <div className="mt-3">

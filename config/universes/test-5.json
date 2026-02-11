@@ -1,0 +1,4 @@
+{
+  "symbols": ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"],
+  "benchmark": "SPY"
+}

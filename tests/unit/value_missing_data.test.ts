@@ -51,7 +51,7 @@ describe('valuation robustness with missing data', () => {
     expect(result.valuationInputCoverage?.missing).toContain('ps');
   });
 
-  it('falls back to neutral value when all valuation inputs are missing', () => {
+  it('falls back to 0 value when all valuation inputs are missing', () => {
     const result = calculateFundamentalScore(
       makeFundamentals({
         peRatio: null,
@@ -63,8 +63,9 @@ describe('valuation robustness with missing data', () => {
       })
     );
 
-    expect(result.components.valuation).toBe(50);
-    expect(result.valuationInputCoverage?.strategy_used).toBe('fallback_neutral');
+    expect(result.components.valuation).toBe(0);
+    expect(result.valuationInputCoverage?.strategy_used).toBe('insufficient_data');
+    expect(result.isInsufficient).toBe(true);
     expect(result.assumptions.some((a) => a.includes('insufficient valuation inputs'))).toBe(true);
   });
 });

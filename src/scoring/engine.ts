@@ -145,7 +145,8 @@ export async function scoreSymbol(
 
   const technicalResult = calculateTechnicalScore(technicalMetrics);
 
-  const evidence = calculateEvidencePillars(fundamentalResult, technicalResult);
+  const isShieldStrategy = (process.env.SCORING_PRESET || process.env.PRESET || '').toLowerCase() === 'shield';
+  const evidence = calculateEvidencePillars(fundamentalResult, technicalResult, isShieldStrategy);
   const totalScore = calculateTotalScore(evidence, scoringConfig.pillarWeights);
 
   // Combine missing fields and assumptions
@@ -305,6 +306,7 @@ export async function scoreUniverse(
     fundamentalsRequests: 0,
     technicalRequests: 0,
     profileRequests: 0,
+    marketDataBridgeHits: 0,
   };
   const fundamentalsTtlMs = daysToSeconds(appConfig.cacheTtl.fundamentals_ttl_days) * 1000;
   const technicalTtlSeconds = hoursToSeconds(appConfig.cacheTtl.prices_ttl_hours);
@@ -468,6 +470,7 @@ export async function scoreUniverse(
       technical_cache_hits: requestStats.technicalCacheHits,
       technical_cache_misses: requestStats.technicalRequests,
       technical_cache_hit_rate_pct: technicalTotal > 0 ? Math.round((requestStats.technicalCacheHits / technicalTotal) * 1000) / 10 : 0,
+      market_data_bridge_hits: requestStats.marketDataBridgeHits,
 
       // Performance metrics
       provider_api_calls: totalProviderRequests,

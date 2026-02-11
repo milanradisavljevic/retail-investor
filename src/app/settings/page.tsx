@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSettings } from '@/lib/settings/useSettings';
+import { useServerSettings } from '@/lib/settings/useServerSettings';
 import { SETTINGS_OPTIONS, SETTINGS_VALIDATION } from '@/lib/settings/defaults';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
@@ -24,7 +24,8 @@ export default function SettingsPage() {
     lastSavedAt,
     updateCategory,
     resetSettings,
-  } = useSettings();
+    error,
+  } = useServerSettings();
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSavedToast, setShowSavedToast] = useState(false);
@@ -231,9 +232,15 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2 text-xs text-[#64748B]">
             <span>ℹ️</span>
             <span>
-              {t('settings.messages.localStorage')}
+              Settings werden serverseitig gespeichert und stehen Ihnen auf allen Geräten zur Verfügung.
             </span>
           </div>
+          {error && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-red-400">
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

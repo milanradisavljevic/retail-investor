@@ -9,17 +9,17 @@ import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import { BriefingToolbar } from "@/app/components/BriefingToolbar";
 import { RunExportButtons, type CsvRow } from "@/app/components/RunExportButtons";
 
-type AwaitableScoreSearchParams = ScoreSearchParams | Promise<ScoreSearchParams> | undefined;
-type Params = { params: { runId: string }; searchParams?: AwaitableScoreSearchParams };
+type Params = { params: Promise<{ runId: string }>; searchParams?: Promise<ScoreSearchParams> };
 
 export default async function RunDetailPage({ params, searchParams }: Params) {
-  const match = getRunById(params.runId);
+  const resolvedParams = await params;
+  const match = getRunById(resolvedParams.runId);
   if (!match) {
     notFound();
   }
 
   const run = match.run as RunV1SchemaJson;
-  const resolvedSearchParams = await searchParams;
+  const resolvedSearchParams = (await searchParams) ?? ({} as ScoreSearchParams);
   const query = parseScoreQuery(resolvedSearchParams);
   const scores = buildScoreView(run, query);
   const totalCount = run.scores.length;

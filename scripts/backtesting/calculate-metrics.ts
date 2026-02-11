@@ -18,7 +18,7 @@ const TRADING_DAYS_PER_YEAR = 252;
 export interface DailyRecord {
   date: string;
   portfolio_value: number;
-  sp500_value: number;
+  sp500_value: number; // kept for backward compatibility in CSVs
   daily_return_pct: number;
   drawdown_pct: number;
 }
@@ -38,13 +38,49 @@ export interface RebalanceEvent {
   bought: string[];
   turnover: number; // percentage of portfolio traded
   kept?: string[];
+  target_top_n?: number;
+  candidates_considered?: number;
+  candidates_tradable?: number;
+  selected_total?: number;
+  fill_rate?: number; // actual slots filled / target slots (e.g., 0.85 = 85%)
+  reason?: string;
+  note?: string;
+  missing_price?: number;
+  score_debug_top3?: Array<{
+    symbol: string;
+    total: number;
+    breakdown: import('../../src/scoring/scoring_config').PillarWeights;
+  }>;
+  candidates_before?: number;
+  candidates_after?: number;
+  preset_filters_applied?: Record<string, number>;
+  preset_filters_unsupported?: string[];
 }
 
 export interface BacktestSummary {
+  run_id?: string;
+  run_path?: string;
+  universe?: string;
+  preset?: string;
+  scoring_mode?: string;
+  generated_at?: string;
+  preset_path?: string;
+  preset_hash?: string;
+  preset_filters_used?: Record<string, unknown> | null;
+  preset_filters_unsupported?: string[] | null;
+  pillar_weights_used?: import('../../src/scoring/scoring_config').PillarWeights;
+  fundamental_thresholds_used?: import('../../src/scoring/scoring_config').FundamentalThresholds;
+  score_debug_top3?: Array<{
+    symbol: string;
+    total: number;
+    breakdown: import('../../src/scoring/scoring_config').PillarWeights;
+  }>;
   period: string;
   strategy: string;
   metrics: PerformanceMetrics;
   benchmark: PerformanceMetrics;
+  benchmark_symbol?: string;
+  benchmark_label?: string;
   outperformance_pct: number;
   avgMetrics?: Record<string, number | undefined>;
   costs?: {
@@ -53,9 +89,16 @@ export interface BacktestSummary {
     totalTrades: number;
     avgSlippagePerTrade: number;
   };
+  slippage?: {
+    model: string;
+    buy_bps: number;
+    sell_bps: number;
+    transaction_bps: number;
+  };
   rebalance_events?: RebalanceEvent[];
   rebalance_frequency?: string;
   top_n?: number;
+  avg_fill_rate?: number; // average fill rate across all rebalances (e.g., 0.85 = 85%)
 }
 
 /**
@@ -179,7 +222,9 @@ export function calculateMetrics(
   records: DailyRecord[],
   startDate: string,
   endDate: string,
-  strategyName = 'Quarterly Rebalance Top 10 Momentum'
+  strategyName = 'Quarterly Rebalance Top 10 Momentum',
+  benchmarkLabel?: string,
+  benchmarkSymbol?: string
 ): BacktestSummary {
   const portfolioMetrics = calcMetrics(records, 'portfolio_value', startDate, endDate);
   const benchmarkMetrics = calcMetrics(records, 'sp500_value', startDate, endDate);
@@ -191,6 +236,8 @@ export function calculateMetrics(
     strategy: strategyName,
     metrics: portfolioMetrics,
     benchmark: benchmarkMetrics,
+    benchmark_label: benchmarkLabel,
+    benchmark_symbol: benchmarkSymbol,
     outperformance_pct: Math.round(outperformance * 100) / 100,
   };
 }

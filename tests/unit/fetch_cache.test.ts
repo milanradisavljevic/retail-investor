@@ -11,6 +11,7 @@ const baseStats: RequestStats = {
   fundamentalsRequests: 0,
   technicalRequests: 0,
   profileRequests: 0,
+  marketDataBridgeHits: 0,
 };
 
 function makeTechnical(): TechnicalMetrics {

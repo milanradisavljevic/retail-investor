@@ -2,19 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MarketContextBar from "@/app/components/MarketContextBar";
+import RegimeBadge from "@/app/components/RegimeBadge";
 import { formatPercent } from "@/lib/percent";
+import { Zap, Clock, Play, Loader2, FlaskConical, Timer } from "lucide-react";
 import type { MarketContextResponse } from "@/lib/marketContext";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import type { UniverseWithMetadata, PresetConfig } from "./loaders";
 import { SectorExposure } from "@/app/components/SectorExposure";
 import { EquityCurve } from "@/app/components/EquityCurve";
 import { DrawdownChart } from "@/app/components/DrawdownChart";
-import { PresetCard } from "@/app/components/PresetCard";
 import { FilterCheckbox } from "@/app/components/FilterCheckbox";
 import { useDraftConfig, type DraftConfig } from "@/hooks/useDraftConfig";
 import { DirtyStateIndicator } from "@/app/components/DirtyStateIndicator";
 import { RunProgressIndicator } from "@/app/components/RunProgressIndicator";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { PresetSelector } from "./components/PresetSelector";
 
 type PillarWeights = {
   valuation: number;
@@ -399,78 +401,6 @@ function UniverseSelector({
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function PresetSelector({
-  value,
-  onChange,
-  presets,
-  t,
-}: {
-  value: string | null;
-  onChange: (id: string | null, weights?: PillarWeights) => void;
-  presets: PresetConfig[];
-  t: (key: string) => string;
-}) {
-  const riskMap: Record<string, "low" | "medium" | "high"> = {
-    shield: "low",
-    "deep-value": "medium",
-    compounder: "medium",
-    quant: "medium",
-    rocket: "high",
-  };
-
-  const iconFor = (id: string) => {
-    if (id.includes("shield")) return "🛡️";
-    if (id.includes("rocket")) return "🚀";
-    return "📈";
-  };
-
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-[#E2E8F0] font-semibold">{t('strategyLab.presets.title')}</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <PresetCard
-          name={t('strategyLab.presets.custom.label')}
-          subtitle={t('strategyLab.presets.custom.subtitle')}
-          description={t('strategyLab.presets.custom.description')}
-          icon="⚙️"
-          riskLevel="medium"
-          riskLabels={{
-            low: t('strategyLab.presets.risk.low'),
-            medium: t('strategyLab.presets.risk.medium'),
-            high: t('strategyLab.presets.risk.high'),
-          }}
-          weights={{ v: 25, q: 25, t: 25, r: 25 }}
-          selected={value === null}
-          onClick={() => onChange(null)}
-        />
-        {presets.map((preset) => (
-          <PresetCard
-            key={preset.id}
-            name={preset.name}
-            subtitle={preset.id}
-            description={preset.description}
-            icon={iconFor(preset.id)}
-            riskLevel={riskMap[preset.id] ?? "medium"}
-            riskLabels={{
-              low: t('strategyLab.presets.risk.low'),
-              medium: t('strategyLab.presets.risk.medium'),
-              high: t('strategyLab.presets.risk.high'),
-            }}
-            weights={{
-              v: Math.round(preset.pillar_weights.valuation * 100),
-              q: Math.round(preset.pillar_weights.quality * 100),
-              t: Math.round(preset.pillar_weights.technical * 100),
-              r: Math.round(preset.pillar_weights.risk * 100),
-            }}
-            selected={value === preset.id}
-            onClick={() => onChange(preset.id, preset.pillar_weights)}
-          />
-        ))}
-      </div>
     </div>
   );
 }
@@ -1114,7 +1044,7 @@ export default function StrategyLabClient({
             onClick={() => handleTabSwitch("live")}
           >
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-emerald-400">⚡</span>
+              <Zap className="w-4 h-4 text-emerald-400" />
               <span className="font-semibold text-white">{t('strategyLab.modes.live.title')}</span>
             </div>
             <p className="text-xs text-slate-400">
@@ -1131,7 +1061,7 @@ export default function StrategyLabClient({
             onClick={() => handleTabSwitch("backtest")}
           >
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-blue-400">⏱️</span>
+              <Timer className="w-4 h-4 text-blue-400" />
               <span className="font-semibold text-white">{t('strategyLab.modes.backtest.title')}</span>
             </div>
             <p className="text-xs text-slate-400">
@@ -1157,16 +1087,16 @@ export default function StrategyLabClient({
           {activeTab === "live" ? (
             currentRunId ? (
               <>
-                <span className="text-lg">⏳</span> {t('strategyLab.actions.running')}
+                <Loader2 className="w-5 h-5 animate-spin" /> {t('strategyLab.actions.running')}
               </>
             ) : (
               <>
-                <span className="text-lg">⚡</span> {t('strategyLab.actions.findTopStocks')}
+                <Zap className="w-5 h-5" /> {t('strategyLab.actions.findTopStocks')}
               </>
             )
           ) : (
             <>
-              <span className="text-lg">▶</span> {t('strategyLab.actions.startBacktest')}
+              <Play className="w-5 h-5" /> {t('strategyLab.actions.startBacktest')}
             </>
           )}
         </button>
@@ -1202,6 +1132,8 @@ export default function StrategyLabClient({
 
       <MarketContextBar initialData={marketContext ?? undefined} />
 
+      <RegimeBadge />
+
       <SectionCard
         title={t('strategyLab.sections.sharedConfig.title')}
         subtitle={t('strategyLab.sections.sharedConfig.subtitle')}
@@ -1224,7 +1156,6 @@ export default function StrategyLabClient({
               value={selectedPreset}
               onChange={handlePresetChange}
               presets={presets}
-              t={t}
             />
           </div>
 
@@ -1264,9 +1195,9 @@ export default function StrategyLabClient({
                   {selectedUniverseMeta ? runtimeEstimate(selectedUniverseMeta.symbol_count ?? 0, "live").label : '--'}
                 </p>
                 <p className="text-xs text-[#64748B]">
-                  {selectedUniverseMeta?.status === 'TEST' && '⚡ Quick test run'}
-                  {selectedUniverseMeta?.status === 'SAMPLE' && '📊 Medium-sized test'}
-                  {selectedUniverseMeta?.status === 'FULL' && '🏭 Full production run'}
+                  {selectedUniverseMeta?.status === 'TEST' && 'Quick test run'}
+                  {selectedUniverseMeta?.status === 'SAMPLE' && 'Medium-sized test'}
+                  {selectedUniverseMeta?.status === 'FULL' && 'Full production run'}
                 </p>
               </div>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">

@@ -1,0 +1,15 @@
+{
+  "symbols": [
+    "VTI", "VOO", "IVV", "SPY", "DIA", 
+    "QQQ", "IWM", "IJR", "VB", "VEA", 
+    "VWO", "BND", "AGG", "JNK", "TLT",
+    "AAPL", "MSFT", "AMZN", "FB", "GOOGL",
+    "BRK-B", "JPM", "JNJ", "V", "PG",
+    "MA", "HD", "DIS", "PYPL", "BAC",
+    "NFLX", "TSLA", "NVDA", "INTC", "AMD",
+    "T", "VZ", "KO", "PEP", "WMT",
+    "MCD", "CMCSA", "XOM", "CVX", "GE",
+    "BA", "CAT", "MMM", "IBM", "CSCO"
+  ],
+  "benchmark": "SPY"
+}

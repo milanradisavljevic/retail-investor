@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { PriceTargetCard } from './PriceTargetCard';
 import { buildExplainSignals, type Signal } from '@/lib/explainSignals';
-import { getCompanyName } from '@/core/company';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
 
@@ -17,6 +16,7 @@ function fmtNumber(value: number | null | undefined, opts: { prefix?: string; su
 interface Props {
   run: RunV1SchemaJson;
   score: RunV1SchemaJson['scores'][number];
+  companyName?: string;
 }
 
 function ScorePill({ label, value }: { label: string; value: number }) {
@@ -84,9 +84,9 @@ function SignalList({ title, items, emptyLabel }: { title: string; items: Signal
   );
 }
 
-export function StockDetailView({ run, score }: Props) {
+export function StockDetailView({ run, score, companyName }: Props) {
   const { t } = useTranslation();
-  const companyName = getCompanyName(score.symbol);
+  const displayName = companyName ?? score.company_name ?? score.symbol;
   const dq = score.data_quality;
   const priceTarget = score.price_target;
   const diagnostics = score.price_target_diagnostics;
@@ -105,7 +105,7 @@ export function StockDetailView({ run, score }: Props) {
         <div>
           <p className="text-sm text-text-muted uppercase tracking-wider">{t('stockDetail.latestBriefing')}</p>
           <h1 className="text-2xl font-semibold text-text-primary">
-            {companyName} <span className="text-text-muted">({score.symbol})</span>
+            {displayName} <span className="text-text-muted">({score.symbol})</span>
           </h1>
           <p className="text-sm text-text-secondary">
             Universe: <span className="text-text-primary">{run.universe.definition.name}</span> ·{' '}

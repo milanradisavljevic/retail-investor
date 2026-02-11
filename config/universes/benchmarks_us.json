@@ -1,0 +1,10 @@
+{
+  "name": "US Benchmarks (ETFs)",
+  "description": "US equity benchmarks as tradeable ETFs for backtests and audits",
+  "provider": "yfinance",
+  "benchmark": "SPY",
+  "version": "2026-02-07",
+  "selection_rule": "Core US benchmark ETFs",
+  "survivorship_bias_note": "Static list of benchmark ETFs",
+  "symbols": ["SPY", "QQQ", "IWM"]
+}

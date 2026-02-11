@@ -17,7 +17,8 @@ export interface EvidencePillars {
 
 export function calculateEvidencePillars(
   fundamentalResult: FundamentalScoreResult,
-  technicalResult: TechnicalScoreResult
+  technicalResult: TechnicalScoreResult,
+  isShieldStrategy: boolean = false
 ): EvidencePillars {
   // Valuation: from fundamental analysis (P/E, P/B, P/S)
   const valuation = fundamentalResult.components.valuation;
@@ -29,11 +30,25 @@ export function calculateEvidencePillars(
   const technical =
     (technicalResult.components.trend + technicalResult.components.momentum) / 2;
 
-  // Risk: inverse of volatility (higher volatility = lower risk score)
-  // Combined with debt consideration
-  const volatilityRisk = technicalResult.components.volatility;
-  const debtRisk = fundamentalResult.breakdown.debtEquityScore;
-  const risk = (volatilityRisk + debtRisk) / 2;
+  // Risk: depends on strategy
+  let risk: number;
+  if (isShieldStrategy) {
+    // For Shield strategy: Risk = weighted combination of Beta (40%), Volatility (40%), Max Drawdown (20%)
+    // Note: We don't have max drawdown in the current technical result, so we'll use volatility and beta
+    // with 40/40 split for now, reserving 20% for when max drawdown is available
+    const betaRisk = technicalResult.indicators.beta !== null ? 
+      mapBetaToRiskScore(technicalResult.indicators.beta) : 50; // Neutral score if missing
+    const volatilityRisk = technicalResult.components.volatility;
+    
+    // Using 50/50 split between beta and volatility for now (equivalent to 40% beta + 40% volatility of risk pillar)
+    // When max drawdown is available, we'll adjust to 40% beta + 40% volatility + 20% max drawdown
+    risk = (betaRisk * 0.5) + (volatilityRisk * 0.5);
+  } else {
+    // Original risk calculation for other strategies
+    const volatilityRisk = technicalResult.components.volatility;
+    const debtRisk = fundamentalResult.breakdown.debtEquityScore;
+    risk = (volatilityRisk + debtRisk) / 2;
+  }
 
   return {
     valuation: roundScore(valuation),
@@ -41,6 +56,18 @@ export function calculateEvidencePillars(
     technical: roundScore(technical),
     risk: roundScore(risk),
   };
+}
+
+// Helper function to map beta to risk score (lower beta = higher risk score for low-vol strategy)
+function mapBetaToRiskScore(beta: number): number {
+  // Lower beta = lower risk = higher score for low-vol strategy
+  if (beta < 0.5) return 95;    // Very low beta = very low risk
+  if (beta < 0.7) return 85;    // Low beta = low risk
+  if (beta < 0.9) return 75;    // Moderately low beta = moderately low risk
+  if (beta < 1.1) return 65;    // Around 1.0 = moderate risk
+  if (beta < 1.3) return 50;    // Slightly above 1.0 = moderate-high risk
+  if (beta < 1.5) return 35;    // Above 1.3 = high risk
+  return 20;                    // Very high beta = very high risk
 }
 
 export const DEFAULT_PILLAR_WEIGHTS: PillarWeights = {

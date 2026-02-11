@@ -7,6 +7,8 @@ import {
   getCompanyProfileIfFresh,
   saveCompanyProfile,
 } from '@/data/repositories/profile_repo';
+import { MarketDataDB } from '@/data/market-data-db';
+import { MarketDataBridge } from '@/data/market-data-bridge';
 import type { MarketDataProvider, CompanyProfile, TechnicalMetrics } from '@/providers/types';
 import type { SymbolRawData } from './metric_resolution';
 import { RequestThrottler } from '@/utils/throttler';
@@ -27,6 +29,7 @@ export interface RequestStats {
   fundamentalsRequests: number;
   technicalRequests: number;
   profileRequests: number;
+  marketDataBridgeHits: number;
 }
 
 export interface FetchDependencies {
@@ -51,6 +54,10 @@ export interface FetchResult {
   fromCache: boolean;
 }
 
+const marketDataBridge = new MarketDataBridge();
+const bridgeLogger = createChildLogger('market-data-bridge');
+let bridgeSampleCount = 0;
+
 export async function fetchSymbolDataWithCache(
   symbol: string,
   deps: FetchDependencies
@@ -63,7 +70,7 @@ export async function fetchSymbolDataWithCache(
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   };
   const logPhase = (
-    phase: 'fundamentals' | 'prices' | 'technical' | 'metadata',
+    phase: 'fundamentals' | 'prices' | 'technical' | 'metadata' | 'avgMetrics',
     durationMs: number,
     cacheHit: boolean,
     provider: string,
@@ -96,6 +103,9 @@ export async function fetchSymbolDataWithCache(
   let fundamentals: FundamentalsData | null = null;
   let technical: TechnicalMetrics | null = null;
   let profile: CompanyProfile | null = null;
+  let bridgeFundamentalsUsed = false;
+  let bridgeTechnicalUsed = false;
+  let bridgeProfileUsed = false;
 
   const cachedFundamentals = fundamentalsFn(symbol, cache.fundamentalsTtlMs);
   if (cachedFundamentals) {
@@ -122,6 +132,16 @@ export async function fetchSymbolDataWithCache(
   }
 
   if (!fundamentals) {
+    const bridgeFundamentals = marketDataBridge.getFundamentals(symbol, 7);
+    if (bridgeFundamentals) {
+      fundamentals = bridgeFundamentals;
+      bridgeFundamentalsUsed = true;
+      stats.fundamentalsCacheHits += 1;
+      logPhase('fundamentals', 0, true, 'market-data-bridge');
+    }
+  }
+
+  if (!fundamentals) {
     const t0 = Date.now();
     try {
       fundamentals = await throttler.schedule(() => provider.getFundamentals(symbol));
@@ -137,6 +157,16 @@ export async function fetchSymbolDataWithCache(
   }
 
   if (!technical) {
+    const bridgeTechnical = marketDataBridge.getTechnicals(symbol);
+    if (bridgeTechnical) {
+      technical = bridgeTechnical;
+      bridgeTechnicalUsed = true;
+      stats.technicalCacheHits += 1;
+      logPhase('prices', 0, true, 'market-data-bridge');
+    }
+  }
+
+  if (!technical) {
     const t0 = Date.now();
     try {
       technical = await throttler.schedule(() => provider.getTechnicalMetrics(symbol));
@@ -146,6 +176,16 @@ export async function fetchSymbolDataWithCache(
       throw err;
     }
     stats.technicalRequests += 1;
+  }
+
+  if (!profile) {
+    const bridgeProfile = marketDataBridge.getProfile(symbol);
+    if (bridgeProfile) {
+      profile = bridgeProfile;
+      bridgeProfileUsed = true;
+      stats.profileCacheHits += 1;
+      logPhase('metadata', 0, true, 'market-data-bridge');
+    }
   }
 
   if (!profile && provider.getCompanyProfile) {
@@ -158,6 +198,32 @@ export async function fetchSymbolDataWithCache(
       throw err;
     }
     stats.profileRequests += 1;
+  }
+
+  // Enhance fundamentals with avgMetrics from database
+  if (fundamentals) {
+    const t0 = Date.now();
+    try {
+      const avgMetrics = marketDataBridge.getAvgMetrics(symbol);
+      
+      if (avgMetrics) {
+        // Only override if the avgMetrics values are more reliable than current values
+        // Use avgMetrics as fallback if primary values are missing
+        fundamentals = {
+          ...fundamentals,
+          roe: fundamentals.roe ?? avgMetrics.roe,
+          roic: fundamentals.roic ?? avgMetrics.roic,
+          peRatio: fundamentals.peRatio ?? avgMetrics.pe,
+          pbRatio: fundamentals.pbRatio ?? avgMetrics.pb
+        };
+        logPhase('avgMetrics', Date.now() - t0, true, 'database');
+      } else {
+        logPhase('avgMetrics', Date.now() - t0, false, 'database');
+      }
+    } catch (err) {
+      logPhase('avgMetrics', Date.now() - t0, false, 'database', String(err));
+      // Continue without avgMetrics if database access fails
+    }
   }
 
   let fallbackFundamentals: FundamentalsData | null = null;
@@ -197,9 +263,26 @@ export async function fetchSymbolDataWithCache(
 
   // Determine if this symbol was fully served from cache
   const fromCache =
-    cachedFundamentals !== null &&
-    cachedTechnical !== null &&
-    cachedProfile !== null;
+    (cachedFundamentals !== null || bridgeFundamentalsUsed) &&
+    (cachedTechnical !== null || bridgeTechnicalUsed) &&
+    (cachedProfile !== null || bridgeProfileUsed);
+
+  if (bridgeFundamentalsUsed || bridgeTechnicalUsed || bridgeProfileUsed) {
+    stats.marketDataBridgeHits += 1;
+
+    if (bridgeSampleCount < 5) {
+      bridgeSampleCount += 1;
+      bridgeLogger.info({
+        symbol,
+        eps: fundamentals?.eps ?? 'MISSING',
+        bvps: fundamentals?.bookValuePerShare ?? 'MISSING',
+        rps: fundamentals?.revenuePerShare ?? 'MISSING',
+        current_price: fundamentals?.currentPrice ?? technical?.currentPrice ?? 'MISSING',
+        sector: profile?.sector ?? 'MISSING',
+        industry: profile?.industry ?? 'MISSING',
+      }, 'Bridge per-share metrics sample');
+    }
+  }
 
   return { raw, fallbackFundamentals, fallbackProfile, fromCache };
 }
@@ -240,18 +323,50 @@ export async function fetchSymbolsBatch(
     const cachedTechnical = technicalFn(symbol, cache.technicalTtlSeconds);
     const cachedProfile = profileFn(symbol, cache.profileTtlMs);
 
-    if (cachedFundamentals && cachedTechnical && cachedProfile) {
-      // Fully cached
-      stats.fundamentalsCacheHits += 1;
-      stats.technicalCacheHits += 1;
-      stats.profileCacheHits += 1;
+    let fundamentals = cachedFundamentals?.data ?? null;
+    let technical = cachedTechnical?.data ?? null;
+    let profile = cachedProfile?.profile ?? null;
+    let bridgeFundamentalsUsed = false;
+    let bridgeTechnicalUsed = false;
+    let bridgeProfileUsed = false;
 
+    if (!fundamentals) {
+      const bridgeFundamentals = marketDataBridge.getFundamentals(symbol, 7);
+      if (bridgeFundamentals) {
+        fundamentals = bridgeFundamentals;
+        bridgeFundamentalsUsed = true;
+        stats.fundamentalsCacheHits += 1;
+      }
+    }
+
+    if (!technical) {
+      const bridgeTechnical = marketDataBridge.getTechnicals(symbol);
+      if (bridgeTechnical) {
+        technical = bridgeTechnical;
+        bridgeTechnicalUsed = true;
+        stats.technicalCacheHits += 1;
+      }
+    }
+
+    if (!profile) {
+      const bridgeProfile = marketDataBridge.getProfile(symbol);
+      if (bridgeProfile) {
+        profile = bridgeProfile;
+        bridgeProfileUsed = true;
+        stats.profileCacheHits += 1;
+      }
+    }
+
+    if (fundamentals && technical && profile) {
+      if (bridgeFundamentalsUsed || bridgeTechnicalUsed || bridgeProfileUsed) {
+        stats.marketDataBridgeHits += 1;
+      }
       results.set(symbol, {
         raw: {
           symbol,
-          fundamentals: cachedFundamentals.data,
-          technical: cachedTechnical.data,
-          profile: cachedProfile.profile,
+          fundamentals,
+          technical,
+          profile,
         },
         fallbackFundamentals: null,
         fallbackProfile: null,
@@ -295,7 +410,7 @@ export async function fetchSymbolsBatch(
         }
 
         // Map to internal format
-        const fundamentals = (batchProvider as any).mapFundamentals(
+        let fundamentals = (batchProvider as any).mapFundamentals(
           data?.basic_financials,
           data?.analyst_data
         );
@@ -306,6 +421,24 @@ export async function fetchSymbolsBatch(
           data?.basic_financials
         );
         const profile = data?.profile || null;
+
+        // Enhance fundamentals with avgMetrics from database
+        if (fundamentals) {
+          try {
+            const avgMetrics = marketDataBridge.getAvgMetrics(symbol);
+            if (avgMetrics) {
+              fundamentals = {
+                ...fundamentals,
+                roe: fundamentals.roe ?? avgMetrics.roe,
+                roic: fundamentals.roic ?? avgMetrics.roic,
+                peRatio: fundamentals.peRatio ?? avgMetrics.pe,
+                pbRatio: fundamentals.pbRatio ?? avgMetrics.pb
+              };
+            }
+          } catch {
+            // ignore
+          }
+        }
 
         results.set(symbol, {
           raw: { symbol, fundamentals, technical, profile },
