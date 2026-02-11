@@ -1,0 +1,471 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue
+}
+
+\setlist[itemize]{leftmargin=1.7em}
+\setlist[enumerate]{leftmargin=1.7em}
+
+\newcommand{\clamp}[3]{\min\!\left(\max\!\left(#1,#2\right),#3\right)}
+
+\title{Retail Investor MVP \\ Complete Calculation Reference}
+\author{Codex}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Scope and Sources}
+This document is the formal math extract for the project scoring and backtesting logic.
+Code anchors:
+\begin{itemize}
+  \item \texttt{src/scoring/normalize.ts}
+  \item \texttt{src/scoring/fundamental.ts}
+  \item \texttt{src/scoring/technical.ts}
+  \item \texttt{src/scoring/evidence.ts}
+  \item \texttt{src/scoring/pure/score\_symbol.ts}
+  \item \texttt{src/scoring/pure/filters.ts}
+  \item \texttt{src/regime/engine.ts}, \texttt{src/regime/history.ts}
+  \item \texttt{scripts/backtesting/run-backtest.ts}
+\end{itemize}
+
+\section{Normalization}
+\subsection{Core Operators}
+\[
+\text{linearScale}(x) = \clamp{\left(o_{\min} + \frac{x-i_{\min}}{i_{\max}-i_{\min}}(o_{\max}-o_{\min})\right)}{o_{\min}}{o_{\max}}
+\]
+\[
+\text{inverseLinearScale}(x) = \clamp{\left(o_{\max} - \frac{x-i_{\min}}{i_{\max}-i_{\min}}(o_{\max}-o_{\min})\right)}{o_{\min}}{o_{\max}}
+\]
+
+\subsection{Range Normalization}
+For threshold pair $(L,H)$ and value $v$:
+\[
+S(v;L,H,\text{invert}) =
+\begin{cases}
+50, & v=\varnothing \\
+100, & \text{invert}=1 \land v \le L \\
+0, & \text{invert}=1 \land v \ge H \\
+\text{inverseLinearScale}(v), & \text{invert}=1 \land L < v < H \\
+0, & \text{invert}=0 \land v \le L \\
+100, & \text{invert}=0 \land v \ge H \\
+\text{linearScale}(v), & \text{invert}=0 \land L < v < H
+\end{cases}
+\]
+Soft cap:
+\[
+S_{\text{capped}}=\min(S,95)
+\]
+
+\section{Fundamental Scoring (Live Path)}
+\subsection{Default Thresholds}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Metric & Low & High \\
+\midrule
+PE & 15 & 30 \\
+PB & 1.5 & 5 \\
+PS & 1 & 5 \\
+ROE & 8 & 35 \\
+Debt/Equity & 0.2 & 1.5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Metric Scores}
+\[
+S_{PE}=S(PE;L_{PE},H_{PE},1),\quad
+S_{PB}=S(PB;L_{PB},H_{PB},1),\quad
+S_{PS}=S(PS;L_{PS},H_{PS},1)
+\]
+\[
+S_{ROE}=S(ROE;L_{ROE},H_{ROE},0)
+\]
+\[
+S_{DE}=
+\begin{cases}
+0, & DE<0 \\
+S(DE;L_{DE},H_{DE},1), & \text{otherwise}
+\end{cases}
+\]
+
+\subsection{Valuation Pillar}
+Let available valuation set $V=\{S_{PE},S_{PB},S_{PS}\}_{\text{available}}$.
+\[
+\text{Valuation}=
+\begin{cases}
+\frac{1}{|V|}\sum\limits_{s\in V} s, & |V|\ge 2 \\
+0, & |V|<2
+\end{cases}
+\]
+
+\subsection{PEG for GARP}
+For positive growth and non-negative PE:
+\[
+g_{\%}=100\cdot g,\qquad PEG=\frac{PE}{g_{\%}}
+\]
+Piecewise PEG score:
+\[
+S_{PEG}(p)=
+\begin{cases}
+100, & p\le 0.5 \\
+100-50(p-0.5), & 0.5<p\le 1.0 \\
+75-50(p-1.0), & 1.0<p\le 1.5 \\
+50-50(p-1.5), & 1.5<p\le 2.0 \\
+25-25(p-2.0), & 2.0<p\le 3.0 \\
+0, & p>3.0
+\end{cases}
+\]
+GARP blend:
+\[
+\text{Valuation}_{GARP}=0.7\cdot\text{Valuation}+0.3\cdot S_{PEG}
+\]
+If PEG cannot be computed, neutral fallback $S_{PEG}=50$.
+
+\subsection{Quality Pillar and Fundamental Total}
+Let $Q=\{S_{ROE},S_{DE}\}_{\text{available}}$.
+\[
+\text{Quality}=
+\begin{cases}
+\frac{1}{|Q|}\sum\limits_{s\in Q} s, & |Q|>0 \\
+0, & |Q|=0
+\end{cases}
+\]
+\[
+\text{FundamentalTotal}=
+\begin{cases}
+0, & \text{insufficient valuation inputs} \\
+\frac{\text{Valuation}+\text{Quality}}{2}, & \text{otherwise}
+\end{cases}
+\]
+
+\section{Technical Scoring (Live Path)}
+\subsection{Trend}
+52W position:
+\[
+P_{52} = 100\cdot\frac{P_{\text{now}}-P_{52,\text{low}}}{P_{52,\text{high}}-P_{52,\text{low}}}
+\]
+Trend base:
+\[
+S_{\text{trend,base}}=
+\begin{cases}
+90,& P_{52}\ge 80\\
+75,& 60\le P_{52}<80\\
+60,& 40\le P_{52}<60\\
+40,& 20\le P_{52}<40\\
+25,& P_{52}<20
+\end{cases}
+\]
+Day-change adjustment:
+\[
+S_{\text{trend}}=
+\begin{cases}
+\min(100,S_{\text{trend,base}}+10), & \Delta_{1D}>2\% \\
+\max(0,S_{\text{trend,base}}-10), & \Delta_{1D}<-2\% \\
+S_{\text{trend,base}}, & \text{otherwise}
+\end{cases}
+\]
+
+\subsection{Momentum}
+Discrete mapping from 5D, 13W, 26W, 52W return buckets to score points.
+If at least one signal is present:
+\[
+S_{\text{mom}} = \frac{1}{N}\sum_{k=1}^{N} s_k
+\]
+If no signal is present:
+\[
+S_{\text{mom}}=50
+\]
+
+\subsection{Volatility / Risk Component}
+\[
+S_{\text{vol,base}}=
+\begin{cases}
+90,& \sigma_{3m}<15\\
+70,& 15\le \sigma_{3m}<25\\
+50,& 25\le \sigma_{3m}<35\\
+35,& 35\le \sigma_{3m}<50\\
+20,& \sigma_{3m}\ge 50
+\end{cases}
+\]
+Beta adjustment:
+\[
+\Delta_{\beta}=
+\begin{cases}
++20,& \beta<0.6\\
++12,& 0.6\le \beta<0.8\\
+0,& 0.8\le \beta\le 1.0\\
+-10,& 1.0<\beta\le 1.2\\
+-20,& 1.2<\beta\le 1.5\\
+-30,& \beta>1.5
+\end{cases}
+\]
+\[
+S_{\text{vol}}=\clamp{(S_{\text{vol,base}}+\Delta_{\beta})}{0}{100}
+\]
+
+\subsection{Technical Total}
+\[
+S_{\text{technical,total}}=0.3\cdot S_{\text{trend}} + 0.4\cdot S_{\text{mom}} + 0.3\cdot S_{\text{vol}}
+\]
+
+\section{Evidence Pillars and Total Score (Live)}
+Pillars:
+\[
+\text{Valuation} = \text{fundamental valuation},\quad
+\text{Quality} = \text{fundamental quality}
+\]
+\[
+\text{Technical} = \frac{S_{\text{trend}}+S_{\text{mom}}}{2}
+\]
+Risk pillar:
+\[
+\text{Risk}_{\text{standard}}=\frac{S_{\text{vol}}+S_{DE}}{2}
+\]
+Shield mode uses mapped beta-risk score $S_{\beta,\text{risk}}$:
+\[
+\text{Risk}_{\text{shield}}=\frac{S_{\beta,\text{risk}}+S_{\text{vol}}}{2}
+\]
+
+Weighted total:
+\[
+S_{\text{total}} = w_V\cdot V + w_Q\cdot Q + w_T\cdot T + w_R\cdot R
+\]
+Default:
+\[
+w_V=w_Q=w_T=w_R=0.25
+\]
+
+\section{Pure Backtest Scoring (Preset Path)}
+\subsection{Valuation (Pure)}
+For each metric $m\in\{PE,PB,PS\}$:
+\[
+S_m=
+\begin{cases}
+50,& m=\varnothing\\
+100,& m\le L_m\\
+100-\frac{m-L_m}{H_m-L_m}\cdot 40,& L_m<m\le H_m\\
+\max\!\left(10,60-\min\!\left(\frac{m-H_m}{H_m},1.5\right)\cdot 40\right),& m>H_m
+\end{cases}
+\]
+\[
+V_{\text{pure}}=\frac{S_{PE}+S_{PB}+S_{PS}}{3}
+\]
+If GARP preset:
+\[
+V_{\text{pure,GARP}}=0.7\cdot V_{\text{pure}}+0.3\cdot S_{PEG}
+\]
+
+\subsection{Quality (Pure)}
+Start with $50$:
+\[
+Q_{\text{pure}}=50+\Delta_{ROE}+\Delta_{DE}
+\]
+\[
+\Delta_{ROE}=
+\begin{cases}
++25,& ROE\ge H_{ROE}\\
++10,& L_{ROE}\le ROE<H_{ROE}\\
+-10,& ROE<L_{ROE}
+\end{cases}
+\]
+\[
+\Delta_{DE}=
+\begin{cases}
++15,& DE\le L_{DE}\\
++5,& L_{DE}<DE\le H_{DE}\\
+-15,& DE>H_{DE}
+\end{cases}
+\]
+\[
+Q_{\text{pure}}=\clamp{Q_{\text{pure}}}{0}{100}
+\]
+
+\subsection{Technical (Pure)}
+Momentum:
+\[
+M_{\text{pure}}=\clamp{\left((0.6\cdot r_{13w}+0.4\cdot r_{26w}+0.5)\cdot 100\right)}{0}{100}
+\]
+Range score is piecewise over 52W position $p\in[0,1]$.
+If returns exist:
+\[
+T_{\text{pure}}=0.6\cdot M_{\text{pure}}+0.4\cdot R_{\text{range}}
+\]
+Else:
+\[
+T_{\text{pure}}=R_{\text{range}}
+\]
+
+\subsection{Risk (Pure)}
+\[
+R_{\text{pure}}=
+\begin{cases}
+100,& \sigma\le 15\\
+85 + 1.5(25-\sigma),& 15<\sigma\le 25\\
+70 + 4(30-\sigma),& 25<\sigma\le 30\\
+50 + 4(35-\sigma),& 30<\sigma\le 35\\
+\max(10,2(40-\sigma)),& 35<\sigma\le 40\\
+5,& \sigma>40\\
+50,& \sigma=\varnothing
+\end{cases}
+\]
+
+\subsection{Pure Total}
+\[
+S_{\text{pure,total}} = w_V\cdot V_{\text{pure}} + w_Q\cdot Q_{\text{pure}} + w_T\cdot T_{\text{pure}} + w_R\cdot R_{\text{pure}}
+\]
+
+\section{Preset Filters}
+Generic min/max filters:
+\[
+\text{pass}_{\min f} \Leftrightarrow x_f \ge \theta_f,\qquad
+\text{pass}_{\max f} \Leftrightarrow x_f \le \theta_f
+\]
+Where $f$ can be (among others): PE, PB, PS, PEG, debt\_equity, ROE, payout\_ratio, dividend\_yield, beta, market\_cap, volatility.
+Special rule:
+\[
+\theta_{\text{volatility}} \leftarrow 100\cdot \theta_{\text{volatility}}
+\quad \text{if}\quad \theta_{\text{volatility}}\le 1.5
+\]
+Pillar minimum filters are applied after scoring:
+\[
+V\ge \theta_{V,\min},\quad Q\ge \theta_{Q,\min},\quad T\ge \theta_{T,\min},\quad R\ge \theta_{R,\min}
+\]
+
+\section{Regime Detection}
+\subsection{Signal Scores}
+\[
+S_{VIX}=
+\begin{cases}
+1.0,& VIX<15\\
+0.5,& 15\le VIX<20\\
+0.0,& 20\le VIX<25\\
+-0.5,& 25\le VIX\le 30\\
+-1.0,& VIX>30
+\end{cases}
+\]
+\[
+\text{VIX override} \Leftrightarrow VIX>40
+\]
+
+\[
+S_{YC}=
+\begin{cases}
+1.0,& spread>1.5\\
+0.5,& 0.5\le spread\le 1.5\\
+0.0,& 0\le spread<0.5\\
+-0.5,& -0.5\le spread<0\\
+-1.0,& spread<-0.5
+\end{cases}
+\]
+
+\[
+\Delta_{3m}=FF_t-FF_{t-3m},\qquad \Delta_{6m}=FF_t-FF_{t-6m}
+\]
+\[
+S_{FED}=
+\begin{cases}
+-1.0,& \Delta_{6m}>1.0\\
+0.5,& \Delta_{3m}< -0.25\\
+0.0,& |\Delta_{3m}|<0.25\\
+-0.5,& \Delta_{3m}>0.25\\
+0.0,& \text{otherwise}
+\end{cases}
+\]
+
+\[
+CPI_{YoY}=100\left(\frac{CPI_t}{CPI_{t-12m}}-1\right)
+\]
+\[
+S_{CPI}=
+\begin{cases}
+0.3,& CPI_{YoY}<2\\
+0.5,& 2\le CPI_{YoY}\le 3\\
+-0.3,& 3<CPI_{YoY}\le 5\\
+-0.5,& CPI_{YoY}>5
+\end{cases}
+\]
+
+\subsection{Composite and Label}
+Dynamic weighting over available signals:
+\[
+S_{\text{comp}} = \clamp{\left(
+\frac{0.35S_{VIX}+0.30S_{YC}+0.20S_{FED}+0.15S_{CPI}}{\sum w_i\ \text{(available)}}
+\right)}{-1}{1}
+\]
+Label mapping:
+\[
+\text{Regime}=
+\begin{cases}
+\text{CRISIS},& \text{VIX override}=1 \lor S_{\text{comp}}<-0.6\\
+\text{RISK\_OFF},& -0.6\le S_{\text{comp}}<-0.2\\
+\text{NEUTRAL},& -0.2\le S_{\text{comp}}\le 0.4\\
+\text{RISK\_ON},& S_{\text{comp}}>0.4
+\end{cases}
+\]
+Confidence:
+\[
+\text{confidence} = \frac{\#\text{available signals}}{4}
+\]
+
+\section{Regime Overlay in Backtesting}
+For each rebalance date, policy by regime:
+\[
+\begin{array}{l|cccc}
+\text{Regime} & \text{investmentFraction} & \Delta w_T & \Delta w_Q & \Delta w_R \\
+\hline
+RISK\_ON & 1.00 & +0.10 & 0 & 0 \\
+NEUTRAL & 1.00 & 0 & 0 & 0 \\
+RISK\_OFF & 0.70 & 0 & +0.10 & +0.05 \\
+CRISIS & 0.40 & 0 & +0.15 & +0.10 \\
+\end{array}
+\]
+Additional CRISIS filter shift:
+\[
+\theta_{\text{min\_quality\_score}} \leftarrow \theta_{\text{min\_quality\_score}} + 10
+\]
+Weight normalization after boosts:
+\[
+w_i'=\frac{\max(0,w_i+\Delta w_i)}{\sum_j \max(0,w_j+\Delta w_j)}
+\]
+Investable cash:
+\[
+Cash_{\text{invested}} = Cash_{\text{portfolio}}\cdot \text{investmentFraction}
+\]
+Remaining cash stays uninvested (period return contribution $=0$).
+
+\section{Performance by Regime in Summary}
+For each rebalance interval $k$ assigned to regime $r$:
+\[
+q_k = \frac{V_{end,k}}{V_{start,k}}-1
+\]
+Regime cumulative multiplier:
+\[
+M_r = \prod_{k\in r}(1+q_k)
+\]
+Summary fields:
+\[
+\text{return\_pct}_r = 100(M_r-1)
+\]
+\[
+\text{avg\_quarterly\_return}_r = 100\cdot \frac{1}{N_r}\sum_{k\in r}q_k
+\]
+\[
+\text{quarters}_r = N_r
+\]
+Consecutive quarters with same regime are merged into \texttt{regime\_periods}.
+
+\end{document}

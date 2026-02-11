@@ -1,0 +1,121 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue
+}
+
+\setlist[itemize]{leftmargin=1.6em}
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+
+\title{Intrinsic: Investor Executive Summary}
+\author{Codex}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Executive Summary}
+Intrinsic is a deterministic equity analysis platform with three priorities:
+\begin{itemize}
+  \item transparent scoring logic instead of black-box models,
+  \item reproducible backtesting with clear strategy controls,
+  \item regime-aware capital allocation in changing market conditions.
+\end{itemize}
+
+All major outputs are traceable to explicit formulas and fixed rules. The full mathematical reference is available in \texttt{docs/CALCULATION\_REFERENCE.tex} and \texttt{docs/CALCULATION\_REFERENCE.md}.
+
+\section*{What the User Sees}
+\textbf{1) Strategy Lab for setup and execution}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{docs/assets/investor/strategy_lab_overview.png}
+  \caption{Strategy Lab: presets, market context, and deterministic configuration before run start.}
+\end{figure}
+
+\textbf{2) Backtest diagnostics and portfolio behavior}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{docs/assets/investor/backtest_results.png}
+  \caption{Backtest output: return metrics, drawdown, Sharpe, and equity curve comparison vs benchmarks.}
+\end{figure}
+
+\textbf{3) Single-stock explainability}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{docs/assets/investor/stock_detail.png}
+  \caption{Stock detail: score forensics, price target analysis, benchmark-relative performance, and peer context.}
+\end{figure}
+
+\textbf{4) Daily briefing and ranked universe}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{docs/assets/investor/briefing_grid.png}
+  \caption{Ranked cards and latest briefing list with visible pillar-level outcomes.}
+\end{figure}
+
+\section*{Method in One Page}
+\textbf{Scoring model (four pillars):}
+\[
+Score = w_V \cdot Valuation + w_Q \cdot Quality + w_T \cdot Technical + w_R \cdot Risk
+\]
+with deterministic preset-specific weights.
+
+\textbf{Regime model (macro overlay):}
+\[
+R_{comp} = 0.35\,S_{VIX} + 0.30\,S_{YieldCurve} + 0.20\,S_{Fed} + 0.15\,S_{CPI}
+\]
+plus a hard override to \texttt{CRISIS} when market stress is extreme (e.g., high VIX).
+
+\textbf{Capital adaptation:}
+\begin{itemize}
+  \item \texttt{RISK\_ON}: full investment.
+  \item \texttt{NEUTRAL}: full investment, base profile.
+  \item \texttt{RISK\_OFF}: reduced equity fraction, increased defensive weight.
+  \item \texttt{CRISIS}: strongest cash buffer plus stricter quality threshold.
+\end{itemize}
+
+\section*{Operating Flow}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{docs/assets/investor/pipeline_bpmn.png}
+  \caption{Pipeline overview from universe selection to scoring, optional price targets, and final decision surface.}
+\end{figure}
+
+\section*{Why This Is Credible}
+\begin{itemize}
+  \item \textbf{Deterministic}: same inputs produce the same outputs.
+  \item \textbf{Auditable}: each score and filter has a documented formula.
+  \item \textbf{Configurable}: presets and risk overlays are explicit, versioned, and testable.
+  \item \textbf{Practical}: results are presented as actionable dashboards, not just raw research data.
+\end{itemize}
+
+\section*{Current Documentation Set}
+\begin{itemize}
+  \item Investor-facing overview: \texttt{README.md}
+  \item Technical architecture: \texttt{docs/README\_TECHNICAL.md}
+  \item Full formulas and rules: \texttt{docs/CALCULATION\_REFERENCE.md} and \texttt{docs/CALCULATION\_REFERENCE.tex}
+  \item Weekly technical delta: \texttt{docs/TECHNICAL\_WEEKLY.md}
+\end{itemize}
+
+\section*{Next Milestones (Teaser)}
+\begin{itemize}
+  \item Regime transition visualization across rebalance periods.
+  \item Default A/B reporting for each preset (with vs without regime overlay).
+  \item Deeper explanation blocks per rebalance decision (signal, weight shift, cash ratio).
+\end{itemize}
+
+\end{document}

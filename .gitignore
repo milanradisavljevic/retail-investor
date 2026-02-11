@@ -65,6 +65,9 @@ docs/**/*.md
 !docs/ASSUMPTIONS.md
 !docs/DECISIONS.md
 !docs/score-comparison-guide.md
+!docs/README_TECHNICAL.md
+!docs/CALCULATION_REFERENCE.md
+!docs/TECHNICAL_WEEKLY.md
 Formel Ausarbeitung.md
 
 # SQLite databases (may contain cached data)

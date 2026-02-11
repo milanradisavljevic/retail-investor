@@ -37,6 +37,9 @@
     "perf:report": "tsx scripts/performance-report.ts",
     "analyze:performance": "tsx scripts/analyze-performance.ts",
     "compare-scores": "tsx scripts/compare-scores.ts",
+    "docs:weekly": "tsx scripts/docs/generate-technical-weekly.ts",
+    "docs:latex": "bash scripts/docs/build-calculation-reference.sh",
+    "docs:investor": "bash scripts/docs/build-investor-executive.sh",
     "test:perf": "vitest tests/performance --run",
     "test:perf:watch": "vitest tests/performance"
   },

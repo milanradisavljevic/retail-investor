@@ -1,61 +1,54 @@
+# Intrinsic
 
-<img width="1089" height="1269" alt="Bildschirmfoto_20260130_195919" src="https://github.com/user-attachments/assets/bd935679-890e-4568-b57e-d8cdeba5b680" />
-<img width="1292" height="1269" alt="Bildschirmfoto_20260130_200446" src="https://github.com/user-attachments/assets/0fd3f33d-e27b-4a1a-acba-72b999e7b50a" />
-<img width="1420" height="1258" alt="Bildschirmfoto_20260130_200535" src="https://github.com/user-attachments/assets/64d917f8-7345-40aa-9775-476ccc261fa4" />
+Deterministic Stock Analysis Platform.
 
-# How Our Stock Score Works (Simple Version)
+Intrinsic kombiniert regelbasiertes Aktien-Scoring, Backtesting und Regime-bewusste Portfolio-Logik in einer transparenten Oberfläche.
 
-Goal: rank stocks on a 0–100 scale using a few easy-to-read pillars. Lower risk and better value earn more points.
+## Produkt-Screens
 
-## Inputs (data we read)
-- **Price & returns:** current price, 52‑week high/low, daily/weekly/quarterly returns, beta, 3‑month volatility.
-- **Fundamentals:** P/E, P/B, P/S, ROE, Debt‑to‑Equity.
-- If a metric is missing, we either fill in a universe median or fall back to a neutral 50/100 score.
+![Intrinsic Strategy Lab](docs/assets/investor/strategy_lab_overview.png)
 
-## Step 1 — Quality Gate (quick safety filter)
-- Skip a stock if fundamentals are completely missing.
-- Negative Debt‑to‑Equity (more debt than assets) = automatic 0 for that metric.
+| Backtesting | Stock Explainability |
+|---|---|
+| ![Backtest Results](docs/assets/investor/backtest_results.png) | ![Stock Detail](docs/assets/investor/stock_detail.png) |
 
-## Step 2 — Score each metric (0–100)
-- We convert raw numbers into points using fixed “good/bad” ranges.
-- **Lower is better:** P/E, P/B, P/S, Debt‑to‑Equity → 100 points at the low end, 0 at the high end.
-- **Higher is better:** ROE → 0 points at the low end, 100 at the high end.
-- Numbers between the low/high bounds are scaled linearly. Missing ⇒ 50.
+## Warum Intrinsic
 
-Typical ranges (from `src/scoring/scoring_config.ts`):
-- P/E good ≤15, bad ≥30
-- P/B good ≤1.5, bad ≥5
-- P/S good ≤1, bad ≥5
-- ROE good ≥35%, bad ≤8%
-- Debt/Equity good ≤0.2, bad ≥1.5
+- Keine Blackbox: Regeln und Formeln sind vollstaendig dokumentiert.
+- Reproduzierbar: gleiche Inputs liefern gleiche Outputs.
+- Regime-aware: Asset-Exposure passt sich an Marktzustände an (`RISK_ON`, `NEUTRAL`, `RISK_OFF`, `CRISIS`).
+- Investor-ready UI: Strategy Lab, Backtests, Stock Forensics, Briefing Grid.
 
-## Step 3 — Build pillars (0–100 each)
-- **Valuation:** average of P/E, P/B, P/S scores.
-- **Quality:** average of ROE and Debt/Equity scores.
-- **Technical:** average of Trend and Momentum (trend from 52‑week position, momentum from recent returns).
-- **Risk:** average of Volatility score and Debt/Equity score (lower volatility → higher score).
+## Transparenz-Links
 
-## Step 4 — Combine pillars into the total score
-- Default weights (equal): Valuation 25%, Quality 25%, Technical 25%, Risk 25%.
-- Formula: `Total = 0.25*Valuation + 0.25*Quality + 0.25*Technical + 0.25*Risk`
-- We round to one decimal place.
+- Vollstaendige Berechnungen: `docs/CALCULATION_REFERENCE.md`
+- Formel-Auszug in LaTeX: `docs/CALCULATION_REFERENCE.tex`
+- Investor Executive (LaTeX): `docs/INVESTOR_EXECUTIVE_SUMMARY.tex`
+- Technisches README: `docs/README_TECHNICAL.md`
+- Woechentlicher Tech-Auszug: `docs/TECHNICAL_WEEKLY.md`
 
-## Step 5 — Price target & expected return (when data is available)
-- We compute a fair‑value range using sector medians for P/E, P/B, P/S and the stock’s own scores.
-- Upside % = (target price − current price) / current price.
-- Confidence tag: High / Medium / Low based on how similar the four pillars are (smaller spread = higher confidence).
+## Schnellstart
 
-## Step 6 — Ranking
-- Sort by Total Score (highest first). Ties break alphabetically.
-- We keep a “Pick of the Day” by drawing from the top list with a seed to stay deterministic.
+```bash
+npm install --legacy-peer-deps
+npm run dev
+```
 
-## What to remember
-- 100 = best, 0 = worst, 50 = “don’t know / neutral”.
-- Cheap, profitable, steady stocks rise to the top.
-- Missing data is not fatal, but it keeps a stock near 50 until better data arrives.
+Dann im Browser: `http://localhost:3000`
 
-## Where to change things (if you need)
-- Ranges & weights: `config/scoring.json` (overrides) or `src/scoring/scoring_config.ts` (defaults).
-- Math for fundamentals: `src/scoring/fundamental.ts`.
-- Math for technicals: `src/scoring/technical.ts`.
-- Pillar combine logic: `src/scoring/evidence.ts`.
+## Dokumente als PDF bauen (lokal)
+
+```bash
+npm run docs:latex
+npm run docs:investor
+```
+
+## Roadmap (Teaser)
+
+- Regime-Wechsel pro Rebalance visualisieren.
+- Standardmaessige A/B-Auswertung je Preset (mit vs. ohne Regime-Overlay).
+- Tiefere Explainability pro Rebalance (Signal, Gewichts-Shift, Cash-Quote).
+
+## Hinweis
+
+Intrinsic ist ein Research- und Analyse-Tool, keine Anlageberatung.
