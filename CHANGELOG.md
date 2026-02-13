@@ -13,6 +13,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 #### Documentation
 - **Nordstern Roadmap komplett überarbeitet (GLM):** Ich (GLM) habe `docs/NORDSTERN.md` im Obsidian-Vault komplett überarbeitet und die fehlenden Features aus der alten "Master Roadmap to Excellence" integriert. Neue Phase 3 (Produkt-Features): Portfolio-Tracking (P3.1-P3.6), Multi-Asset Expansion (ETFs, REITs - P3.7-P3.10), Export & Reports (PDF, Excel, Compare Runs - P3.11-P3.13), Deployment Readiness (Security-Audit, CI/CD - P3.14-P3.17). Neue Phase 4 (Monetarisierung): Auth (P4.1-P4.3), Email Alerts (P4.4-P4.6), Stripe Payment (P4.7-P4.9), Legal Docs (P4.10-P4.13). Abgleich-Tabelle für alle Features der alten Roadmap hinzugefügt.
 - **Kanban Board aktualisiert (GLM):** Ich (GLM) habe das `Execution Board (Kanban).md` im Obsidian-Vault neu strukturiert: Erledigte Tasks aus Phase 0-2 und IND-Tasks in "Done" verschoben, Phase 1c Tasks in "In Progress", neue Phase 3-5 Tasks mit konkreten Task-IDs (P3.x, P4.x, P5.x) hinzugefügt, Abgleich-Tabelle für "Master Roadmap to Excellence" Features.
+- **README Screenshot-Set aktualisiert (Codex):** Ich (Codex) habe in `README.md` die Produkt-Screens um die aktuelle Health-Dashboard-Ansicht ergänzt und das Screenshot-Set unter `latest screenshots/` mit den neueren Intrinsic-Aufnahmen aktualisiert.
 
 ### Phase 1c: DB Consolidation
 
