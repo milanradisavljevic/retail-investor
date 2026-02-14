@@ -28,6 +28,12 @@ INTRINSIC is a quantitative stock analysis platform for retail investors who wan
 |:---:|:---:|
 | ![Stock Detail](latest%20screenshots/Screenshot%202026-02-11%20at%2019-43-00%20Intrinsic%20%E2%80%93%20Deterministic%20Stock%20Analysis.png) | ![Backtest](latest%20screenshots/Screenshot%202026-02-11%20at%2019-43-17%20Intrinsic%20%E2%80%93%20Deterministic%20Stock%20Analysis.png) |
 
+| Portfolio (Diversification + Score Breakdown) | Macro Context (Heatmap + Rates) |
+|:---:|:---:|
+| ![Portfolio](latest%20screenshots/Screenshot%202026-02-14%20at%2018-12-48%20Portfolio%20Intrinsic.png) | ![Macro Context](latest%20screenshots/Screenshot%202026-02-14%20at%2018-13-01%20Macro%20Context%20Intrinsic.png) |
+
+![Homepage Overview (Market Context + Earnings Widget)](latest%20screenshots/Screenshot%202026-02-14%20at%2018-13-18%20Intrinsic%20%E2%80%93%20Deterministic%20Stock%20Analysis.png)
+
 ![Health Dashboard](latest%20screenshots/Screenshot%202026-02-13%20at%2017-32-27%20Intrinsic%20%E2%80%93%20Deterministic%20Stock%20Analysis.png)
 
 ---
