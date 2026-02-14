@@ -1,4 +1,5 @@
 import { getFundamentalsIfFresh, type FundamentalsData } from '@/data/repositories/fundamentals_repo';
+import { getMergedFundamentalsIfFresh } from '@/data/repositories/provider_merge';
 import {
   getCachedTechnicalMetrics,
   type CachedTechnicalMetrics,
@@ -12,6 +13,7 @@ import { MarketDataBridge } from '@/data/market-data-bridge';
 import type { MarketDataProvider, CompanyProfile, TechnicalMetrics } from '@/providers/types';
 import type { SymbolRawData } from './metric_resolution';
 import { RequestThrottler } from '@/utils/throttler';
+import { getDataQualityConfig } from '@/data/quality/config';
 import fs from 'fs';
 import path from 'path';
 import { createChildLogger } from '@/utils/logger';
@@ -41,9 +43,11 @@ export interface FetchDependencies {
   stats: RequestStats;
   cacheOverrides?: {
     fundamentals?: typeof getFundamentalsIfFresh;
+    mergedFundamentals?: typeof getMergedFundamentalsIfFresh;
     technical?: typeof getCachedTechnicalMetrics;
     profile?: typeof getCompanyProfileIfFresh;
   };
+  useMergedFundamentals?: boolean;
   persistProfile?: boolean;
 }
 
@@ -97,8 +101,11 @@ export async function fetchSymbolDataWithCache(
 
   const { provider, fallbackProvider, throttler, cache, requiredMetrics, stats } = deps;
   const fundamentalsFn = deps.cacheOverrides?.fundamentals ?? getFundamentalsIfFresh;
+  const mergedFundamentalsFn =
+    deps.cacheOverrides?.mergedFundamentals ?? getMergedFundamentalsIfFresh;
   const technicalFn = deps.cacheOverrides?.technical ?? getCachedTechnicalMetrics;
   const profileFn = deps.cacheOverrides?.profile ?? getCompanyProfileIfFresh;
+  const useMergedFundamentals = deps.useMergedFundamentals ?? true;
 
   let fundamentals: FundamentalsData | null = null;
   let technical: TechnicalMetrics | null = null;
@@ -153,6 +160,21 @@ export async function fetchSymbolDataWithCache(
     stats.fundamentalsRequests += 1;
     if (fundamentals && fallbackProvider && needsFallback(fundamentals, requiredMetrics)) {
       // Keep fallback fetches lazy but deterministic
+    }
+  }
+
+  if (
+    useMergedFundamentals &&
+    (!fundamentals || needsFallback(fundamentals, requiredMetrics))
+  ) {
+    const mergedFundamentals = mergedFundamentalsFn(
+      symbol,
+      cache.fundamentalsTtlMs
+    );
+    if (mergedFundamentals) {
+      fundamentals = fundamentals
+        ? mergeFundamentalsPreferPrimary(fundamentals, mergedFundamentals)
+        : mergedFundamentals;
     }
   }
 
@@ -294,6 +316,26 @@ function needsFallback(fundamentals: FundamentalsData, required: string[]): bool
   });
 }
 
+function mergeFundamentalsPreferPrimary(
+  primary: FundamentalsData,
+  secondary: FundamentalsData
+): FundamentalsData {
+  const merged: FundamentalsData = { ...primary };
+  const mergedRecord = merged as unknown as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(secondary)) {
+    if (key.startsWith('_')) continue;
+    if (value === null || value === undefined) continue;
+
+    const primaryValue = mergedRecord[key];
+    if (primaryValue === null || primaryValue === undefined) {
+      mergedRecord[key] = value;
+    }
+  }
+
+  return merged;
+}
+
 /**
  * Batch fetch for multiple symbols using YFinanceBatchProvider.
  * Significantly faster than individual fetching due to reduced process spawning.
@@ -314,6 +356,7 @@ export async function fetchSymbolsBatch(
   const fundamentalsFn = getFundamentalsIfFresh;
   const technicalFn = getCachedTechnicalMetrics;
   const profileFn = getCompanyProfileIfFresh;
+  const requiredMetrics = getDataQualityConfig().required_metrics;
 
   // Check cache first for all symbols
   const uncachedSymbols: string[] = [];
@@ -336,6 +379,18 @@ export async function fetchSymbolsBatch(
         fundamentals = bridgeFundamentals;
         bridgeFundamentalsUsed = true;
         stats.fundamentalsCacheHits += 1;
+      }
+    }
+
+    if (!fundamentals || needsFallback(fundamentals, requiredMetrics)) {
+      const mergedFundamentals = getMergedFundamentalsIfFresh(
+        symbol,
+        cache.fundamentalsTtlMs
+      );
+      if (mergedFundamentals) {
+        fundamentals = fundamentals
+          ? mergeFundamentalsPreferPrimary(fundamentals, mergedFundamentals)
+          : mergedFundamentals;
       }
     }
 
@@ -437,6 +492,18 @@ export async function fetchSymbolsBatch(
             }
           } catch {
             // ignore
+          }
+        }
+
+        if (!fundamentals || needsFallback(fundamentals, requiredMetrics)) {
+          const mergedFundamentals = getMergedFundamentalsIfFresh(
+            symbol,
+            cache.fundamentalsTtlMs
+          );
+          if (mergedFundamentals) {
+            fundamentals = fundamentals
+              ? mergeFundamentalsPreferPrimary(fundamentals, mergedFundamentals)
+              : mergedFundamentals;
           }
         }
 

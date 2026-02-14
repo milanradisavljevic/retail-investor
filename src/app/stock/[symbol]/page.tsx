@@ -1,12 +1,7 @@
-import { EnhancedPriceTarget } from '@/app/components/EnhancedPriceTarget';
-import { PerformanceTimeline } from '@/app/components/PerformanceTimeline';
-import { PeerComparison } from '@/app/components/PeerComparison';
 import { StockDetailView } from '@/app/components/StockDetailView';
 import { getCompanyName } from '@/core/company';
-import { buildEnhancedPriceTarget } from '@/lib/analysis/priceTargetAnalysis';
-import { findPeers } from '@/lib/analysis/peerAnalysis';
-import { loadTimeSeriesData } from '@/lib/analysis/timeSeriesAnalysis';
 import { getLatestRun } from '@/lib/runLoader';
+import { loadRunFiles } from '@/run/files';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
 
 import { notFound } from 'next/navigation';
@@ -14,6 +9,40 @@ import { notFound } from 'next/navigation';
 type Params = {
   params?: Promise<{ symbol?: string | string[] }>;
 };
+
+type ScoreHistoryPoint = {
+  date: string;
+  score: number;
+};
+
+function buildScoreHistory(symbol: string): ScoreHistoryPoint[] {
+  const recentRuns = loadRunFiles(200);
+  const points: ScoreHistoryPoint[] = [];
+
+  for (const entry of recentRuns) {
+    const score = entry.run.scores.find((item) => item.symbol === symbol);
+    if (!score) continue;
+
+    points.push({
+      date: entry.run.as_of_date,
+      score: Number(score.total_score.toFixed(2)),
+    });
+
+    if (points.length >= 10) break;
+  }
+
+  return points.reverse();
+}
+
+function buildTop20Symbols(run: RunV1SchemaJson): string[] {
+  const selectedTop20 = run.selections?.top20?.map((symbol) => symbol.toUpperCase()) ?? [];
+  if (selectedTop20.length > 0) return selectedTop20;
+
+  return [...run.scores]
+    .sort((a, b) => b.total_score - a.total_score)
+    .slice(0, 20)
+    .map((item) => item.symbol.toUpperCase());
+}
 
 export default async function StockDetailPage({ params }: Params) {
   const resolvedParams = (await params) ?? {};
@@ -57,87 +86,25 @@ export default async function StockDetailPage({ params }: Params) {
     );
   }
 
-  // Load time series data for performance timeline
-  let timeSeriesData = null;
-  let timeSeriesError = null;
-
-  try {
-    timeSeriesData = await loadTimeSeriesData(symbol, '1Y');
-  } catch (error) {
-    timeSeriesError = error instanceof Error ? error.message : 'Unknown error';
-    console.warn(`Could not load time series data for ${symbol}:`, timeSeriesError);
-  }
-
-  let peerData = null;
-  let peerError = null;
-
-  try {
-    peerData = await findPeers(symbol);
-  } catch (error) {
-    peerError = error instanceof Error ? error.message : 'Unknown error';
-    console.warn(`Could not load peers for ${symbol}:`, peerError);
-  }
-
-  let enhancedPriceTarget = null;
-  let enhancedPriceTargetError = null;
-
-  try {
-    enhancedPriceTarget = await buildEnhancedPriceTarget(symbol, score);
-  } catch (error) {
-    enhancedPriceTargetError = error instanceof Error ? error.message : 'Unknown error';
-    console.warn(`Could not build enhanced price target for ${symbol}:`, enhancedPriceTargetError);
-  }
+  const scoreHistory = buildScoreHistory(symbol);
+  const top20Symbols = buildTop20Symbols(run);
+  const currentTop20Index = top20Symbols.findIndex((item) => item === symbol);
+  const prevSymbol = currentTop20Index > 0 ? top20Symbols[currentTop20Index - 1] : null;
+  const nextSymbol =
+    currentTop20Index >= 0 && currentTop20Index < top20Symbols.length - 1
+      ? top20Symbols[currentTop20Index + 1]
+      : null;
 
   return (
     <div className="max-w-6xl mx-auto">
-      <StockDetailView run={run} score={score} companyName={companyName} />
-
-      {enhancedPriceTarget ? (
-        <div className="mt-6 rounded-xl border border-navy-700 bg-navy-800 p-4">
-          <EnhancedPriceTarget data={enhancedPriceTarget} />
-        </div>
-      ) : (
-        <div className="mt-6 rounded-xl border border-navy-700 bg-navy-800 p-4">
-          <h3 className="text-lg font-semibold text-text-primary mb-2">Price Target Analysis</h3>
-          <p className="text-sm text-text-muted">
-            {enhancedPriceTargetError ?? 'Enhanced price target is not available for this symbol.'}
-          </p>
-        </div>
-      )}
-
-      {peerData ? (
-        <div className="mt-6">
-          <PeerComparison data={peerData} />
-        </div>
-      ) : (
-        <div className="mt-6 rounded-xl border border-navy-700 bg-navy-800 p-4">
-          <h3 className="text-lg font-semibold text-text-primary mb-2">Peer Comparison</h3>
-          <p className="text-sm text-text-muted">
-            {peerError ?? 'Peer data not available for this symbol.'}
-          </p>
-        </div>
-      )}
-
-      {timeSeriesData ? (
-        <div className="mt-6 rounded-xl border border-navy-700 bg-navy-800 p-4">
-          <PerformanceTimeline data={timeSeriesData} />
-        </div>
-      ) : (
-        <div className="mt-6 rounded-xl border border-navy-700 bg-navy-800 p-4">
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
-            Performance Timeline
-          </h3>
-          <p className="text-sm text-text-muted">
-            Historical data not available for this symbol.
-            {timeSeriesError && (
-              <span className="block mt-1 text-xs text-accent-red">{timeSeriesError}</span>
-            )}
-          </p>
-          <p className="text-xs text-text-secondary mt-2">
-            Run <code className="bg-navy-700 px-1.5 py-0.5 rounded">python scripts/backtesting/fetch-historical.py</code> to fetch historical data.
-          </p>
-        </div>
-      )}
+      <StockDetailView
+        run={run}
+        score={score}
+        companyName={companyName}
+        scoreHistory={scoreHistory}
+        prevSymbol={prevSymbol}
+        nextSymbol={nextSymbol}
+      />
     </div>
   );
 }

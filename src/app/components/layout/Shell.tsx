@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import { WatchlistNavLink } from "@/app/components/WatchlistNavLink";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Briefcase } from "lucide-react";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -34,6 +35,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 {t("nav.dashboard")}
               </Link>
               <Link
+                href="/portfolio"
+                className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5"
+              >
+                <Briefcase className="w-4 h-4" />
+                Portfolio
+              </Link>
+              <Link
                 href="/strategy-lab"
                 className="text-text-secondary hover:text-text-primary transition-colors"
               >
@@ -46,6 +54,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
               >
                 {t("nav.settings")}
               </Link>
+              <Link
+                href="/health"
+                className="text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Health
+              </Link>
+              <Link
+                href="/macro"
+                className="text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Macro
+              </Link>
             </nav>
           </div>
         </div>
@@ -53,9 +73,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <main className="flex-1 max-w-[1800px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {children}
           </main>
-          <footer className="border-t border-navy-700 bg-navy-800/50">
-            <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-              <p className="text-xs text-text-muted">
+          <footer className="border-t border-navy-700/50 bg-navy-800/30">
+            <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
+              <p className="text-[10px] text-slate-600">
                 {t("footer.disclaimer")}
               </p>
             </div>

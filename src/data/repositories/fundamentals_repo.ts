@@ -14,6 +14,7 @@ export interface FundamentalsSnapshot {
 }
 
 export interface FundamentalsData {
+  _source?: string;
   peRatio: number | null;
   pbRatio: number | null;
   psRatio: number | null;
@@ -79,6 +80,33 @@ export function getLatestFundamentals(symbol: string): FundamentalsSnapshot | nu
   `);
 
   const row = stmt.get(symbol) as
+    | { symbol: string; fetchedAt: number; data_json: string }
+    | undefined;
+
+  if (!row) return null;
+
+  return {
+    symbol: row.symbol,
+    fetchedAt: row.fetchedAt,
+    data: JSON.parse(row.data_json) as FundamentalsData,
+  };
+}
+
+export function getLatestFundamentalsBySource(
+  symbol: string,
+  source: string
+): FundamentalsSnapshot | null {
+  const db = getDatabase();
+  const stmt = db.prepare(`
+    SELECT symbol, fetched_at as fetchedAt, data_json
+    FROM fundamentals_snapshot
+    WHERE symbol = ?
+      AND json_extract(data_json, '$._source') = ?
+    ORDER BY fetched_at DESC
+    LIMIT 1
+  `);
+
+  const row = stmt.get(symbol, source) as
     | { symbol: string; fetchedAt: number; data_json: string }
     | undefined;
 

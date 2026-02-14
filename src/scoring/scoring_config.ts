@@ -122,6 +122,7 @@ interface RawScoringConfig {
 export interface RawPresetConfig {
   name?: string;
   description?: string;
+  regime_overlay_recommended?: boolean;
   pillar_weights?: Partial<PillarWeights>;
   fundamental_thresholds?: Partial<FundamentalThresholds>;
   filters?: Record<string, unknown>;

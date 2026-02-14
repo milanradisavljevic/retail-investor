@@ -1,13 +1,15 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import type { BacktestSummary } from '../utils/loadBacktestData';
+import GlossaryTooltip from '@/app/components/GlossaryTooltip';
 
 interface Props {
   summary: BacktestSummary;
 }
 
 interface MetricCardProps {
-  title: string;
+  title: ReactNode;
   value: string;
   subtitle?: string;
   highlight?: 'up' | 'down' | 'neutral';
@@ -48,13 +50,13 @@ export default function MetricsCards({ summary }: Props) {
         accent={`vs. S&P 500: ${formatPct(outperformance_pct, 1)}`}
       />
       <MetricCard
-        title="Sharpe Ratio"
+        title={<GlossaryTooltip term="sharpe_ratio">Sharpe Ratio</GlossaryTooltip>}
         value={metrics.sharpe_ratio.toFixed(2)}
         highlight={metrics.sharpe_ratio >= 1 ? 'up' : 'neutral'}
         accent={`Benchmark: ${benchmark.sharpe_ratio.toFixed(2)}`}
       />
       <MetricCard
-        title="Max Drawdown"
+        title={<GlossaryTooltip term="max_drawdown">Max Drawdown</GlossaryTooltip>}
         value={formatPct(metrics.max_drawdown_pct)}
         highlight="down"
         accent={`Benchmark: ${formatPct(benchmark.max_drawdown_pct)}`}

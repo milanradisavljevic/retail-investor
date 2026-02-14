@@ -1,0 +1,131 @@
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getPositionById, updatePosition, deletePosition } from '@/data/portfolio';
+import type { PortfolioPositionInput } from '@/types/portfolio';
+import { initializeDatabase, closeDatabase } from '@/data/db';
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  try {
+    initializeDatabase();
+    
+    const { id } = await params;
+    const positionId = parseInt(id, 10);
+    
+    if (Number.isNaN(positionId)) {
+      return NextResponse.json(
+        { error: 'Invalid position ID' },
+        { status: 400 }
+      );
+    }
+    
+    const position = getPositionById(positionId);
+    
+    if (!position) {
+      return NextResponse.json(
+        { error: 'Position not found' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json(position);
+  } catch (error) {
+    console.error('[API /portfolio/[id]] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to load position', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  } finally {
+    closeDatabase();
+  }
+}
+
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  try {
+    initializeDatabase();
+    
+    const { id } = await params;
+    const positionId = parseInt(id, 10);
+    
+    if (Number.isNaN(positionId)) {
+      return NextResponse.json(
+        { error: 'Invalid position ID' },
+        { status: 400 }
+      );
+    }
+    
+    const body = await request.json() as Partial<PortfolioPositionInput>;
+    const success = updatePosition(positionId, body);
+    
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Position not found or no changes made' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Position updated successfully',
+    });
+  } catch (error) {
+    console.error('[API /portfolio/[id]] Error updating position:', error);
+    
+    if (error instanceof Error && error.message.includes('must be')) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.message },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: 'Failed to update position', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  } finally {
+    closeDatabase();
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    initializeDatabase();
+    
+    const { id } = await params;
+    const positionId = parseInt(id, 10);
+    
+    if (Number.isNaN(positionId)) {
+      return NextResponse.json(
+        { error: 'Invalid position ID' },
+        { status: 400 }
+      );
+    }
+    
+    const success = deletePosition(positionId);
+    
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Position not found' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Position deleted successfully',
+    });
+  } catch (error) {
+    console.error('[API /portfolio/[id]] Error deleting position:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete position', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  } finally {
+    closeDatabase();
+  }
+}

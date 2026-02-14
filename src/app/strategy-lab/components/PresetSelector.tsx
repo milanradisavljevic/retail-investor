@@ -8,6 +8,7 @@ import {
   Scale,
   Target,
   Crown,
+  Activity,
   Coins,
   Gauge,
   Sparkles,
@@ -113,7 +114,7 @@ export function PresetSelector({ value, onChange, presets }: PresetSelectorProps
                   <Icon className="w-5 h-5 text-slate-400 flex-shrink-0" />
                   <div>
                     <h4 className="font-bold text-white text-lg">{preset.name}</h4>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                       {tier === 'validated' ? (
                         <span className="text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 border border-emerald-500/40 text-emerald-500">
                           Validated
@@ -128,6 +129,12 @@ export function PresetSelector({ value, onChange, presets }: PresetSelectorProps
                           </div>
                         </div>
                       )}
+                      {preset.regime_overlay_recommended ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium rounded px-1.5 py-0.5 border border-emerald-500/40 text-emerald-500">
+                          <Activity className="w-3.5 h-3.5" />
+                          Regime-Overlay empfohlen
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>

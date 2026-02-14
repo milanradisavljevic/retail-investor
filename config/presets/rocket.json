@@ -1,6 +1,7 @@
 {
   "name": "Rocket (GARP/Momentum)",
   "description": "Growth At Reasonable Price with strong momentum. Targets high-growth companies with positive technical trends and reasonable valuations.",
+  "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.20,
     "quality": 0.25,

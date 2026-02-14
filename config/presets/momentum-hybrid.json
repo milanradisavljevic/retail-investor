@@ -1,6 +1,7 @@
 {
   "name": "Momentum + Mean Reversion",
   "description": "Hybride technische Strategie: Kauft Aktien mit starkem 6-Monats-Momentum, aber vermeidet überdehnte Kurse (>30% von MA200). Kombiniert Trend-Following mit Rückkehr zum Mittelwert.",
+  "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.10,
     "quality": 0.25,

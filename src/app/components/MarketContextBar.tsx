@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import MarketSparkline from './MarketSparkline';
+import MacroSparklineCards from './MacroSparklineCards';
 import type { MarketContextResponse } from '@/lib/marketContext';
 
 type MarketContextBarProps = {
@@ -98,6 +99,8 @@ export default function MarketContextBar({ initialData }: MarketContextBarProps)
           ))}
         </div>
       )}
+
+      <MacroSparklineCards />
     </div>
   );
 }

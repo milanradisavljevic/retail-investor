@@ -1,6 +1,7 @@
 {
   "name": "Dividend Aristocrats",
   "description": "Dividendenstrategie für stabile Einkommensströme: Fokus auf Unternehmen mit konsistentem Dividendenwachstum (10+ Jahre), nachhaltiger Ausschüttungsquote (<80%) und niedriger Volatilität.",
+  "regime_overlay_recommended": true,
   "pillar_weights": {
     "valuation": 0.20,
     "quality": 0.40,

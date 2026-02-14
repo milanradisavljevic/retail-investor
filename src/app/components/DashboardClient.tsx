@@ -5,6 +5,9 @@ import { BriefingToolbar } from "@/app/components/BriefingToolbar";
 import { DocumentsBanner } from "@/app/components/DocumentsBanner";
 import { RunTriggerButton } from "@/app/components/RunTriggerButton";
 import { ScoreBoardClient } from "@/app/components/ScoreBoardClient";
+import MarketContextBar from "@/app/components/MarketContextBar";
+import EarningsWeekWidget from "@/app/components/EarningsWeekWidget";
+import RegimeBadge from "@/app/components/RegimeBadge";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import type { ScoreQuery } from "@/lib/scoreView";
 import type { SymbolDelta } from "@/lib/runDelta";
@@ -176,6 +179,16 @@ export function DashboardClient({
 
       {/* Documents Warning */}
       <DocumentsBanner symbols={run.flags.user_documents_missing} />
+
+      <div className="mb-8 space-y-4">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="xl:col-span-2">
+            <MarketContextBar />
+          </div>
+          <EarningsWeekWidget />
+        </div>
+        <RegimeBadge />
+      </div>
 
       <ScoreBoardClient topScores={topCardScores} tableScores={topTableScores} />
 

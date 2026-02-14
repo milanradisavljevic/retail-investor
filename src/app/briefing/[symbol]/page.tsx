@@ -6,7 +6,6 @@ import { PerformanceTimeline } from '@/app/components/PerformanceTimeline';
 import { PeerComparison } from '@/app/components/PeerComparison';
 import { EnhancedPriceTarget } from '@/app/components/EnhancedPriceTarget';
 import { loadTimeSeriesData } from '@/lib/analysis/timeSeriesAnalysis';
-import { findPeers } from '@/lib/analysis/peerAnalysis';
 import { buildEnhancedPriceTarget } from '@/lib/analysis/priceTargetAnalysis';
 import { getCompanyName } from '@/core/company';
 import { AddToWatchlistButton } from '@/app/components/AddToWatchlistButton';
@@ -56,14 +55,10 @@ export default async function StockDetailPage({
   }
   
   // 3. Load all data in parallel
-  const [timeSeriesData, peerData, enhancedTarget] = await Promise.all([
+  const [timeSeriesData, enhancedTarget] = await Promise.all([
     loadTimeSeriesData(symbol, '1Y').catch(e => {
         console.warn(`Failed to load time series for ${symbol}`, e);
         return null; 
-    }),
-    findPeers(symbol).catch(e => {
-        console.warn(`Failed to load peers for ${symbol}`, e);
-        return null;
     }),
     buildEnhancedPriceTarget(symbol, stockScore).catch(e => {
         console.warn(`Failed to build enhanced price target for ${symbol}`, e);
@@ -168,13 +163,7 @@ export default async function StockDetailPage({
             
             {/* Peer Comparison */}
             <section className="rounded-xl border border-navy-700 bg-navy-800 p-6">
-              {peerData ? (
-                <PeerComparison data={peerData} />
-              ) : (
-                <div className="text-center text-text-secondary p-4">
-                  Peer comparison not available.
-                </div>
-              )}
+              <PeerComparison run={latestRun.run} currentScore={stockScore} />
             </section>
           </div>
           

@@ -12,6 +12,7 @@ import { SectorExposure } from "@/app/components/SectorExposure";
 import { EquityCurve } from "@/app/components/EquityCurve";
 import { DrawdownChart } from "@/app/components/DrawdownChart";
 import { FilterCheckbox } from "@/app/components/FilterCheckbox";
+import GlossaryTooltip from "@/app/components/GlossaryTooltip";
 import { useDraftConfig, type DraftConfig } from "@/hooks/useDraftConfig";
 import { DirtyStateIndicator } from "@/app/components/DirtyStateIndicator";
 import { RunProgressIndicator } from "@/app/components/RunProgressIndicator";
@@ -680,13 +681,27 @@ function LiveRunOutput({ picks, t }: { picks: LivePick[]; t: (key: string) => st
 
 function MetricsTable({ metrics, t }: { metrics: BacktestMetrics; t: (key: string) => string }) {
   const rows = [
-    { label: "Total Return", value: metrics.totalReturn, benchmark: 95.3, russell: 45.2 },
-    { label: "Annualized Return", value: metrics.annualizedReturn, benchmark: 14.32, russell: 7.8 },
-    { label: "Max Drawdown", value: metrics.maxDrawdown, benchmark: -33.72, russell: -28.4 },
-    { label: "Sharpe Ratio", value: metrics.sharpeRatio, benchmark: 0.59, russell: 0.38 },
-    { label: "Calmar Ratio", value: metrics.calmarRatio, benchmark: 0.42, russell: 0.27 },
-    { label: "Win Rate", value: metrics.winRate, benchmark: 75, russell: 52 },
+    { key: "total_return", label: "Total Return", value: metrics.totalReturn, benchmark: 95.3, russell: 45.2 },
+    { key: "annualized_return", label: "Annualized Return", value: metrics.annualizedReturn, benchmark: 14.32, russell: 7.8 },
+    { key: "max_drawdown", label: "Max Drawdown", value: metrics.maxDrawdown, benchmark: -33.72, russell: -28.4 },
+    { key: "sharpe_ratio", label: "Sharpe Ratio", value: metrics.sharpeRatio, benchmark: 0.59, russell: 0.38 },
+    { key: "calmar_ratio", label: "Calmar Ratio", value: metrics.calmarRatio, benchmark: 0.42, russell: 0.27 },
+    { key: "win_rate", label: "Win Rate", value: metrics.winRate, benchmark: 75, russell: 52 },
   ];
+
+  const renderLabel = (row: (typeof rows)[number]) => {
+    if (row.key === "max_drawdown") {
+      return <GlossaryTooltip term="max_drawdown">Max Drawdown</GlossaryTooltip>;
+    }
+    if (row.key === "sharpe_ratio") {
+      return <GlossaryTooltip term="sharpe_ratio">Sharpe Ratio</GlossaryTooltip>;
+    }
+    if (row.key === "calmar_ratio") {
+      return <GlossaryTooltip term="calmar_ratio">Calmar Ratio</GlossaryTooltip>;
+    }
+    return row.label;
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-[#1F2937]">
       <table className="min-w-full bg-[#0F172A]">
@@ -700,12 +715,12 @@ function MetricsTable({ metrics, t }: { metrics: BacktestMetrics; t: (key: strin
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.label} className="border-t border-[#1F2937] text-sm">
-              <td className="px-4 py-3 text-[#E2E8F0]">{row.label}</td>
+            <tr key={row.key} className="border-t border-[#1F2937] text-sm">
+              <td className="px-4 py-3 text-[#E2E8F0]">{renderLabel(row)}</td>
               <td
                 className={classNames(
                   "px-4 py-3 font-semibold",
-                  row.value >= (row.label === "Max Drawdown" ? -20 : 0)
+                  row.value >= (row.key === "max_drawdown" ? -20 : 0)
                     ? "text-[#10B981]"
                     : "text-[#E2E8F0]"
                 )}

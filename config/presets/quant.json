@@ -1,6 +1,7 @@
 {
   "name": "Quant (Balanced Hybrid)",
   "description": "Quantitative balanced approach with equal weight across all pillars. Data-driven strategy without bias toward any single factor.",
+  "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.25,
     "quality": 0.25,

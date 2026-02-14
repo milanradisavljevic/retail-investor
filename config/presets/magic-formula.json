@@ -1,6 +1,7 @@
 {
   "name": "Magic Formula (Greenblatt)",
   "description": "Joel Greenblatt's bewährte Strategie: Gute Unternehmen zu günstigen Preisen. Fokus auf hohe Kapitalrendite (ROIC) kombiniert mit attraktiver Bewertung (Earnings Yield).",
+  "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.40,
     "quality": 0.45,

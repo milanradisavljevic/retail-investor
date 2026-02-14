@@ -56,11 +56,14 @@ export async function loadRunHistory(limit = 10): Promise<RunHistoryItem[]> {
         }
 
         // Extract preset (might be in different fields depending on the run)
-        let preset = 'Standard';
+        let preset = 'Live Run';
         if (runData.preset) {
           preset = runData.preset;
         } else if (runData.strategy) {
           preset = runData.strategy;
+        } else if (runData.mode?.label) {
+          // Use mode label as indicator for live runs
+          preset = 'Live Run';
         }
 
         // Count picks from selections (could be top5, top10, top20, etc.)

@@ -6,6 +6,7 @@ export type PresetConfig = {
   name: string;
   description: string;
   tier?: 'validated' | 'experimental';
+  regime_overlay_recommended: boolean;
   pillar_weights: {
     valuation: number;
     quality: number;
@@ -46,12 +47,15 @@ export async function loadAllPresets(): Promise<PresetConfig[]> {
       const filePath = path.join(dir, f);
       const content = fs.readFileSync(filePath, 'utf-8');
       const id = f.replace('.json', '');
-      const parsed = JSON.parse(content) as Omit<PresetConfig, 'id' | 'tier'>;
+      const parsed = JSON.parse(content) as Omit<PresetConfig, 'id' | 'tier' | 'regime_overlay_recommended'> & {
+        regime_overlay_recommended?: boolean;
+      };
 
       return {
         id,
         ...parsed,
         tier: (parsed as any).tier || TIER_MAPPING[id] || 'experimental',
+        regime_overlay_recommended: parsed.regime_overlay_recommended ?? false,
       };
     } catch (error) {
       console.error(`Failed to load preset ${f}:`, error);

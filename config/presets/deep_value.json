@@ -2,6 +2,7 @@
   "name": "Deep Value",
   "tier": "validated",
   "description": "Value-heavy blend: favors low PE/PB/EV/EBITDA with moderate quality and risk guards.",
+  "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.60,
     "quality": 0.20,

@@ -1,6 +1,7 @@
 {
   "name": "Piotroski F-Score",
   "description": "Finanzielle Gesundheit durch 9 Qualitätschecks. Identifiziert fundamental starke Value-Aktien mit steigendem ROA, positiven Cashflows und verbesserter Bilanzqualität.",
+  "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.25,
     "quality": 0.55,

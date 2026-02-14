@@ -26,6 +26,9 @@ npm run backtest
 # Nur historische Daten laden
 npm run backtest:fetch
 
+# Historische Daten fuer alle Universes nacheinander laden
+npm run backtest:fetch:all
+
 # Nur Simulation (wenn Daten bereits vorhanden)
 npm run backtest:run
 ```

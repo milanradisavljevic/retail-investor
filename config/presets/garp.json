@@ -2,6 +2,7 @@
   "name": "GARP (Growth at Reasonable Price)",
   "description": "Growth at Reasonable Price - PEG-filtered quality growth stocks",
   "tier": "experimental",
+  "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.35,
     "quality": 0.30,

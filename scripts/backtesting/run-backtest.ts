@@ -92,10 +92,10 @@ const SLIPPAGE_MODEL_KEY = Object.keys(SLIPPAGE_MODELS).includes(ENV_SLIPPAGE_MO
 
 const MIN_PRICE_COVERAGE = Number(process.env.MIN_PRICE_COVERAGE || 0.9);
 const MIN_AVG_COVERAGE = Number(process.env.MIN_AVGMETRICS_COVERAGE || 0.7);
-const REGIME_OVERLAY = (() => {
-  const value = (process.env.REGIME_OVERLAY || 'false').toLowerCase();
-  return value === 'true' || value === '1' || value === 'yes';
-})();
+type RegimeOverlaySource = 'env override' | 'preset default' | 'default fallback';
+type RegimeOverlaySetting = { enabled: boolean; source: RegimeOverlaySource };
+const TRUE_ENV_VALUES = new Set(['1', 'true', 'yes', 'on']);
+const FALSE_ENV_VALUES = new Set(['0', 'false', 'no', 'off']);
 
 const toBps = (pct: number) => Math.round(pct * 10000); // e.g., 0.005 -> 50 bps
 const slugify = (value: string) => value.toString().trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -261,6 +261,27 @@ type PresetMeta = {
   hash: string;
   config: RawPresetConfig;
 };
+
+function parseEnvBoolean(name: string, rawValue: string): boolean {
+  const value = rawValue.trim().toLowerCase();
+  if (TRUE_ENV_VALUES.has(value)) return true;
+  if (FALSE_ENV_VALUES.has(value)) return false;
+  throw new Error(`${name} must be true/false (received "${rawValue}")`);
+}
+
+function resolveRegimeOverlaySetting(presetMeta: PresetMeta | null): RegimeOverlaySetting {
+  const envValue = process.env.REGIME_OVERLAY;
+  if (typeof envValue === 'string' && envValue.trim().length > 0) {
+    return { enabled: parseEnvBoolean('REGIME_OVERLAY', envValue), source: 'env override' };
+  }
+
+  const presetRecommended = presetMeta?.config.regime_overlay_recommended;
+  if (typeof presetRecommended === 'boolean') {
+    return { enabled: presetRecommended, source: 'preset default' };
+  }
+
+  return { enabled: false, source: 'default fallback' };
+}
 
 function buildRunId(params: {
   universe: string;
@@ -1765,6 +1786,11 @@ async function main(): Promise<void> {
   console.log(`Universe file: ${universe.universePath}`);
   const presetLabel = PRESET || SCORING_MODE;
   const presetMeta = requirePresetIfSet();
+  const regimeOverlaySetting = resolveRegimeOverlaySetting(presetMeta);
+  const regimeOverlayEnabled = regimeOverlaySetting.enabled;
+  console.log(
+    `Regime overlay: ${regimeOverlayEnabled ? 'ON' : 'OFF'} (${regimeOverlaySetting.source})`
+  );
   const runId = buildRunId({
     universe: universe.universeName,
     preset: presetLabel,
@@ -1881,7 +1907,7 @@ async function main(): Promise<void> {
     },
     presetMeta,
     allowUnsupportedFilters,
-    REGIME_OVERLAY
+    regimeOverlayEnabled
   );
 
   if (isDividendQualityPreset && dividendPayoutMissingCount > 0) {
@@ -1900,10 +1926,10 @@ async function main(): Promise<void> {
   }
 
   const strategyName = (() => {
-    if (PRESET) return `${PRESET} preset - ${REBALANCE_FREQUENCY} Top ${TOP_N}${REGIME_OVERLAY ? ' (Regime Overlay)' : ''}`;
-    if (SCORING_MODE === 'shield') return `Shield (Low Volatility) - Quarterly Top 10${REGIME_OVERLAY ? ' (Regime Overlay)' : ''}`;
-    if (SCORING_MODE === 'momentum') return `Quarterly Rebalance Top 10 Momentum${REGIME_OVERLAY ? ' (Regime Overlay)' : ''}`;
-    return `Quarterly Rebalance Top 10 Hybrid${REGIME_OVERLAY ? ' (Regime Overlay)' : ''}`;
+    if (PRESET) return `${PRESET} preset - ${REBALANCE_FREQUENCY} Top ${TOP_N}${regimeOverlayEnabled ? ' (Regime Overlay)' : ''}`;
+    if (SCORING_MODE === 'shield') return `Shield (Low Volatility) - Quarterly Top 10${regimeOverlayEnabled ? ' (Regime Overlay)' : ''}`;
+    if (SCORING_MODE === 'momentum') return `Quarterly Rebalance Top 10 Momentum${regimeOverlayEnabled ? ' (Regime Overlay)' : ''}`;
+    return `Quarterly Rebalance Top 10 Hybrid${regimeOverlayEnabled ? ' (Regime Overlay)' : ''}`;
   })();
 
   const benchmarkLabel = describeBenchmark(universe.benchmark);
@@ -1923,7 +1949,8 @@ async function main(): Promise<void> {
   summary.preset_filters_unsupported = unsupportedFilters && unsupportedFilters.length
     ? unsupportedFilters
     : null;
-  (summary as any).regime_overlay = REGIME_OVERLAY;
+  (summary as any).regime_overlay = regimeOverlayEnabled;
+  (summary as any).regime_overlay_source = regimeOverlaySetting.source;
   (summary as any).regime_periods = regimePeriods;
   (summary as any).performance_by_regime = performanceByRegime;
   (summary as any).rebalance_regimes = rebalanceRegimes;

@@ -9,7 +9,32 @@ interface RunHistoryItem {
   isActive: boolean;
 }
 
-// Hilfsfunktion zum Gruppieren der Runs nach Datum
+const formatRelativeTime = (timestamp: string): string => {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const runDay = new Date(date);
+  runDay.setHours(0, 0, 0, 0);
+  const isToday = runDay.getTime() === today.getTime();
+
+  if (isToday) {
+    if (diffMins < 1) return 'gerade';
+    if (diffMins < 60) return `vor ${diffMins}m`;
+    if (diffHours < 24) return `vor ${diffHours}h`;
+  }
+  
+  if (diffDays === 1) return 'gestern';
+  if (diffDays < 7) return `vor ${diffDays}d`;
+  
+  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+};
+
 const groupRunsByDate = (runs: RunHistoryItem[]) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -48,6 +73,7 @@ export function RunHistorySidebar({
   onSelectRun: (runId: string) => void
 }) {
   const groupedRuns = groupRunsByDate(runs);
+  const groupOrder = ['Heute', 'Gestern', 'Diese Woche', 'Älter'];
 
   return (
     <div className="w-60 bg-navy-800 border-r border-navy-700 h-full flex flex-col">
@@ -55,15 +81,21 @@ export function RunHistorySidebar({
         <h2 className="text-lg font-semibold text-white">Run-Historie</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
-        {Object.entries(groupedRuns).map(([groupName, groupRuns]) => (
-          <RunGroup
-            key={groupName}
-            groupName={groupName}
-            runs={groupRuns}
-            onSelectRun={onSelectRun}
-          />
-        ))}
+      <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-navy-600 scrollbar-track-transparent hover:scrollbar-thumb-navy-500">
+        {groupOrder.map((groupName) => {
+          const groupRuns = groupedRuns[groupName];
+          if (!groupRuns || groupRuns.length === 0) return null;
+          
+          return (
+            <RunGroup
+              key={groupName}
+              groupName={groupName}
+              runs={groupRuns}
+              onSelectRun={onSelectRun}
+              showDivider={groupName === 'Älter'}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -72,16 +104,18 @@ export function RunHistorySidebar({
 const RunGroup = ({ 
   groupName, 
   runs, 
-  onSelectRun 
+  onSelectRun,
+  showDivider = false
 }: { 
   groupName: string; 
   runs: RunHistoryItem[]; 
-  onSelectRun: (runId: string) => void 
+  onSelectRun: (runId: string) => void;
+  showDivider?: boolean;
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(true);
   
   return (
-    <div className="mb-4">
+    <div className={`mb-4 ${showDivider ? 'border-t border-navy-600 pt-4 mt-2' : ''}`}>
       <button 
         className="w-full flex justify-between items-center p-2 text-sm font-medium text-text-secondary hover:text-text-primary"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -112,27 +146,34 @@ const RunCard = ({
   run: RunHistoryItem; 
   onClick: () => void 
 }) => {
-  const runDate = new Date(run.timestamp);
-  const formattedTime = runDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const relativeTime = formatRelativeTime(run.timestamp);
+  const isLiveRun = run.preset === 'Live Run';
   
   return (
     <div 
-      className={`p-2 rounded cursor-pointer text-sm ${
+      className={`p-2 rounded cursor-pointer text-sm transition-all ${
         run.isActive 
-          ? 'bg-accent-blue/10 border border-accent-blue' 
-          : 'hover:bg-navy-700'
+          ? 'bg-emerald-500/10 border-l-2 border-emerald-500 pl-3' 
+          : 'hover:bg-navy-700 border-l-2 border-transparent'
       }`}
       onClick={onClick}
     >
       <div className="flex justify-between items-start">
-        <div>
-          <div className="font-medium text-white">{run.preset}</div>
-          <div className="text-xs text-text-muted mt-1">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-white truncate flex items-center gap-1.5">
+            <span className={isLiveRun ? 'text-emerald-400' : 'text-white'}>
+              {run.preset}
+            </span>
+            {isLiveRun && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </div>
+          <div className="text-xs text-text-muted mt-1 truncate">
             {run.universe} • {run.pickCount} Picks
           </div>
         </div>
-        <div className="text-xs text-text-muted whitespace-nowrap">
-          {formattedTime}
+        <div className="text-xs text-text-muted whitespace-nowrap ml-2 flex-shrink-0">
+          {relativeTime}
         </div>
       </div>
     </div>

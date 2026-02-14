@@ -2,6 +2,7 @@
   "name": "Dividend Quality (Experimental)",
   "description": "Dividend income focus - screens for yield and payout sustainability",
   "tier": "experimental",
+  "regime_overlay_recommended": true,
   "limitations": "No 25-year dividend growth history available. Screens for current yield (>1.5%) and payout ratio (<80%) only. Not equivalent to S&P Dividend Aristocrats methodology.",
   "pillar_weights": {
     "valuation": 0.25,

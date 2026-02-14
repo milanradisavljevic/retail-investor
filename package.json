@@ -17,6 +17,7 @@
     "validate:schemas": "tsx scripts/validate_schemas.ts",
     "backtest": "python scripts/backtesting/fetch-historical.py && tsx scripts/backtesting/run-backtest.ts",
     "backtest:fetch": "python scripts/backtesting/fetch-historical.py",
+    "backtest:fetch:all": "bash scripts/backtesting/fetch-all-universes.sh",
     "backtest:run": "tsx scripts/backtesting/run-backtest.ts",
     "backtest:momentum": "SCORING_MODE=momentum tsx scripts/backtesting/run-backtest.ts",
     "backtest:hybrid": "SCORING_MODE=hybrid tsx scripts/backtesting/run-backtest.ts",

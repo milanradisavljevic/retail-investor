@@ -2,6 +2,7 @@
   "name": "Shield (Defensive/Low Vol)",
   "tier": "experimental",
   "description": "Defensive strategy prioritizing low volatility, high quality, and stable businesses. Ideal for risk-averse investors seeking capital preservation.",
+  "regime_overlay_recommended": true,
   "pillar_weights": {
     "valuation": 0.15,
     "quality": 0.30,
