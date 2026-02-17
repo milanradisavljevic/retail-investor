@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPositionById, updatePosition, deletePosition } from '@/data/portfolio';
 import type { PortfolioPositionInput } from '@/types/portfolio';
-import { initializeDatabase, closeDatabase } from '@/data/db';
+import { getDatabase } from '@/data/db';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -12,7 +12,7 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    initializeDatabase();
+    getDatabase();
     
     const { id } = await params;
     const positionId = parseInt(id, 10);
@@ -40,14 +40,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { error: 'Failed to load position', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    closeDatabase();
   }
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    initializeDatabase();
+    getDatabase();
     
     const { id } = await params;
     const positionId = parseInt(id, 10);
@@ -87,14 +85,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       { error: 'Failed to update position', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    closeDatabase();
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    initializeDatabase();
+    getDatabase();
     
     const { id } = await params;
     const positionId = parseInt(id, 10);
@@ -125,7 +121,5 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       { error: 'Failed to delete position', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    closeDatabase();
   }
 }

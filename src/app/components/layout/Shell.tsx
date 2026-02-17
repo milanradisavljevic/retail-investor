@@ -4,7 +4,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import { WatchlistNavLink } from "@/app/components/WatchlistNavLink";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Briefcase } from "lucide-react";
+import { ArrowRightLeft, Briefcase } from "lucide-react";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -35,17 +35,24 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 {t("nav.dashboard")}
               </Link>
               <Link
+                href="/strategy-lab"
+                className="text-text-secondary hover:text-text-primary transition-colors"
+              >
+                {t("nav.strategyLab")}
+              </Link>
+              <Link
+                href="/compare"
+                className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5"
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+                Run-Vergleich
+              </Link>
+              <Link
                 href="/portfolio"
                 className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5"
               >
                 <Briefcase className="w-4 h-4" />
                 Portfolio
-              </Link>
-              <Link
-                href="/strategy-lab"
-                className="text-text-secondary hover:text-text-primary transition-colors"
-              >
-                {t("nav.strategyLab")}
               </Link>
               <WatchlistNavLink />
               <Link
@@ -58,13 +65,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 href="/health"
                 className="text-text-secondary hover:text-text-primary transition-colors"
               >
-                Health
+                Datenqualität
               </Link>
               <Link
                 href="/macro"
                 className="text-text-secondary hover:text-text-primary transition-colors"
               >
-                Macro
+                Makro-Kontext
               </Link>
             </nav>
           </div>

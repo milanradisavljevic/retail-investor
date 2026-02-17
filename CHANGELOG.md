@@ -8,6 +8,139 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-02-17 (Codex)
+
+#### Added
+- **ETF Detail Page (`src/app/etf/[ticker]/`)** — Ich (Codex) habe die neue ETF-Detailseite analog zur Stock-Detailseite umgesetzt:
+  - `src/app/etf/[ticker]/page.tsx` als Route-Entry
+  - `src/app/etf/[ticker]/ETFDetailClient.tsx` mit Header, Tags, Preis + Tagesänderung, Score-Badge
+  - Score-Breakdown mit 3 Säulen (Technical + Risk + Expense Ratio) inklusive ETF-Scoring-Hinweis
+  - Preisbereich mit 30-Tage-SVG-Sparkline und Performance-Tabelle (1D, 1W, 1M, 3M, YTD, 1Y)
+  - Top-10-Holdings-Tabelle inkl. INTRINSIC-Score aus dem letzten Run (falls verfügbar), Summenzeile und Coverage-Hinweis
+  - ETF-Steckbrief mit Fondsgesellschaft, Verwaltungsart, Ausschüttung, Asset-Klasse, Kategorie, Börse, Währung, ISIN
+  - Optionaler Abschnitt für ähnliche ETFs aus derselben Kategorie
+  - Zusätzlicher Robustheits-Fix: Similar-ETF-Liste wird beim Tickerwechsel zurückgesetzt; 1Y-Fallback-Berechnung schützt gegen Division durch 0
+
+- **ETF Navigation im Portfolio (`src/app/portfolio/PortfolioPageClient.tsx`)** — Ich (Codex) habe ETF-Navigation und Typdarstellung ergänzt:
+  - Klick auf ETF-Holdings öffnet `/etf/[ticker]` (Equities bleiben auf `/stock/[symbol]`)
+  - Search-Dropdown zeigt für ETF-/Aktien-Treffer einen `Details`-Link auf die jeweilige Detailseite
+  - Search-Auswahl setzt bei ETF-Treffern korrekt `asset_type: 'etf'`
+  - UI-Labels/Badges unterscheiden jetzt Aktie, ETF und Edelmetall
+
+- **Glossar-Erweiterung (`data/glossary.json`)** — Ich (Codex) habe die neuen Begriffe für Tooltip-Integration ergänzt:
+  - `expense_ratio`
+  - `aum`
+  - `etf_scoring`
+
+- **PDF Report Generator (`src/lib/reportGenerator.ts`, `src/lib/reportGeneratorDocument.tsx`)** — Ich (Codex) habe den täglichen PDF-Report und den 1-Seiten-Aktienreport umgesetzt:
+  - Daily Report mit Deckblatt/Executive Summary, Market Context + Macro, Top 20 Picks (inkl. Delta), Portfolio-Übersicht, Earnings (14 Tage) und Datenqualität + zweisprachigem Disclaimer (DE/EN)
+  - Stock-Report per `symbol` mit Score Breakdown, Price Target, Peer Comparison und Key Metrics
+  - A4-Layout mit Helvetica, Tabellen-Zebra-Styling, Score-Farbcodierung und Footer `Seite X von Y · Generiert am ...`
+  - Selektive Sektionen im Daily Report über `sections`-Parameter (`market,picks,portfolio,earnings,quality`)
+
+- **PDF Export API (`src/app/api/export/pdf/route.ts`)** — Ich (Codex) habe die neue Export-Route ergänzt:
+  - `GET /api/export/pdf` erzeugt den vollständigen Daily Report als PDF-Download
+  - `GET /api/export/pdf?sections=market,picks,portfolio` erzeugt Teil-Reports mit ausgewählten Sektionen
+  - `GET /api/export/pdf?symbol=AAPL` erzeugt den 1-Seiten-Stock-Report
+  - Response-Header: `Content-Type: application/pdf`, `Content-Disposition` mit Datums-Dateiname, `no-cache`
+
+- **PDF Download Buttons im UI (`src/app/components/DashboardClient.tsx`, `src/app/components/StockDetailView.tsx`)** — Ich (Codex) habe den Export im Frontend integriert:
+  - Dashboard: Button `PDF Report` neben `Lauf starten` inkl. Loading-State `Report wird generiert...`
+  - Stock-Detail: Button `PDF Report` für symbolbezogenen 1-Seiten-Export
+  - Robuster Blob-Download mit Dateinamen aus `Content-Disposition` und Fehlerbehandlung
+
+- **Compare Runs Page (`src/app/compare/`)** — Ich (Codex) habe eine neue Compare-Seite fuer Run-Vergleiche umgesetzt:
+  - `src/app/compare/page.tsx` fuer serverseitiges Laden von aktuellem/vorherigem Run, optionalem manuellem Vergleichs-Run, 30-Tage-Historie und Portfolio-Impact
+  - `src/app/compare/CompareRunsClient.tsx` mit Run-Selector (letzte 10 Runs), Delta-Uebersicht, Biggest Movers (Top 10 Up/Down), 30-Tage-Score-Trends inkl. Sparkline/Trend/Stabilitaet, vollstaendiger Diff-Tabelle (sortierbar) und Portfolio-Impact-Sektion
+  - Vollstaendige Diff-Ansicht mit Delta Total sowie Delta je Pillar (Valuation/Quality/Technical/Risk), Markierung fuer `NEU` und `ENTF`, Toggle `Nur Aenderungen > 5 Punkte`
+
+- **Run Utilities (`src/lib/runLoader.ts`, `src/lib/runCompare.ts`)** — Ich (Codex) habe die Compare-Backend-Logik erweitert:
+  - `runLoader`: `getAvailableRuns`, `loadRun`, `getRunPair`, `getRunHistory` plus Run-Meta inkl. Universe/Preset-Konfigurationsschluessel
+  - `runCompare`: `compareRuns`, `getBiggestMovers`, `getScoreTrends` inklusive Pillar-Attribution (`Grund`), 30-Tage-Trendrichtung und Stabilitaetsklassifikation (StdAbw-basiert)
+
+- **Navigation erweitert (`src/app/components/layout/Shell.tsx`)** — Ich (Codex) habe `/compare` mit Icon (`ArrowRightLeft`) in die Hauptnavigation eingefuegt (nach `Strategy Lab`, vor `Portfolio`).
+
+#### Fixed
+- **Translation Sweep UI-Texte (`src/app/...`)** — Ich (Codex) habe inkonsistente DE/EN-Strings in den zentralen UI-Seiten vereinheitlicht:
+  - Navigation, Compare Runs, ETF-Detail, Stock-Detail und Portfolio auf konsistente deutsche UI-Texte angepasst
+  - Standardisierte Status-/Fehlermeldungen wie `Unbekannter Fehler`, `... nicht verfuegbar`, `Export fehlgeschlagen`
+  - Backtesting-/Strategy-Lab-Labels konsolidiert (z. B. `Run-Vergleich`, `Makro-Kontext`, `PDF-Report`, `Laeuft...`, `Exportiere...`)
+  - Fachbegriffe wie `Score`, `Run`, `Benchmark`, `Holdings` bewusst beibehalten
+- **Translation Sweep Fortsetzung (Settings + Strategy Lab, Codex)** — Ich (Codex) habe die verbliebenen englischen Funktionsüberschriften und Sprachmischungen in den von dir markierten Bereichen bereinigt:
+  - `Settings`/`Strategy Lab`-Überschriften, Kartenlabels und Aktionen weiter eingedeutscht (u. a. `Design-System`, `Top-Picks`, `Laufzeit`, `Aufwaertspotenzial`)
+  - Sprache auf Deutsch-only vereinheitlicht (serverseitige Settings-Normalisierung auf `de`, entfernte `en`-Auswahl im Settings-Dropdown, lokaler Cache wird auf `de` korrigiert)
+  - `data/settings.json` auf `language: de` gesetzt, damit bestehende lokale Instanzen direkt wieder mit deutscher UI starten
+
+### 2026-02-17 (GLM)
+
+#### Added
+- **Excel Export (src/lib/excelExport.ts)** — Ich (GLM) habe Excel-Export-Funktionen mit exceljs erstellt:
+  - Run Export: 3 Sheets (Scores mit Rang, Pillars, Preiszielen; Meta mit Run-Infos; Macro mit 18 Tickers + Yield Spread)
+  - Portfolio Export: 3 Sheets (Holdings mit allen Positionen + Summenzeile; Diversifikation mit Sektor-Allokation + HHI; Summary mit Kennzahlen)
+  - Conditional Formatting für Scores (grün > 60, gelb 40-60, rot < 40)
+  - Auto-Filter, Freeze Panes, Zahlenformate
+
+- **Excel API (src/app/api/export/excel/route.ts)** — Ich (GLM) habe die Export-API erstellt:
+  - `GET /api/export/excel?type=run` → Run-Export als INTRINSIC-Run-YYYY-MM-DD.xlsx
+  - `GET /api/export/excel?type=portfolio` → Portfolio-Export als INTRINSIC-Portfolio-YYYY-MM-DD.xlsx
+  - Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+- **Export Buttons** — Ich (GLM) habe Export-Buttons zur UI hinzugefügt:
+  - Strategy Lab: "Excel Export" Button im Exports-Bereich mit Loading-Indikator
+  - Portfolio: "Portfolio exportieren (.xlsx)" Button neben "Position hinzufügen"
+
+- **ETF Types (src/types/etf.ts)** — Ich (GLM) habe TypeScript-Interfaces für ETF-Daten erstellt: `ETFMetadata`, `ETFScoreData`, `ETFCategory`, `ETFHolding`. Enthält Kategorie-Labels auf Deutsch und Response-Interfaces für API-Routen.
+
+- **ETF API Routes (src/app/api/etf/)** — Ich (GLM) habe zwei API-Routes erstellt:
+  - `GET /api/etf` → Alle ETFs mit Metadaten + Scores, filterbar via `?category=broad_market` oder `?ticker=SPY,QQQ`
+  - `GET /api/etf/[ticker]` → Detail-Daten für einzelnen ETF inkl. Preisdaten (aus Run oder Macro-Commodities für Commodity-ETFs)
+  - Cache-Control: public, max-age=300
+
+- **ETF Scoring Utility (src/scoring/etf-score.ts)** — Ich (GLM) habe ein dediziertes ETF-Scoring-Modul erstellt. ETFs erhalten NUR Technical + Risk + Expense Ratio Scoring (keine Fundamental-Pillars). Gewichtung: Technical 40% + Risk 40% + Expense Ratio 20%. Expense Ratio Scoring: 0.00% → 100, 0.20% → 80, 0.50% → 55, 1.00% → 35, 2.00% → 0.
+
+- **Portfolio ETF Support** — Ich (GLM) habe das Portfolio um ETF-Unterstützung erweitert:
+  - `src/types/portfolio.ts`: Asset-Type um 'etf' erweitert
+  - `src/data/portfolioEnrichment.ts`: ETF-Erkennung via metadata.json, ETF-spezifisches Scoring (Technical + Risk + ER), automatische Asset-Type-Korrektur (equity → etf bei ETF-Symbolen)
+  - Portfolio-Summary: Neue Felder `etf_value_usd`, `etf_cost_usd`, `etf_count`
+
+- **Search ETF Support** — Ich (GLM) habe die Search-API (`src/app/api/search/route.ts`) erweitert:
+  - ETFs durchsuchbar nach Name + Ticker (z.B. "msci world" → EUNL.DE)
+  - Ergebnisse mit Tag "ETF" markiert
+  - Gruppierung: Aktien → ETFs → Edelmetalle
+  - Max 15 Ergebnisse (8 Equities + 8 ETFs + Commodities)
+
+- **Portfolio Import ETF Type** — Ich (GLM) habe den CSV-Import um den Asset-Type 'etf' erweitert. ETFs werden wie Equities mit `quantity_unit: shares` behandelt.
+
+### 2026-02-17 (Qwen)
+
+#### Added
+- **ETF Universe (config/universes/etf_global.json): 80 ETFs in 8 Kategorien** — Ich (Qwen) habe ein neues ETF-Universe mit 80 der wichtigsten globalen ETFs erstellt. Kategorien: Breit gestreut (12), Sektor (16), Faktor/Smart Beta (8), Fixed Income (8), Rohstoffe (8), Regional (12), Thematisch (8), Crypto-Adjacent (4). Enthält US-gelistete ETFs (SPY, QQQ, IWM, etc.) und EU-gelistete ETFs (EUNL.DE, IWDA.AS, VWRL.AS, HMCH.DE). Format: JSON mit Symbol-Liste, Kategorie-Mapping und Metadaten.
+
+- **ETF Metadata ETL (scripts/etl/fetch_etf_metadata.py)** — Ich (Qwen) habe ein Python-ETL-Skript erstellt, das Metadaten für ETFs via yfinance fetcht. Features:
+  - Expense Ratio, AUM, Category, Fund Family, Long Name
+  - Top-10-Holdings (wenn verfügbar)
+  - Auto-Detection: distribution_policy (accumulating/distributing aus dividend_yield), management_style (passive/active aus Provider-Heuristics), asset_class (equity/fixed_income/commodity/crypto), etf_category (8 Kategorien)
+  - CLI: `--ticker SPY` (Single), `--category sector` (Filter), Default: alle 80
+  - Rate-Limiting: 3 req/s, Retry 3x mit Backoff
+  - Kumulatives Speichern (merge mit existing data)
+  - Laufzeit: ~3-5 Minuten für 80 ETFs
+
+- **ETF Utils Helper (src/data_py/etf_utils.py)** — Ich (Qwen) habe Helper-Funktionen für ETF-Erkennung und Metadaten-Zugriff erstellt:
+  - `is_etf(symbol)`: Prüft ob Symbol im ETF-Universe
+  - `get_etf_metadata(symbol)`: Lädt Metadaten aus data/etf/metadata.json
+  - `get_etf_category_label(category)`: Übersetzt Kategorie ins Deutsche
+  - `get_etf_by_category/category/asset_class/management_style/distribution_policy()`: Filter-Funktionen
+  - `quick_etf_check(symbol)`: Schnelle Prüfung mit Basis-Infos
+  - Cache-Mechanismus für Performance
+
+#### Tested
+- **ETL Test mit 10 ETFs** — Ich (Qwen) habe das ETL-Skript mit 10 Test-ETFs erfolgreich getestet: SPY, QQQ, EUNL.DE, HMCH.DE, GLD, TLT, ARKK, XLK, MTUM, BITO. Alle Kategorien korrekt erkannt: broad_market (SPY, QQQ, EUNL.DE), regional (HMCH.DE), commodity (GLD), fixed_income (TLT), sector (ARKK, XLK), factor (MTUM), crypto (BITO). ARKK korrekt als "active" management erkannt. EU-ETFs (.DE, .AS Suffix) funktionieren.
+
+### 2026-02-15 (Codex)
+
+#### Fixed
+- **Strategy Lab Universe-ID Normalisierung + ENOENT-Fallback (Codex):** Ich (Codex) habe das langfristige Universe-Resolution-Problem behoben, bei dem Display-Namen wie `Russell 2000 Full` als Dateipfad interpretiert wurden und Runs mit `ENOENT` fehlschlugen. In `src/app/strategy-lab/StrategyLabClient.tsx` normalisiere ich Universe-Werte jetzt robust auf echte Universe-IDs (inkl. Legacy-`localStorage`-Werte und Name->ID-Mapping), sodass API-Requests konsistent IDs wie `russell2000_full` senden. Zusätzlich habe ich in `src/core/config.ts` einen Fallback ergänzt, der bei übergebenen Display-Namen die passende Datei in `config/universes/*.json` per `name` auflöst, damit auch ältere/abweichende Caller stabil funktionieren.
+
 ### 2026-02-14 (Codex)
 
 #### Added
@@ -59,6 +192,15 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 #### Reviewed
 - **Code Review Phase 2b Deliverables (Codex):** Ich (Codex) habe `scripts/etl/fetch_commodities.py`, `src/app/api/macro/route.ts`, `src/app/components/MacroSparklineCards.tsx` und `src/app/macro/MacroPageClient.tsx` auf Robustheit, Typkonsistenz, Edge Cases und UI-Logik geprüft und die oben dokumentierten kritischen Punkte direkt behoben.
+
+#### Fixed
+- **Post-Review DB Singleton für Portfolio/Earnings APIs (Codex):** Ich (Codex) habe in `src/app/api/portfolio/route.ts`, `src/app/api/portfolio/[id]/route.ts`, `src/app/api/portfolio/import/route.ts`, `src/app/api/portfolio/summary/route.ts` und `src/app/api/earnings/route.ts` das pro-Request `initializeDatabase()/closeDatabase()`-Pattern auf `getDatabase()` umgestellt und alle manuellen `closeDatabase()`-Aufrufe entfernt, damit die globale `better-sqlite3`-Instanz stabil wiederverwendet wird.
+- **DB Pragmas im Singleton ergänzt (Codex):** Ich (Codex) habe in `src/data/db.ts` `foreign_keys = ON` im Initialisierungspfad gesetzt.
+- **CSV-Import Limits gehärtet (Codex):** Ich (Codex) habe in `src/app/api/portfolio/import/route.ts` ein Upload-Limit von 1MB (`413`) und ein Zeilenlimit von 500 Datenzeilen (`413`) ergänzt.
+- **TypeScript-Typhärtung ohne `any` (Codex):** Ich (Codex) habe in `src/data/portfolioEnrichment.ts` robuste Parser/Guards für `data/macro/commodities.json` und Fundamentals-Profile ergänzt und die schwach getypten JSON-Pfade durch explizite Interfaces ersetzt.
+- **API-Caching für Search/Earnings (Codex):** Ich (Codex) habe in `src/app/api/search/route.ts` die Response auf `Cache-Control: public, max-age=300` gestellt und den JSON-Parse typisiert; `src/app/api/earnings/route.ts` liefert denselben Cache-Header weiterhin konsistent aus.
+- **Glossar-Tooltip Debug + Sichtbarkeit (Codex):** Ich (Codex) habe `src/lib/glossary.ts` um robustes Glossar-Laden mit Debug-Logs erweitert (`[Glossary][Codex] Loaded ...`), in `src/app/components/GlossaryTooltip.tsx` das `?`-Icon sichtbar vergrößert (14px), Kontrast verbessert und Popup-Layering (`z-50`) abgesichert.
+- **Pflicht-Integrationen für sichtbare Tooltips (Codex):** Ich (Codex) habe `Diversifikation` im Portfolio-Score-Bereich in `src/app/components/PortfolioScoreBreakdown.tsx` als `GlossaryTooltip` integriert und `Calmar Ratio` in `src/app/backtesting/components/MetricsCards.tsx` als Glossar-Tooltip ergänzt (inkl. optionalem `calmar_ratio` Typ in `src/app/backtesting/utils/loadBacktestData.ts`).
 
 ### 2026-02-13 (GLM)
 

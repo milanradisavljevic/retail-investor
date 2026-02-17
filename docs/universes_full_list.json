@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Russell 2000 Full",
+    "id": "russell2000_full",
+    "file": "config/universes/russell2000_full.json",
+    "benchmark": "IWM",
+    "symbols_count": 1943,
+    "provider": "yfinance"
+  },
+  {
+    "name": "S&P 500 (Full)",
+    "id": "sp500-full",
+    "file": "config/universes/sp500-full.json",
+    "benchmark": "SPY",
+    "symbols_count": 501,
+    "provider": "yfinance"
+  },
+  {
+    "name": "FTSE 100 (Full)",
+    "id": "ftse100-full",
+    "file": "config/universes/ftse100-full.json",
+    "benchmark": "^FTSE",
+    "symbols_count": 100,
+    "provider": "yfinance"
+  },
+  {
+    "name": "NASDAQ-100 (Full)",
+    "id": "nasdaq100-full",
+    "file": "config/universes/nasdaq100-full.json",
+    "benchmark": "^NDX",
+    "symbols_count": 100,
+    "provider": "yfinance"
+  },
+  {
+    "name": "Ibovespa (Full)",
+    "id": "ibovespa_full",
+    "file": "config/universes/ibovespa_full.json",
+    "benchmark": "^BVSP",
+    "symbols_count": 86,
+    "provider": "unknown"
+  },
+  {
+    "name": "Shanghai Composite (SSE 50)",
+    "id": "shanghai_comp_full",
+    "file": "config/universes/shanghai_comp_full.json",
+    "benchmark": "000001.SS",
+    "symbols_count": 60,
+    "provider": "unknown"
+  },
+  {
+    "name": "Nikkei 225 (Full)",
+    "id": "nikkei225_full",
+    "file": "config/universes/nikkei225_full.json",
+    "benchmark": "^N225",
+    "symbols_count": 54,
+    "provider": "unknown"
+  }
+]

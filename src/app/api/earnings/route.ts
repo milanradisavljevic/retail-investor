@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 300;
 
 import { NextResponse } from 'next/server';
-import { initializeDatabase, closeDatabase } from '@/data/db';
+import { getDatabase } from '@/data/db';
 import { getPositions } from '@/data/portfolio';
 import { enrichPositions } from '@/data/portfolioEnrichment';
 import {
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   } else if (portfolioOnly) {
     source = 'portfolio';
     try {
-      initializeDatabase();
+      getDatabase();
       const positions = enrichPositions(getPositions()).filter((p) => p.asset_type === 'equity');
       const context = new Map<string, { name: string; score: number | null; quality: number | null }>();
 
@@ -87,8 +87,6 @@ export async function GET(request: Request) {
         { error: 'Failed to load portfolio context' },
         { status: 500 }
       );
-    } finally {
-      closeDatabase();
     }
   }
 

@@ -663,6 +663,39 @@
       "category": "general",
       "related_terms": ["benchmark", "diversification"],
       "used_in_pillars": []
+    },
+    {
+      "id": "expense_ratio",
+      "term_en": "Expense Ratio",
+      "term_de": "Kostenquote",
+      "definition_short": "Die jährlichen Verwaltungskosten eines ETFs in Prozent des Fondsvermögens.",
+      "definition_long": "Die Expense Ratio zeigt, wie viel ein ETF pro Jahr für Verwaltung, Betrieb und Strukturkosten einbehält. Niedrigere Werte bedeuten meist bessere Kosteneffizienz, besonders bei langfristigem Halten.",
+      "analogy": "Wie eine jährliche Servicegebühr beim Depotprodukt: klein wirkende Prozentwerte summieren sich über viele Jahre.",
+      "category": "general",
+      "related_terms": ["etf", "benchmark"],
+      "used_in_pillars": ["technical", "risk"]
+    },
+    {
+      "id": "aum",
+      "term_en": "Assets Under Management (AUM)",
+      "term_de": "Verwaltetes Vermögen",
+      "definition_short": "Assets Under Management — das gesamte verwaltete Vermögen eines Fonds.",
+      "definition_long": "AUM beschreibt das Kapital, das Anleger insgesamt in einen Fonds investiert haben. Höhere AUM-Werte deuten oft auf bessere Liquidität und geringere Schließungsrisiken hin, sind aber kein Qualitätsbeweis allein.",
+      "analogy": "Wie die Größe eines Supermarkts: mehr Fläche heißt meist mehr Auswahl und Stabilität, aber nicht automatisch bessere Produkte.",
+      "category": "general",
+      "related_terms": ["etf", "liquidity"],
+      "used_in_pillars": ["risk"]
+    },
+    {
+      "id": "etf_scoring",
+      "term_en": "ETF Scoring",
+      "term_de": "ETF-Scoring",
+      "definition_short": "Bewertung von ETFs anhand von Technical, Risk und Kosteneffizienz.",
+      "definition_long": "Im INTRINSIC-ETF-Scoring werden keine klassischen Fundamental-Säulen wie Valuation oder Quality verwendet. Stattdessen zählen Marktverhalten (Technical), Risikoprofil (Risk) und die Kostenquote (Expense Ratio) zur Gesamtnote.",
+      "analogy": "Wie ein Bewertungsbogen für Fahrzeuge, bei dem Verbrauch, Sicherheit und Fahrverhalten zählen, aber nicht die Bilanz eines Herstellers.",
+      "category": "general",
+      "related_terms": ["etf", "expense_ratio", "risk"],
+      "used_in_pillars": ["technical", "risk"]
     }
   ]
 }

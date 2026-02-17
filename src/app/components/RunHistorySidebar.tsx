@@ -148,6 +148,7 @@ const RunCard = ({
 }) => {
   const relativeTime = formatRelativeTime(run.timestamp);
   const isLiveRun = run.preset === 'Live Run';
+  const presetLabel = isLiveRun ? 'Live-Run' : run.preset;
   
   return (
     <div 
@@ -162,7 +163,7 @@ const RunCard = ({
         <div className="min-w-0 flex-1">
           <div className="font-medium text-white truncate flex items-center gap-1.5">
             <span className={isLiveRun ? 'text-emerald-400' : 'text-white'}>
-              {run.preset}
+              {presetLabel}
             </span>
             {isLiveRun && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

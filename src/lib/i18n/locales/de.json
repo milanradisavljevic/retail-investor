@@ -16,7 +16,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "strategyLab": "Strategy Lab",
+    "strategyLab": "Strategie-Labor",
     "settings": "Einstellungen",
     "performance": "Performance",
     "history": "Verlauf",
@@ -42,11 +42,11 @@
   },
   "strategyLab": {
     "header": {
-      "eyebrow": "Strategy Lab",
-      "title": "Dual-Mode Playbook",
+      "eyebrow": "Strategie-Labor",
+      "title": "Doppelmodus-Playbook",
       "subtitle": "Klarer 3-Schritte-Flow: Universum wählen, Strategie wählen, Analyse starten.",
       "weightTotal": "Gewicht gesamt",
-      "latest": "Latest",
+      "latest": "Letzter Lauf",
       "preset": "Preset"
     },
     "modes": {
@@ -63,10 +63,10 @@
       "running": "Analyse läuft...",
       "findTopStocks": "Top-Aktien jetzt finden",
       "startBacktest": "Backtest starten (2015–2025)",
-      "exportCSV": "CSV Exportieren",
+      "exportCSV": "CSV exportieren",
       "saveWatchlist": "Watchlist speichern",
-      "emailReport": "E-Mail Bericht",
-      "generatePicks": "Picks Generieren",
+      "emailReport": "E-Mail-Bericht",
+      "generatePicks": "Picks generieren",
       "saveConfig": "Konfiguration speichern",
       "runBacktest": "Backtest starten"
     },
@@ -85,11 +85,11 @@
         "labels": {
           "asOfDate": "Datum",
           "estimatedRuntime": "Geschätzte Laufzeit",
-          "topPicks": "Top Picks",
+          "topPicks": "Top-Picks",
           "exports": "Exporte"
         },
         "liveRunsNote": "Live-Runs nutzen immer das heutige Datum.",
-        "exportsNote": "CSV, Watchlist und E-Mail Bericht."
+        "exportsNote": "CSV, Watchlist und E-Mail-Bericht."
       },
       "topPicks": {
         "title": "Top {count} Aktien-Picks",
@@ -153,8 +153,8 @@
       "presets": {
         "title": "Schnell-Presets",
         "description": "1 Klick für typische Compliance-Sets.",
-        "institutional": "Institutional Safe (empfohlen)",
-        "liquidity": "Liquidity First"
+        "institutional": "Institutionell sicher (empfohlen)",
+        "liquidity": "Liquidität zuerst"
       },
       "crypto": {
         "label": "Crypto-Mining-Aktien ausschließen",
@@ -224,7 +224,7 @@
         }
       },
       "charts": {
-        "equity": "Equity Curve",
+        "equity": "Equity-Kurve",
         "drawdown": "Drawdown"
       },
       "recent": {
@@ -360,7 +360,7 @@
     "options": {
       "language": {
         "de": "Deutsch",
-        "en": "English"
+        "en": "Englisch"
       },
       "theme": {
         "dark": "Dunkel",
@@ -415,7 +415,7 @@
       "resetConfirm": "Klicken zum Bestätigen",
       "export": "Einstellungen exportieren",
       "import": "Einstellungen importieren",
-      "designSystem": "Design System",
+      "designSystem": "Design-System",
       "backupRestore": "Backup & Wiederherstellung",
       "backupDesc": "Exportieren Sie Ihre Einstellungen, um sie auf einem anderen Gerät wiederherzustellen oder als Backup zu speichern."
     },

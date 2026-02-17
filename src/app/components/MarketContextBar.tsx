@@ -32,7 +32,7 @@ export default function MarketContextBar({ initialData }: MarketContextBarProps)
     } catch (err) {
       console.error('[MarketContextBar] fetch failed', err);
       if (!data) {
-        setError('Market data unavailable');
+        setError('Marktdaten nicht verfuegbar');
       }
     } finally {
       if (!options?.silent) {
@@ -49,24 +49,24 @@ export default function MarketContextBar({ initialData }: MarketContextBarProps)
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-lg shadow-black/20">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Market Context</p>
-          <p className="text-sm text-slate-400">Macro pulse · last 30 sessions</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">MAKRO-KONTEXT</p>
+          <p className="text-sm text-slate-400">Makro-Puls · letzte 30 Handelstage</p>
         </div>
         {lastUpdated && (
           <p className="text-[11px] text-slate-500">
-            Updated {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+            Aktualisiert {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
           </p>
         )}
       </div>
 
       {error ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3">
-          <p className="text-sm text-slate-400">Market data unavailable.</p>
+          <p className="text-sm text-slate-400">Marktdaten nicht verfuegbar.</p>
           <button
             onClick={() => loadMarketContext()}
             className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-100 hover:border-emerald-400/60 hover:text-emerald-300 transition-colors"
           >
-            Retry
+            Erneut laden
           </button>
         </div>
       ) : loading ? (

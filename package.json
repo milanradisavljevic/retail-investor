@@ -45,11 +45,13 @@
     "test:perf:watch": "vitest tests/performance"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.3.2",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "better-sqlite3": "^12.6.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.1",
     "pino": "^10.1.1",

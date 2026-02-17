@@ -1,0 +1,59 @@
+{
+  "name": "Global ETFs",
+  "provider": "yfinance",
+  "type": "etf",
+  "description": "80 der wichtigsten globalen ETFs über alle Asset-Klassen hinweg",
+  "version": "2026-02",
+  "symbols": [
+    "SPY", "VOO", "IVV", "QQQ", "IWM", "EUNL.DE", "IWDA.AS", "EEM", "VWO", "VT", "VWRL.AS", "DIA",
+    "XLF", "XLK", "XLE", "XLV", "XLI", "XLP", "XLY", "XLU", "XLB", "XLRE", "SMH", "XBI", "TAN", "ICLN", "ARKK", "ARKG",
+    "MTUM", "QUAL", "VLUE", "USMV", "SIZE", "MOAT", "VIG", "SCHD",
+    "TLT", "IEF", "SHY", "AGG", "BND", "LQD", "HYG", "TIP",
+    "GLD", "IAU", "SLV", "USO", "UNG", "DBC", "PPLT", "PALL",
+    "EWG", "EWU", "EWQ", "EWI", "EWJ", "FXI", "EWZ", "EWA", "INDA", "EWT", "EWY", "HMCH.DE",
+    "BOTZ", "DRIV", "HACK", "SOXX", "IGV", "CIBR", "LIT", "URA",
+    "BITO", "IBIT", "ETHE", "GBTC"
+  ],
+  "categories": {
+    "broad_market": {
+      "label": "Breit gestreut",
+      "symbols": ["SPY", "VOO", "IVV", "QQQ", "IWM", "EUNL.DE", "IWDA.AS", "EEM", "VWO", "VT", "VWRL.AS", "DIA"]
+    },
+    "sector": {
+      "label": "Sektor",
+      "symbols": ["XLF", "XLK", "XLE", "XLV", "XLI", "XLP", "XLY", "XLU", "XLB", "XLRE", "SMH", "XBI", "TAN", "ICLN", "ARKK", "ARKG"]
+    },
+    "factor": {
+      "label": "Faktor/Smart Beta",
+      "symbols": ["MTUM", "QUAL", "VLUE", "USMV", "SIZE", "MOAT", "VIG", "SCHD"]
+    },
+    "fixed_income": {
+      "label": "Fixed Income",
+      "symbols": ["TLT", "IEF", "SHY", "AGG", "BND", "LQD", "HYG", "TIP"]
+    },
+    "commodity": {
+      "label": "Rohstoffe",
+      "symbols": ["GLD", "IAU", "SLV", "USO", "UNG", "DBC", "PPLT", "PALL"]
+    },
+    "regional": {
+      "label": "Regional",
+      "symbols": ["EWG", "EWU", "EWQ", "EWI", "EWJ", "FXI", "EWZ", "EWA", "INDA", "EWT", "EWY", "HMCH.DE"]
+    },
+    "thematic": {
+      "label": "Thematisch",
+      "symbols": ["BOTZ", "DRIV", "HACK", "SOXX", "IGV", "CIBR", "LIT", "URA"]
+    },
+    "crypto": {
+      "label": "Crypto-Adjacent",
+      "symbols": ["BITO", "IBIT", "ETHE", "GBTC"]
+    }
+  },
+  "metadata": {
+    "description": "80 der wichtigsten globalen ETFs",
+    "categories": 8,
+    "updated": "2026-02-17",
+    "asset_classes": ["equity", "fixed_income", "commodity", "crypto"],
+    "exchanges": ["NYSE", "NASDAQ", "XETRA", "Euronext"],
+    "currencies": ["USD", "EUR"]
+  }
+}

@@ -16,14 +16,6 @@ export function translate(key: string, lang: SupportedLanguage = DEFAULT_LANGUAG
     if (value === undefined) break;
   }
 
-  if (value === undefined && lang !== 'en') {
-    value = translations.en;
-    for (const k of keys) {
-      value = value?.[k];
-      if (value === undefined) break;
-    }
-  }
-
   return value ?? key;
 }
 

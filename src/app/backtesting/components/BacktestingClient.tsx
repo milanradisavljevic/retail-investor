@@ -90,7 +90,7 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
       .then(async (res) => {
         if (!res.ok) {
           const msg = await res.text();
-          throw new Error(msg || 'Failed to load backtest results');
+          throw new Error(msg || 'Backtest-Ergebnisse konnten nicht geladen werden');
         }
         return res.json();
       })
@@ -190,7 +190,7 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
       <div className="mx-auto max-w-7xl px-6 py-10 space-y-8">
         <header className="space-y-2">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-4xl font-bold text-amber-400">Backtest Dashboard</h1>
+            <h1 className="text-4xl font-bold text-amber-400">Backtest-Dashboard</h1>
             <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs uppercase tracking-wide text-amber-200">
               2020–2024
             </span>
@@ -211,10 +211,10 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
                   ? 'border-amber-500 bg-amber-500/10 text-amber-200'
                   : 'border-slate-700 bg-slate-800/50 text-slate-200 hover:border-slate-600'
               }`}
-            >
+              >
               <span>{m.label}</span>
               <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${statusColor(m.status)}`}>
-                {m.status === 'done' ? 'Ready' : m.status === 'failed' ? 'Failed' : 'Pending'}
+                {m.status === 'done' ? 'Bereit' : m.status === 'failed' ? 'Fehlgeschlagen' : 'Ausstehend'}
               </span>
             </button>
           ))}
@@ -222,7 +222,7 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-slate-800 bg-slate-800/50 p-4">
-            <div className="text-xs uppercase text-slate-400">Universe</div>
+            <div className="text-xs uppercase text-slate-400">Universum</div>
             <select
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
               value={selectedUniverse}
@@ -237,8 +237,8 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-800/50 p-4">
             <div className="flex items-center justify-between text-xs uppercase text-slate-400">
-              <span>Currency</span>
-              <span className="text-[11px] text-slate-500">Applied to charts only</span>
+              <span>Waehrung</span>
+              <span className="text-[11px] text-slate-500">Nur fuer Charts</span>
             </div>
             <div className="mt-2 flex items-center gap-3">
               <div className="flex gap-2">
@@ -278,7 +278,7 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
               <div className="rounded-2xl border border-slate-800 bg-slate-800/50 p-6 shadow-xl shadow-black/20 backdrop-blur">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-100">Key Metrics</h3>
+                    <h3 className="text-lg font-semibold text-slate-100">Kennzahlen</h3>
                     <div className="text-xs text-slate-500">{activeModel.summary.strategy}</div>
                   </div>
                   <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300">
@@ -292,8 +292,8 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
               <ParameterControls selectedUniverse={selectedUniverse} strategyKey="hybrid" />
             ) : (
               <div className="rounded-2xl border border-slate-800 bg-slate-800/50 p-6 text-sm text-slate-300">
-                <div className="mb-2 text-sm font-semibold text-slate-100">Strategy Notes</div>
-                <p>{activeModel.note || 'Preset strategy configuration.'}</p>
+                <div className="mb-2 text-sm font-semibold text-slate-100">Strategie-Hinweise</div>
+                <p>{activeModel.note || 'Preset-Strategie-Konfiguration.'}</p>
               </div>
             )}
           </div>
@@ -310,7 +310,7 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
         )}
 
         <div className="rounded-2xl border border-slate-800 bg-slate-800/50 p-4">
-          <h3 className="mb-2 text-slate-100 font-semibold">Test Chart (debug)</h3>
+          <h3 className="mb-2 text-slate-100 font-semibold">Test-Chart (Debug)</h3>
           <TestChart />
         </div>
 
@@ -339,7 +339,7 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-800/50 p-6">
-          <h3 className="mb-4 text-lg font-semibold text-slate-100">Strategy Comparison</h3>
+          <h3 className="mb-4 text-lg font-semibold text-slate-100">Strategie-Vergleich</h3>
           <StrategyComparison strategies={comparisonRows} />
         </div>
       </div>

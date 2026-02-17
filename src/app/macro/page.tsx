@@ -3,7 +3,7 @@ import { MacroPageClient } from './MacroPageClient';
 import type { MacroTickerData, MacroCategory, MacroApiResponse } from '@/types/macro';
 
 export const metadata: Metadata = {
-  title: 'Macro Context | Intrinsic',
+  title: 'Makro-Kontext | Intrinsic',
   description: 'Rohstoffe, Zinsen & Währungen - Makro-Kontext für Investment-Entscheidungen',
 };
 

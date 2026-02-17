@@ -5,11 +5,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPositions, addPosition } from '@/data/portfolio';
 import { enrichPositions, calculatePortfolioSummary, getPortfolioScore } from '@/data/portfolioEnrichment';
 import type { PortfolioPositionInput, PortfolioApiResponse, PortfolioSummary } from '@/types/portfolio';
-import { initializeDatabase, closeDatabase } from '@/data/db';
+import { getDatabase } from '@/data/db';
 
 export async function GET() {
   try {
-    initializeDatabase();
+    getDatabase();
     
     const positions = getPositions();
     const enrichedPositions = enrichPositions(positions);
@@ -56,14 +56,12 @@ export async function GET() {
       { error: 'Failed to load portfolio', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    closeDatabase();
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    initializeDatabase();
+    getDatabase();
     
     const body = await request.json() as PortfolioPositionInput;
     
@@ -95,7 +93,5 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to create position', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    closeDatabase();
   }
 }

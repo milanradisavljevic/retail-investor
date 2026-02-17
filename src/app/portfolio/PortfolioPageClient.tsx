@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { 
   Plus, Search, Upload, Edit2, Trash2, X, Check, ChevronDown, ChevronUp,
-  Briefcase, TrendingUp, TrendingDown, AlertCircle, Loader2, FileText
+  Briefcase, TrendingUp, TrendingDown, AlertCircle, Loader2, FileText, Table
 } from 'lucide-react';
 import type { 
   PortfolioPosition, 
@@ -22,7 +23,6 @@ import {
   isPhysicalMetal,
   inferAssetType,
 } from '@/types/portfolio';
-import GlossaryTooltip from '@/app/components/GlossaryTooltip';
 import { PortfolioScoreBreakdown } from '@/app/components/PortfolioScoreBreakdown';
 import { PortfolioPerformance } from '@/app/components/PortfolioPerformance';
 import PortfolioDiversificationDashboard from '@/app/components/PortfolioDiversificationDashboard';
@@ -79,6 +79,30 @@ const getGainLossColor = (pct: number | null | undefined): string => {
   return pct >= 0 ? 'text-emerald-400' : 'text-red-400';
 };
 
+const getAssetTypeLabel = (assetType: AssetType): string => {
+  if (assetType === 'commodity') return 'Edelmetall';
+  if (assetType === 'etf') return 'ETF';
+  return 'Aktie';
+};
+
+const getAssetTypeBadgeClass = (assetType: AssetType): string => {
+  if (assetType === 'commodity') return 'bg-amber-500/10 text-amber-400';
+  if (assetType === 'etf') return 'bg-blue-500/10 text-blue-400';
+  return 'bg-emerald-500/10 text-emerald-400';
+};
+
+const getPositionDetailHref = (position: PortfolioPosition): string | null => {
+  if (position.asset_type === 'commodity') return null;
+  const route = position.asset_type === 'etf' ? 'etf' : 'stock';
+  return `/${route}/${encodeURIComponent(position.symbol)}`;
+};
+
+const getSearchResultDetailHref = (result: SearchResult): string | null => {
+  if (result.type === 'commodity') return null;
+  const route = result.type === 'etf' ? 'etf' : 'stock';
+  return `/${route}/${encodeURIComponent(result.symbol)}`;
+};
+
 export function PortfolioPageClient() {
   const [positions, setPositions] = useState<PortfolioPosition[]>([]);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
@@ -113,18 +137,19 @@ export function PortfolioPageClient() {
   const [csvPreview, setCsvPreview] = useState<string[][]>([]);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<PortfolioImportResult | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetchPortfolio = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/portfolio');
-      if (!response.ok) throw new Error('Failed to fetch portfolio');
+      if (!response.ok) throw new Error('Fehler beim Laden des Portfolios');
       const data: PortfolioApiResponse = await response.json();
       setPositions(data.positions);
       setSummary(data.summary);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
     } finally {
       setLoading(false);
     }
@@ -180,7 +205,7 @@ export function PortfolioPageClient() {
     setSearchQuery(result.name);
     setShowSearchDropdown(false);
     
-    const assetType = result.type === 'commodity' ? 'commodity' : 'equity';
+    const assetType = result.type === 'commodity' ? 'commodity' : result.type === 'etf' ? 'etf' : 'equity';
     const quantityUnit = assetType === 'commodity' ? 'ounces' : 'shares';
     
     setNewPosition(prev => ({
@@ -207,7 +232,7 @@ export function PortfolioPageClient() {
       
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to add position');
+        throw new Error(data.error || 'Position konnte nicht hinzugefuegt werden');
       }
       
       setSelectedSymbol(null);
@@ -224,7 +249,7 @@ export function PortfolioPageClient() {
       
       await fetchPortfolio();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
     } finally {
       setSaving(false);
     }
@@ -238,12 +263,12 @@ export function PortfolioPageClient() {
         body: JSON.stringify(updates),
       });
       
-      if (!response.ok) throw new Error('Failed to update position');
+      if (!response.ok) throw new Error('Position konnte nicht aktualisiert werden');
       
       setEditing({ id: null, field: null, value: null });
       await fetchPortfolio();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
     }
   };
 
@@ -254,11 +279,11 @@ export function PortfolioPageClient() {
       setDeleting(id);
       const response = await fetch(`/api/portfolio/${id}`, { method: 'DELETE' });
       
-      if (!response.ok) throw new Error('Failed to delete position');
+      if (!response.ok) throw new Error('Position konnte nicht geloescht werden');
       
       await fetchPortfolio();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
     } finally {
       setDeleting(null);
     }
@@ -299,7 +324,7 @@ export function PortfolioPageClient() {
         await fetchPortfolio();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed');
+      setError(err instanceof Error ? err.message : 'Import fehlgeschlagen');
     } finally {
       setImporting(false);
     }
@@ -309,6 +334,28 @@ export function PortfolioPageClient() {
     setCsvFile(null);
     setCsvPreview([]);
     setImportResult(null);
+  };
+
+  const handleExcelExport = async () => {
+    try {
+      setExporting(true);
+      const response = await fetch('/api/export/excel?type=portfolio');
+      if (!response.ok) throw new Error('Export fehlgeschlagen');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = response.headers.get('Content-Disposition')?.split('filename="')[1]?.replace('"', '') || 'INTRINSIC-Portfolio.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export fehlgeschlagen');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const sortedPositions = useMemo(() => {
@@ -465,7 +512,17 @@ export function PortfolioPageClient() {
       )}
 
       <div className="bg-navy-800 border border-navy-700 rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-text-primary mb-4">Position hinzufügen</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-text-primary">Position hinzufügen</h2>
+          <button
+            onClick={handleExcelExport}
+            disabled={exporting || positions.length === 0}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border border-navy-600 text-text-secondary hover:text-text-primary hover:border-accent-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Table className="w-3.5 h-3.5" />}
+            {exporting ? 'Exportiere...' : 'Portfolio exportieren (.xlsx)'}
+          </button>
+        </div>
         
         <div className="flex gap-4 mb-4">
           <div className="flex-1 relative" ref={searchRef}>
@@ -473,7 +530,7 @@ export function PortfolioPageClient() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
                 type="text"
-                placeholder="Aktie oder Edelmetall suchen..."
+                placeholder="Aktie, ETF oder Edelmetall suchen..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-navy-700 border border-navy-600 rounded-lg pl-10 pr-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
@@ -492,23 +549,36 @@ export function PortfolioPageClient() {
                         ── Physische Edelmetalle ──
                       </div>
                     )}
-                    <button
-                      onClick={() => handleSymbolSelect(result)}
-                      className="w-full px-3 py-2.5 text-left hover:bg-navy-700 transition-colors flex items-center justify-between"
-                    >
-                      <div>
+                    <div className="w-full px-3 py-2.5 hover:bg-navy-700 transition-colors flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleSymbolSelect(result)}
+                        className="text-left flex-1"
+                      >
                         <span className="font-medium text-text-primary">{result.symbol}</span>
                         <span className="text-text-muted mx-2">|</span>
                         <span className="text-text-secondary">{result.name}</span>
+                      </button>
+                      <div className="flex items-center gap-2">
+                        {getSearchResultDetailHref(result) && (
+                          <Link
+                            href={getSearchResultDetailHref(result)!}
+                            className="text-[11px] text-accent-blue hover:text-accent-blue/80"
+                          >
+                            Details
+                          </Link>
+                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          result.type === 'commodity'
+                            ? 'bg-amber-500/10 text-amber-400'
+                            : result.type === 'etf'
+                              ? 'bg-blue-500/10 text-blue-400'
+                              : 'bg-emerald-500/10 text-emerald-400'
+                        }`}>
+                          {result.type === 'commodity' ? 'Edelmetall' : result.type === 'etf' ? 'ETF' : 'Aktie'}
+                        </span>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        result.type === 'commodity' 
-                          ? 'bg-amber-500/10 text-amber-400' 
-                          : 'bg-emerald-500/10 text-emerald-400'
-                      }`}>
-                        {result.type === 'commodity' ? 'Edelmetall' : 'Aktie'}
-                      </span>
-                    </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -597,10 +667,18 @@ export function PortfolioPageClient() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  selectedSymbol.type === 'commodity' ? 'bg-amber-500/10' : 'bg-emerald-500/10'
+                  selectedSymbol.type === 'commodity'
+                    ? 'bg-amber-500/10'
+                    : selectedSymbol.type === 'etf'
+                      ? 'bg-blue-500/10'
+                      : 'bg-emerald-500/10'
                 }`}>
                   <Briefcase className={`w-5 h-5 ${
-                    selectedSymbol.type === 'commodity' ? 'text-amber-400' : 'text-emerald-400'
+                    selectedSymbol.type === 'commodity'
+                      ? 'text-amber-400'
+                      : selectedSymbol.type === 'etf'
+                        ? 'text-blue-400'
+                        : 'text-emerald-400'
                   }`} />
                 </div>
                 <div>
@@ -766,25 +844,27 @@ export function PortfolioPageClient() {
               </thead>
               <tbody className="divide-y divide-navy-700">
                 {sortedPositions.map((pos) => (
-                  <tr 
-                    key={pos.id} 
-                    className={`hover:bg-navy-700/50 ${
+                <tr 
+                  key={pos.id} 
+                  className={`hover:bg-navy-700/50 ${
                       pos.asset_type === 'commodity' ? 'border-l-2 border-amber-500/30' : ''
                     }`}
-                  >
+                >
                     <td className="px-4 py-3">
-                      <span className="font-medium text-text-primary">{pos.symbol}</span>
+                      {getPositionDetailHref(pos) ? (
+                        <Link href={getPositionDetailHref(pos)!} className="font-medium text-text-primary hover:text-accent-blue">
+                          {pos.symbol}
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-text-primary">{pos.symbol}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-text-secondary text-sm max-w-[150px] truncate">
                       {pos.display_name || pos.symbol}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        pos.asset_type === 'commodity' 
-                          ? 'bg-amber-500/10 text-amber-400' 
-                          : 'bg-emerald-500/10 text-emerald-400'
-                      }`}>
-                        {pos.asset_type === 'commodity' ? 'Edelmetall' : 'Aktie'}
+                      <span className={`text-xs px-2 py-0.5 rounded ${getAssetTypeBadgeClass(pos.asset_type)}`}>
+                        {getAssetTypeLabel(pos.asset_type)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-text-primary text-sm">
@@ -867,15 +947,17 @@ export function PortfolioPageClient() {
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <div className="font-medium text-text-primary">{pos.symbol}</div>
+                    {getPositionDetailHref(pos) ? (
+                      <Link href={getPositionDetailHref(pos)!} className="font-medium text-text-primary hover:text-accent-blue">
+                        {pos.symbol}
+                      </Link>
+                    ) : (
+                      <div className="font-medium text-text-primary">{pos.symbol}</div>
+                    )}
                     <div className="text-xs text-text-muted">{pos.display_name || pos.symbol}</div>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    pos.asset_type === 'commodity' 
-                      ? 'bg-amber-500/10 text-amber-400' 
-                      : 'bg-emerald-500/10 text-emerald-400'
-                  }`}>
-                    {pos.asset_type === 'commodity' ? 'Edelmetall' : 'Aktie'}
+                  <span className={`text-xs px-2 py-0.5 rounded ${getAssetTypeBadgeClass(pos.asset_type)}`}>
+                    {getAssetTypeLabel(pos.asset_type)}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">

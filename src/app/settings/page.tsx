@@ -119,7 +119,7 @@ export default function SettingsPage() {
           >
             <SettingsSelect
               value={settings.general.language}
-              onChange={(v) => updateCategory('general', { language: v as 'de' | 'en' })}
+              onChange={() => updateCategory('general', { language: 'de' })}
               options={translateOpts('language', SETTINGS_OPTIONS.language)}
             />
           </SettingsRow>
@@ -232,7 +232,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2 text-xs text-[#64748B]">
             <span>ℹ️</span>
             <span>
-              Settings werden serverseitig gespeichert und stehen Ihnen auf allen Geräten zur Verfügung.
+              Einstellungen werden serverseitig gespeichert und stehen Ihnen auf allen Geraeten zur Verfuegung.
             </span>
           </div>
           {error && (

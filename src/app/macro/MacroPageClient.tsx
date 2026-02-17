@@ -405,7 +405,7 @@ export function MacroPageClient({ initialData }: MacroPageClientProps) {
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs text-text-muted uppercase tracking-wider mb-1">
-            Macro Context
+            MAKRO-KONTEXT
           </div>
           <h1 className="text-2xl font-bold text-text-primary">
             Rohstoffe, Zinsen & Währungen
@@ -435,7 +435,7 @@ export function MacroPageClient({ initialData }: MacroPageClientProps) {
       
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-primary">Commodity Heatmap</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Rohstoff-Heatmap</h2>
           <div className="flex gap-1 bg-navy-800 rounded-lg p-1">
             {(Object.keys(PERIOD_LABELS) as TimePeriod[]).map(p => (
               <button

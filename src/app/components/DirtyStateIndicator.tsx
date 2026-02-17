@@ -51,7 +51,7 @@ export function DirtyStateIndicator({
         <div className="flex items-center gap-2 px-4 pt-4 pb-2">
           <div className="w-2 h-2 bg-accent-orange rounded-full animate-pulse" />
           <span className="text-sm font-semibold text-accent-orange tracking-wide">
-            Unsaved Changes
+            Ungespeicherte Aenderungen
           </span>
         </div>
 
@@ -70,8 +70,8 @@ export function DirtyStateIndicator({
               <div>
                 <p className="text-xs font-semibold text-amber-300">Large Universe Warning</p>
                 <p className="text-xs text-amber-200/80 mt-1">
-                  This run will process {symbolCount} symbols and take approximately {estimatedRuntime}.
-                  Continue?
+                  Dieser Run verarbeitet {symbolCount} Symbole und dauert voraussichtlich {estimatedRuntime}.
+                  Fortfahren?
                 </p>
               </div>
             </div>
@@ -94,7 +94,7 @@ export function DirtyStateIndicator({
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span>Estimated runtime: {estimatedRuntime}</span>
+            <span>Geschaetzte Laufzeit: {estimatedRuntime}</span>
           </div>
         </div>
 
@@ -106,13 +106,13 @@ export function DirtyStateIndicator({
                 onClick={handleCancel}
                 className="flex-1 px-3 py-2 text-sm border border-navy-600 rounded-lg hover:bg-navy-700 transition-colors text-text-secondary"
               >
-                Cancel
+                Abbrechen
               </button>
               <button
                 onClick={handleRunClick}
                 className="flex-1 px-3 py-2 text-sm bg-accent-orange text-white rounded-lg hover:bg-accent-orange/90 transition-colors font-semibold"
               >
-                Confirm Run
+                Run bestaetigen
               </button>
             </>
           ) : (
@@ -121,13 +121,13 @@ export function DirtyStateIndicator({
                 onClick={onReset}
                 className="flex-1 px-3 py-2 text-sm border border-navy-600 rounded-lg hover:bg-navy-700 transition-colors text-text-secondary"
               >
-                Reset to Current
+                Auf aktuellen Stand zuruecksetzen
               </button>
               <button
                 onClick={handleRunClick}
                 className="flex-1 px-3 py-2 text-sm bg-accent-blue text-white rounded-lg hover:bg-accent-blue/90 transition-colors font-semibold flex flex-col items-center"
               >
-                <span>Run Analysis</span>
+                <span>Run starten</span>
                 <span className="text-[10px] opacity-75 font-normal">{estimatedRuntime}</span>
               </button>
             </>

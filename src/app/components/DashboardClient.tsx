@@ -11,7 +11,7 @@ import RegimeBadge from "@/app/components/RegimeBadge";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import type { ScoreQuery } from "@/lib/scoreView";
 import type { SymbolDelta } from "@/lib/runDelta";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useEtlStatus } from "@/hooks/useEtlStatus";
 
 interface ModeBadgeProps {
@@ -60,6 +60,23 @@ interface DashboardClientProps {
   totalCount: number;
 }
 
+function getFilenameFromDisposition(
+  contentDisposition: string | null,
+  fallback: string
+): string {
+  if (!contentDisposition) return fallback;
+  const utfMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1].replace(/["']/g, '').trim());
+    } catch {
+      return utfMatch[1].replace(/["']/g, '').trim();
+    }
+  }
+  const plainMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+  return plainMatch?.[1]?.trim() || fallback;
+}
+
 export function DashboardClient({
   run,
   topCardScores,
@@ -70,6 +87,37 @@ export function DashboardClient({
 }: DashboardClientProps) {
   const { t } = useTranslation();
   const { status: etlStatus, loading: etlLoading } = useEtlStatus();
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handlePdfDownload = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      const response = await fetch('/api/export/pdf', { cache: 'no-store' });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = getFilenameFromDisposition(
+        response.headers.get('Content-Disposition'),
+        `INTRINSIC-Report-${new Date().toISOString().slice(0, 10)}.pdf`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('PDF download failed', error);
+      window.alert('PDF-Export fehlgeschlagen. Bitte erneut versuchen.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const renderEtlBadge = () => {
     if (etlLoading) return null;
@@ -144,6 +192,26 @@ export function DashboardClient({
           </span>
           {run.mode && <ModeBadge mode={run.mode} />}
           <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePdfDownload}
+              disabled={pdfLoading}
+              className="inline-flex items-center gap-2 rounded-lg border border-navy-700 bg-navy-800 px-3 py-2 text-sm text-text-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                aria-hidden="true"
+              >
+                <path d="M10 3v8" strokeLinecap="round" />
+                <path d="m6.5 8.5 3.5 3.5 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 14.5h12" strokeLinecap="round" />
+              </svg>
+              <span>{pdfLoading ? 'Report wird generiert...' : 'PDF-Report'}</span>
+            </button>
             <RunTriggerButton
               label={`${t("run.run")} ${run.universe.definition.name || 'Universe'}`}
               symbolCount={run.scores.length}
@@ -236,7 +304,7 @@ export function DashboardClient({
             </div>
             <div>
               <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-                {t("briefing.highQuality") || "High Quality"}
+                {t("briefing.highQuality") || "Hohe Qualitaet"}
               </div>
               <div className="text-2xl font-semibold text-accent-green">
                 {(run.data_quality_summary.pct_high * 100).toFixed(0)}%
@@ -244,7 +312,7 @@ export function DashboardClient({
             </div>
             <div>
               <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-                {t("briefing.mediumQuality") || "Medium"}
+                {t("briefing.mediumQuality") || "Mittel"}
               </div>
               <div className="text-2xl font-semibold text-accent-gold">
                 {(run.data_quality_summary.pct_medium * 100).toFixed(0)}%
@@ -252,7 +320,7 @@ export function DashboardClient({
             </div>
             <div>
               <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">
-                {t("briefing.lowQuality") || "Low Quality"}
+                {t("briefing.lowQuality") || "Niedrige Qualitaet"}
               </div>
               <div className="text-2xl font-semibold text-accent-red">
                 {(run.data_quality_summary.pct_low * 100).toFixed(0)}%

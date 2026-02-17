@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
 import type { PortfolioPosition, PillarScores } from '@/types/portfolio';
+import GlossaryTooltip from '@/app/components/GlossaryTooltip';
 
 interface PortfolioScoreBreakdownProps {
   positions: PortfolioPosition[];
@@ -175,7 +176,12 @@ export function PortfolioScoreBreakdown({
   return (
     <div className="bg-navy-800 border border-navy-700 rounded-xl p-4 space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-text-primary">Portfolio-Score Breakdown</h2>
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-text-primary">Portfolio-Score Breakdown</h2>
+          <div className="text-xs text-text-muted">
+            <GlossaryTooltip term="diversification">Diversifikation</GlossaryTooltip>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-text-muted">Portfolio-Score:</span>
           <span className={`text-xl font-bold ${getScoreColor(portfolioScore ?? 0)}`}>

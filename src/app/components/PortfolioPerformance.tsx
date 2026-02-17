@@ -81,11 +81,11 @@ export function PortfolioPerformance() {
       
       try {
         const response = await fetch(`/api/portfolio/performance?period=${period}`);
-        if (!response.ok) throw new Error('Failed to fetch performance data');
+        if (!response.ok) throw new Error('Fehler beim Laden der Performance-Daten');
         const result: PerformanceResponse = await response.json();
         setData(result);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
       } finally {
         setLoading(false);
       }

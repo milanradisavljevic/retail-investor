@@ -119,8 +119,8 @@ export default function GlossaryTooltip({ term, children, className }: GlossaryT
   const triggerClass = useMemo(
     () =>
       [
-        'inline-flex h-3 w-3 items-center justify-center rounded-full border border-navy-600 text-[10px] leading-none text-text-muted',
-        'hover:border-navy-500 hover:text-text-secondary transition-colors',
+        'inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-navy-500 bg-navy-700/80',
+        'text-[11px] font-semibold leading-none text-text-muted hover:border-navy-400 hover:text-text-secondary transition-colors',
       ].join(' '),
     []
   );
@@ -157,7 +157,7 @@ export default function GlossaryTooltip({ term, children, className }: GlossaryT
       {open && (
         <div
           style={popupStyle}
-          className="rounded-xl border border-navy-600 bg-navy-700 p-3 shadow-2xl shadow-black/40"
+          className="z-50 rounded-xl border border-navy-600 bg-navy-700 p-3 shadow-2xl shadow-black/40"
           role="dialog"
           aria-live="polite"
           onClick={(event) => event.stopPropagation()}

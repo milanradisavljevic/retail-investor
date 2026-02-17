@@ -32,7 +32,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
 export const SETTINGS_OPTIONS = {
   language: [
     { value: 'de', label: 'Deutsch' },
-    { value: 'en', label: 'English' },
   ],
   theme: [
     { value: 'dark', label: 'Dunkel' },
@@ -40,19 +39,19 @@ export const SETTINGS_OPTIONS = {
   ],
   universe: [
     { value: 'test', label: 'Test (5 Stocks)' },
-    { value: 'sp500-full', label: 'S&P 500 (Full)' },
-    { value: 'nasdaq100-full', label: 'NASDAQ 100 (Full)' },
-    { value: 'russell2000_full', label: 'Russell 2000 (Full)' },
-    { value: 'dax40-full', label: 'DAX 40 (Full)' },
-    { value: 'cac40-full', label: 'CAC 40 (Full)' },
-    { value: 'eurostoxx50-full', label: 'EURO STOXX 50 (Full)' },
-    { value: 'ftse100-full', label: 'FTSE 100 (Full)' },
+    { value: 'sp500-full', label: 'S&P 500 (Voll)' },
+    { value: 'nasdaq100-full', label: 'NASDAQ 100 (Voll)' },
+    { value: 'russell2000_full', label: 'Russell 2000 (Voll)' },
+    { value: 'dax40-full', label: 'DAX 40 (Voll)' },
+    { value: 'cac40-full', label: 'CAC 40 (Voll)' },
+    { value: 'eurostoxx50-full', label: 'EURO STOXX 50 (Voll)' },
+    { value: 'ftse100-full', label: 'FTSE 100 (Voll)' },
   ],
   strategy: [
     { value: 'compounder', label: 'Compounder' },
     { value: 'deep_value', label: 'Deep Value' },
     { value: 'garp', label: 'GARP' },
-    { value: 'dividend_quality', label: 'Dividend Quality (Experimental)' },
+    { value: 'dividend_quality', label: 'Dividendenqualität (experimentell)' },
     { value: 'quant', label: 'Quant' },
     { value: 'rocket', label: 'Rocket' },
     { value: 'shield', label: 'Shield' },

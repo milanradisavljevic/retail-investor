@@ -9,7 +9,7 @@ interface FilterCheckboxProps {
   recommendedLabel?: string;
 }
 
-export function FilterCheckbox({ label, tooltip, checked, onChange, recommended, recommendedLabel = 'Recommended' }: FilterCheckboxProps) {
+export function FilterCheckbox({ label, tooltip, checked, onChange, recommended, recommendedLabel = 'Empfohlen' }: FilterCheckboxProps) {
   return (
     <label className="flex items-start gap-2 cursor-pointer group">
       <input

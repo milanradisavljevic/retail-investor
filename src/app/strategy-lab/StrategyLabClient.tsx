@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import MarketContextBar from "@/app/components/MarketContextBar";
 import RegimeBadge from "@/app/components/RegimeBadge";
 import { formatPercent } from "@/lib/percent";
-import { Zap, Clock, Play, Loader2, FlaskConical, Timer } from "lucide-react";
+import { Zap, Clock, Play, Loader2, FlaskConical, Timer, Table, Download } from "lucide-react";
 import type { MarketContextResponse } from "@/lib/marketContext";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import type { UniverseWithMetadata, PresetConfig } from "./loaders";
@@ -88,37 +88,37 @@ const WEIGHT_PRESETS: Record<
   { label: string; weights: PillarWeights }
 > = {
   conservative: {
-    label: "Conservative",
+    label: "Konservativ",
     weights: { valuation: 30, quality: 35, technical: 20, risk: 15 },
   },
   balanced: {
-    label: "Balanced",
+    label: "Ausgewogen",
     weights: { valuation: 25, quality: 25, technical: 25, risk: 25 },
   },
   aggressive: {
-    label: "Aggressive",
+    label: "Aggressiv",
     weights: { valuation: 15, quality: 20, technical: 45, risk: 20 },
   },
   quality: {
-    label: "Quality Focus",
+    label: "Quality-Fokus",
     weights: { valuation: 20, quality: 45, technical: 20, risk: 15 },
   },
   momentum: {
-    label: "Momentum Focus",
+    label: "Momentum-Fokus",
     weights: { valuation: 10, quality: 15, technical: 60, risk: 15 },
   },
 };
 
 const PERIOD_PRESETS = {
-  full: { start: "2015-01-01", end: "2025-12-31", label: "Full Period (2015-2025)" },
-  decade: { start: "2015-01-01", end: "2025-12-31", label: "Last 10 Years" },
-  fiveYear: { start: "2020-01-01", end: "2025-12-31", label: "Last 5 Years (2020-2025)" },
-  threeYear: { start: "2023-01-01", end: "2025-12-31", label: "Last 3 Years" },
-  preCovid: { start: "2015-01-01", end: "2019-12-31", label: "Pre-COVID (2015-2019)" },
-  covid: { start: "2020-01-01", end: "2021-12-31", label: "COVID Era (2020-2021)" },
-  postCovid: { start: "2022-01-01", end: "2025-12-31", label: "Post-COVID (2022-2025)" },
-  bear2022: { start: "2022-01-01", end: "2022-12-31", label: "2022 Bear Market" },
-  bull2023: { start: "2023-01-01", end: "2023-12-31", label: "2023 Bull Market" },
+  full: { start: "2015-01-01", end: "2025-12-31", label: "Gesamter Zeitraum (2015-2025)" },
+  decade: { start: "2015-01-01", end: "2025-12-31", label: "Letzte 10 Jahre" },
+  fiveYear: { start: "2020-01-01", end: "2025-12-31", label: "Letzte 5 Jahre (2020-2025)" },
+  threeYear: { start: "2023-01-01", end: "2025-12-31", label: "Letzte 3 Jahre" },
+  preCovid: { start: "2015-01-01", end: "2019-12-31", label: "Vor COVID (2015-2019)" },
+  covid: { start: "2020-01-01", end: "2021-12-31", label: "COVID-Phase (2020-2021)" },
+  postCovid: { start: "2022-01-01", end: "2025-12-31", label: "Nach COVID (2022-2025)" },
+  bear2022: { start: "2022-01-01", end: "2022-12-31", label: "Baerenmarkt 2022" },
+  bull2023: { start: "2023-01-01", end: "2023-12-31", label: "Bullenmarkt 2023" },
 };
 
 const SAMPLE_LIVE_PICKS: LivePick[] = [
@@ -129,8 +129,8 @@ const SAMPLE_LIVE_PICKS: LivePick[] = [
     currentPrice: 91.09,
     targetPrice: 120.78,
     upside: 0.326,
-    holdDuration: "12 months",
-    sector: "Insurance",
+    holdDuration: "12 Monate",
+    sector: "Versicherung",
     totalScore: 89.7,
     pillarScores: { valuation: 96.4, quality: 76.7, technical: 85, risk: 88 },
   },
@@ -141,8 +141,8 @@ const SAMPLE_LIVE_PICKS: LivePick[] = [
     currentPrice: 37.28,
     targetPrice: 71.47,
     upside: 0.917,
-    holdDuration: "12 months",
-    sector: "Insurance",
+    holdDuration: "12 Monate",
+    sector: "Versicherung",
     totalScore: 86.5,
     pillarScores: { valuation: 92.2, quality: 73.1, technical: 83.4, risk: 85.1 },
   },
@@ -187,9 +187,45 @@ function classNames(...classes: Array<string | false | undefined>) {
  * Note: Current run schema doesn't persist config, so we use defaults.
  * This serves as the baseline for draft comparison.
  */
-function extractConfigFromRun(run: RunV1SchemaJson | null, universeId: string): DraftConfig {
+function normalizeUniverseId(
+  candidate: string | undefined,
+  universes: UniverseWithMetadata[],
+  fallbackId: string
+): string {
+  const raw = (candidate ?? "").trim();
+  if (!raw) return fallbackId;
+
+  const byId = universes.find((u) => u.id === raw);
+  if (byId) return byId.id;
+
+  const normalizedRaw = raw.toLowerCase();
+  const byName = universes.find((u) => u.name.toLowerCase() === normalizedRaw);
+  if (byName) return byName.id;
+
+  const slug = normalizedRaw
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  const bySlug = universes.find((u) => {
+    const id = u.id.toLowerCase();
+    return (
+      id === slug ||
+      id.replace(/-/g, "_") === slug ||
+      id.replace(/_/g, "-") === slug
+    );
+  });
+
+  return bySlug?.id ?? fallbackId;
+}
+
+function extractConfigFromRun(
+  run: RunV1SchemaJson | null,
+  fallbackUniverseId: string,
+  universes: UniverseWithMetadata[]
+): DraftConfig {
+  const runUniverseName = run?.universe?.definition?.name;
   return {
-    universe: run?.universe?.definition?.name || universeId,
+    universe: normalizeUniverseId(runUniverseName, universes, fallbackUniverseId),
     preset: null, // Run schema doesn't persist preset info
     weights: { valuation: 25, quality: 40, technical: 20, risk: 15 }, // Default weights
     filters: {
@@ -252,7 +288,7 @@ function buildLivePicksFromRun(run: RunV1SchemaJson | null, topK: number): LiveP
       targetPrice: priceTarget?.target_sell_price ?? priceTarget?.fair_value ?? null,
       upside: priceTarget?.upside_pct ?? priceTarget?.expected_return_pct ?? null,
       holdDuration: priceTarget?.holding_period_months
-        ? `${priceTarget.holding_period_months} months`
+        ? `${priceTarget.holding_period_months} Monate`
         : "--",
       sector: score?.industry ?? null,
       totalScore: score?.total_score ?? breakdown?.fundamental ?? null,
@@ -278,7 +314,7 @@ function ValidationBadge({ total }: { total: number }) {
           isValid ? "bg-[#10B981]" : "bg-[#EF4444]"
         )}
       />
-      {isValid ? "Total 100% OK" : `Total ${total}% (adjust to 100%)`}
+      {isValid ? "Summe 100% OK" : `Summe ${total}% (auf 100% anpassen)`}
     </div>
   );
 }
@@ -497,7 +533,7 @@ function FilterPanel({ filters, onChange, t }: { filters: FilterState; onChange:
           tooltip={t('strategyLab.filters.crypto.tooltip')}
           checked={filters.excludeCrypto}
           recommended
-          recommendedLabel={t('strategyLab.filters.presets.institutional') || 'Recommended'}
+          recommendedLabel={t('strategyLab.filters.presets.institutional') || 'Empfohlen'}
           onChange={(v) => onChange({ ...filters, excludeCrypto: v })}
         />
         <FilterCheckbox
@@ -619,7 +655,7 @@ function LiveRunOutput({ picks, t }: { picks: LivePick[]; t: (key: string) => st
                 <p className="text-lg font-semibold text-[#F1F5F9]">{pick.symbol}</p>
                 <p className="text-sm text-[#94A3B8]">{pick.companyName}</p>
                 {pick.sector && (
-                  <p className="text-xs text-[#64748B] mt-1">Sector: {pick.sector}</p>
+                  <p className="text-xs text-[#64748B] mt-1">Sektor: {pick.sector}</p>
                 )}
               </div>
             </div>
@@ -632,19 +668,19 @@ function LiveRunOutput({ picks, t }: { picks: LivePick[]; t: (key: string) => st
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
             <div className="bg-[#111827] rounded-lg border border-[#1F2937] px-3 py-2">
-              <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Entry</p>
+              <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Einstieg</p>
               <p className="text-sm text-[#F1F5F9]">
                 {pick.currentPrice !== null ? `$${pick.currentPrice.toFixed(2)}` : "--"}
               </p>
             </div>
             <div className="bg-[#111827] rounded-lg border border-[#1F2937] px-3 py-2">
-              <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Target</p>
+              <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Ziel</p>
               <p className="text-sm text-[#F1F5F9]">
                 {pick.targetPrice !== null ? `$${pick.targetPrice.toFixed(2)}` : "--"}
               </p>
             </div>
             <div className="bg-[#111827] rounded-lg border border-[#1F2937] px-3 py-2">
-              <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Upside</p>
+              <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Aufwaertspotenzial</p>
               <p className={classNames("text-sm font-semibold", (pick.upside ?? 0) >= 0 ? "text-[#10B981]" : "text-[#EF4444]")}>
                 {pick.upside !== null ? formatPercent(pick.upside, { signed: true }) : "--"}
               </p>
@@ -681,12 +717,12 @@ function LiveRunOutput({ picks, t }: { picks: LivePick[]; t: (key: string) => st
 
 function MetricsTable({ metrics, t }: { metrics: BacktestMetrics; t: (key: string) => string }) {
   const rows = [
-    { key: "total_return", label: "Total Return", value: metrics.totalReturn, benchmark: 95.3, russell: 45.2 },
-    { key: "annualized_return", label: "Annualized Return", value: metrics.annualizedReturn, benchmark: 14.32, russell: 7.8 },
+    { key: "total_return", label: "Gesamtrendite", value: metrics.totalReturn, benchmark: 95.3, russell: 45.2 },
+    { key: "annualized_return", label: "Annualisierte Rendite", value: metrics.annualizedReturn, benchmark: 14.32, russell: 7.8 },
     { key: "max_drawdown", label: "Max Drawdown", value: metrics.maxDrawdown, benchmark: -33.72, russell: -28.4 },
     { key: "sharpe_ratio", label: "Sharpe Ratio", value: metrics.sharpeRatio, benchmark: 0.59, russell: 0.38 },
     { key: "calmar_ratio", label: "Calmar Ratio", value: metrics.calmarRatio, benchmark: 0.42, russell: 0.27 },
-    { key: "win_rate", label: "Win Rate", value: metrics.winRate, benchmark: 75, russell: 52 },
+    { key: "win_rate", label: "Trefferquote", value: metrics.winRate, benchmark: 75, russell: 52 },
   ];
 
   const renderLabel = (row: (typeof rows)[number]) => {
@@ -760,19 +796,29 @@ export default function StrategyLabClient({
 
   // Extract current config from latest run
   const currentConfig = useMemo(
-    () => extractConfigFromRun(latestRun, defaultUniverse),
-    [latestRun, defaultUniverse]
+    () => extractConfigFromRun(latestRun, defaultUniverse, universes),
+    [latestRun, defaultUniverse, universes]
   );
 
   // Draft state management with localStorage persistence
   const { draft, updateDraft, isDirty, diffSummary, reset: resetDraft, clearDraft } = useDraftConfig(currentConfig);
 
   // Use draft values for UI state
-  const selectedUniverse = draft.universe;
+  const selectedUniverse = useMemo(
+    () => normalizeUniverseId(draft.universe, universes, defaultUniverse),
+    [draft.universe, universes, defaultUniverse]
+  );
   const selectedPreset = draft.preset;
   const weights = draft.weights;
   const filters = draft.filters;
   const topK = draft.topK;
+
+  // Auto-repair legacy localStorage values that stored display names instead of universe IDs.
+  useEffect(() => {
+    if (draft.universe !== selectedUniverse) {
+      updateDraft({ universe: selectedUniverse });
+    }
+  }, [draft.universe, selectedUniverse, updateDraft]);
 
   // Align with available backtest outputs; UI currently supports hybrid/momentum
   const [strategy] = useState<string>("hybrid");
@@ -795,6 +841,7 @@ export default function StrategyLabClient({
   const [backtestError, setBacktestError] = useState<string | null>(null);
   const [equityCurve, setEquityCurve] = useState<Array<{ date: string; portfolio_value: number; sp500_value: number }>>([]);
   const [drawdown, setDrawdown] = useState<Array<{ date: string; drawdown_pct: number }>>([]);
+  const [exportLoading, setExportLoading] = useState(false);
   const weightTotal = weights.valuation + weights.quality + weights.technical + weights.risk;
 
   // Get selected universe metadata
@@ -889,7 +936,7 @@ export default function StrategyLabClient({
       });
 
       if (!res.ok) {
-        throw new Error(`Live run failed (${res.status})`);
+        throw new Error(`Live-Run fehlgeschlagen (${res.status})`);
       }
 
       const data = await res.json();
@@ -911,7 +958,7 @@ export default function StrategyLabClient({
       }
     } catch (err) {
       console.error(err);
-      setLiveError("Failed to start live run. Falling back to last run.");
+      setLiveError("Live-Run konnte nicht gestartet werden. Letzter Run wird angezeigt.");
       setLivePicks(buildLivePicksFromRun(latestRun, 20));
       setLiveLoading(false);
     }
@@ -939,24 +986,47 @@ export default function StrategyLabClient({
         }
       }
     } catch (err) {
-      console.error("Failed to refresh results:", err);
+      console.error("Ergebnisse konnten nicht aktualisiert werden:", err);
     }
 
     clearDraft();
   };
 
   const handleRunError = (error: string) => {
-    setLiveError(`Run failed: ${error}`);
+    setLiveError(`Run fehlgeschlagen: ${error}`);
     setLiveLoading(false);
     setCurrentRunId(null);
     // Fall back to last run
     setLivePicks(buildLivePicksFromRun(latestRun, 20));
   };
 
+  async function handleExcelExport() {
+    setExportLoading(true);
+    try {
+      const response = await fetch('/api/export/excel?type=run');
+      if (!response.ok) throw new Error('Export fehlgeschlagen');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = response.headers.get('Content-Disposition')?.split('filename="')[1]?.replace('"', '') || 'INTRINSIC-Run.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Export fehlgeschlagen:', err);
+      setLiveError('Excel-Export fehlgeschlagen. Bitte erneut versuchen.');
+    } finally {
+      setExportLoading(false);
+    }
+  }
+
   async function fetchBacktestResults(strategyKey: string) {
     try {
       const res = await fetch(`/api/backtest/results?strategy=${encodeURIComponent(strategyKey)}`);
-      if (!res.ok) throw new Error(`Backtest results missing (${res.status})`);
+      if (!res.ok) throw new Error(`Backtest-Ergebnisse fehlen (${res.status})`);
       const data = (await res.json()) as BacktestResultResponse;
       const m = data.summary?.metrics;
       if (m) {
@@ -973,10 +1043,10 @@ export default function StrategyLabClient({
       const dd = data.drawdown ?? [];
 
       if (curve.length === 0 || dd.length === 0) {
-        console.warn('[Backtest] No timeseries returned, falling back to sample curves');
+        console.warn('[Backtest] Keine Zeitreihe geliefert, es werden Beispielkurven genutzt');
         setEquityCurve(SAMPLE_EQUITY);
         setDrawdown(SAMPLE_DRAWDOWN);
-        setBacktestError("Backtest results missing timeseries — showing sample curve.");
+        setBacktestError("Backtest-Ergebnisse ohne Zeitreihe — Beispielkurve wird angezeigt.");
       } else {
         setEquityCurve(curve);
         setDrawdown(dd);
@@ -987,7 +1057,7 @@ export default function StrategyLabClient({
       setBacktestMetrics(SAMPLE_BACKTEST);
       setEquityCurve([]);
       setDrawdown([]);
-      setBacktestError("Using sample backtest output (no results found).");
+      setBacktestError("Beispiel-Backtest-Ausgabe aktiv (keine Ergebnisse gefunden).");
     }
   }
 
@@ -1010,7 +1080,7 @@ export default function StrategyLabClient({
           startingCapital,
         }),
       });
-      if (!res.ok) throw new Error(`Backtest run failed (${res.status})`);
+      if (!res.ok) throw new Error(`Backtest-Run fehlgeschlagen (${res.status})`);
       await res.json(); // ignore payload, fetch results separately
       await fetchBacktestResults(strategy);
 
@@ -1018,7 +1088,7 @@ export default function StrategyLabClient({
       clearDraft();
     } catch (err) {
       console.error(err);
-      setBacktestError("Backtest failed. Showing sample metrics.");
+      setBacktestError("Backtest fehlgeschlagen. Beispielkennzahlen werden angezeigt.");
       setBacktestMetrics(SAMPLE_BACKTEST);
       setEquityCurve([]);
       setDrawdown([]);
@@ -1125,7 +1195,7 @@ export default function StrategyLabClient({
                 <span className="text-[#64748B]">({selectedUniverseMeta.symbol_count} {t('strategyLab.common.stocks')})</span>
               </span>
               <span className="px-3 py-1 rounded-full border border-[#1F2937] bg-[#0B1220] font-mono">
-                Runtime: {formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)}
+                Laufzeit: {formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)}
               </span>
             </>
           )}
@@ -1210,9 +1280,9 @@ export default function StrategyLabClient({
                   {selectedUniverseMeta ? runtimeEstimate(selectedUniverseMeta.symbol_count ?? 0, "live").label : '--'}
                 </p>
                 <p className="text-xs text-[#64748B]">
-                  {selectedUniverseMeta?.status === 'TEST' && 'Quick test run'}
-                  {selectedUniverseMeta?.status === 'SAMPLE' && 'Medium-sized test'}
-                  {selectedUniverseMeta?.status === 'FULL' && 'Full production run'}
+                  {selectedUniverseMeta?.status === 'TEST' && 'Schneller Testlauf'}
+                  {selectedUniverseMeta?.status === 'SAMPLE' && 'Mittelgrosser Testlauf'}
+                  {selectedUniverseMeta?.status === 'FULL' && 'Vollstaendiger Produktionslauf'}
                 </p>
               </div>
               <div className="rounded-xl border border-[#1F2937] bg-[#0F172A] px-4 py-3">
@@ -1235,8 +1305,13 @@ export default function StrategyLabClient({
                   <p className="text-xs text-[#64748B]">{t('strategyLab.sections.runConfig.exportsNote')}</p>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  <button className="text-xs px-3 py-2 rounded-lg border border-[#3B82F6]/40 text-[#E2E8F0] bg-[#0B1220] hover:border-[#3B82F6]">
-                    {t('strategyLab.actions.exportCSV')}
+                  <button 
+                    onClick={handleExcelExport}
+                    disabled={exportLoading}
+                    className="text-xs px-3 py-2 rounded-lg border border-[#3B82F6]/40 text-[#E2E8F0] bg-[#0B1220] hover:border-[#3B82F6] disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {exportLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Table className="w-3 h-3" />}
+                    {exportLoading ? 'Exportiere...' : 'Excel-Export'}
                   </button>
                   <button className="text-xs px-3 py-2 rounded-lg border border-[#1F2937] text-[#E2E8F0] bg-[#0B1220] hover:border-[#334155]">
                     {t('strategyLab.actions.saveWatchlist')}
@@ -1254,9 +1329,9 @@ export default function StrategyLabClient({
                 className="px-4 py-2 text-sm rounded-lg border border-[#3B82F6] bg-[#3B82F6]/10 text-[#E2E8F0] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {currentRunId
-                  ? "Running..."
+                  ? "Laeuft..."
                   : liveLoading
-                    ? "Starting..."
+                    ? "Starte..."
                     : t('strategyLab.actions.generatePicks')}
               </button>
               <button className="px-4 py-2 text-sm rounded-lg border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
@@ -1275,7 +1350,7 @@ export default function StrategyLabClient({
             <SectorExposure 
               picks={visiblePicks.map(p => ({ 
                 symbol: p.symbol, 
-                industry: p.sector || "Unknown" 
+                industry: p.sector || "Unbekannt" 
               }))} 
             />
             <LiveRunOutput picks={visiblePicks} t={t} />
@@ -1298,7 +1373,7 @@ export default function StrategyLabClient({
                     onChange={(e) => setStartDate(e.target.value)}
                     className="bg-[#0B1220] border border-[#1F2937] rounded px-3 py-2 text-sm text-[#E2E8F0]"
                   />
-                  <span className="text-xs text-[#94A3B8]">to</span>
+                  <span className="text-xs text-[#94A3B8]">bis</span>
                   <input
                     type="date"
                     value={endDate}
@@ -1408,7 +1483,7 @@ export default function StrategyLabClient({
                     disabled={backtestLoading || !periodValid}
                     className="px-3 py-2 text-xs rounded-lg border border-[#3B82F6] bg-[#3B82F6]/10 text-[#E2E8F0] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {backtestLoading ? "Running..." : t('strategyLab.actions.runBacktest')}
+                    {backtestLoading ? "Laeuft..." : t('strategyLab.actions.runBacktest')}
                   </button>
                   <button className="px-3 py-2 text-xs rounded-lg border border-[#1F2937] bg-[#0B1220] text-[#94A3B8]">
                     {t('strategyLab.actions.saveConfig')}
@@ -1472,7 +1547,7 @@ export default function StrategyLabClient({
         estimatedRuntime={
           selectedUniverseMeta
             ? formatRuntime(selectedUniverseMeta.estimatedRuntimeMin)
-            : "~1 minute"
+            : "~1 Minute"
         }
         symbolCount={selectedUniverseMeta?.symbol_count ?? 0}
       />

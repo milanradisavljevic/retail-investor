@@ -7,6 +7,16 @@ import { useServerSettings } from './useServerSettings';
 
 const CACHE_KEY = 'intrinsic_settings_cache_v2';
 
+function enforceGerman(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    general: {
+      ...settings.general,
+      language: 'de',
+    },
+  };
+}
+
 export function useUnifiedSettings() {
   const server = useServerSettings();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -19,7 +29,7 @@ export function useUnifiedSettings() {
       const cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached) as AppSettings;
-        setSettings(parsed);
+        setSettings(enforceGerman(parsed));
       }
     } catch (err) {
       console.warn('[useUnifiedSettings] Failed to read cache', err);
@@ -31,10 +41,11 @@ export function useUnifiedSettings() {
   // Apply authoritative server settings when ready
   useEffect(() => {
     if (!server.isReady) return;
-    setSettings(server.settings);
+    const normalized = enforceGerman(server.settings);
+    setSettings(normalized);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(server.settings));
+        localStorage.setItem(CACHE_KEY, JSON.stringify(normalized));
       } catch {
         // ignore cache write failures
       }

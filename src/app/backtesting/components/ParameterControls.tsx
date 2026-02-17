@@ -10,10 +10,10 @@ type PillarWeights = {
 };
 
 const PRESETS: Record<string, PillarWeights> = {
-  Conservative: { valuation: 20, quality: 35, technical: 15, risk: 30 },
-  Balanced: { valuation: 25, quality: 25, technical: 25, risk: 25 },
-  Aggressive: { valuation: 15, quality: 20, technical: 40, risk: 25 },
-  'Quality Focus': { valuation: 15, quality: 40, technical: 20, risk: 25 },
+  Konservativ: { valuation: 20, quality: 35, technical: 15, risk: 30 },
+  Ausgewogen: { valuation: 25, quality: 25, technical: 25, risk: 25 },
+  Aggressiv: { valuation: 15, quality: 20, technical: 40, risk: 25 },
+  'Quality-Fokus': { valuation: 15, quality: 40, technical: 20, risk: 25 },
 };
 
 function WeightSlider({
@@ -64,7 +64,7 @@ interface ParameterControlsProps {
 }
 
 export default function ParameterControls({ selectedUniverse, strategyKey = 'hybrid' }: ParameterControlsProps) {
-  const [weights, setWeights] = useState<PillarWeights>(PRESETS.Balanced);
+  const [weights, setWeights] = useState<PillarWeights>(PRESETS.Ausgewogen);
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -77,7 +77,7 @@ export default function ParameterControls({ selectedUniverse, strategyKey = 'hyb
   async function handleRunBacktest() {
     if (!isValid || isRunning) return;
     setIsRunning(true);
-    setStatus('Running backtest...');
+    setStatus('Backtest laeuft...');
 
     try {
       const res = await fetch('/api/backtest/run', {
@@ -93,12 +93,12 @@ export default function ParameterControls({ selectedUniverse, strategyKey = 'hyb
       const body = await res.json();
 
       if (!res.ok) {
-        setStatus(body?.error || 'Backtest failed');
+        setStatus(body?.error || 'Backtest fehlgeschlagen');
       } else {
         setStatus('Backtest completed. Ergebnisse aktualisiert.');
       }
     } catch (err) {
-      setStatus('Backtest failed');
+      setStatus('Backtest fehlgeschlagen');
       console.error('Backtest run failed', err);
     } finally {
       setIsRunning(false);
@@ -109,11 +109,11 @@ export default function ParameterControls({ selectedUniverse, strategyKey = 'hyb
     <div className="rounded-2xl border border-slate-800 bg-slate-800/60 p-6 shadow-xl shadow-black/20 backdrop-blur">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-xl font-bold text-amber-400">4-Pillar Weights</h3>
-          <div className="text-xs text-slate-400">Universe: {selectedUniverse}</div>
+          <h3 className="text-xl font-bold text-amber-400">4-Pillar-Gewichte</h3>
+          <div className="text-xs text-slate-400">Universum: {selectedUniverse}</div>
         </div>
         <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300">
-          Live Preview
+          Live-Vorschau
         </span>
       </div>
 
@@ -149,7 +149,7 @@ export default function ParameterControls({ selectedUniverse, strategyKey = 'hyb
           isValid ? 'border-emerald-700 bg-emerald-900/20 text-emerald-400' : 'border-red-700 bg-red-900/20 text-red-400'
         }`}
       >
-        Total: {total}% {isValid ? '✓' : '(Must be 100%)'}
+        Summe: {total}% {isValid ? '✓' : '(Muss 100% sein)'}
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -168,7 +168,7 @@ export default function ParameterControls({ selectedUniverse, strategyKey = 'hyb
             : 'cursor-not-allowed bg-slate-700 text-slate-500'
         }`}
       >
-        {isRunning ? 'Running...' : 'Run Backtest with Custom Weights'}
+        {isRunning ? 'Laeuft...' : 'Backtest mit benutzerdefinierten Gewichten starten'}
       </button>
 
       {status && <div className="mt-3 text-sm text-slate-300">{status}</div>}

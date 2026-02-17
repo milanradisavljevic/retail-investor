@@ -21,21 +21,63 @@ interface GlossaryPayload {
   terms: GlossaryTerm[];
 }
 
+const EMPTY_GLOSSARY: GlossaryPayload = { terms: [] };
+
 let glossaryCache: GlossaryPayload | null = null;
 let glossaryByIdCache: Map<string, GlossaryTerm> | null = null;
 let glossaryLoadPromise: Promise<GlossaryPayload> | null = null;
+
+function isGlossaryTerm(value: unknown): value is GlossaryTerm {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === 'string'
+    && typeof record.term_en === 'string'
+    && typeof record.term_de === 'string'
+    && typeof record.definition_short === 'string'
+    && typeof record.definition_long === 'string'
+    && typeof record.analogy === 'string'
+    && typeof record.category === 'string'
+    && Array.isArray(record.related_terms)
+    && Array.isArray(record.used_in_pillars)
+  );
+}
 
 async function loadGlossary(): Promise<GlossaryPayload> {
   if (glossaryCache) {
     return glossaryCache;
   }
   if (!glossaryLoadPromise) {
-    glossaryLoadPromise = import('../../data/glossary.json').then((module) => {
-      const payload = (module.default ?? module) as GlossaryPayload;
-      glossaryCache = payload;
-      glossaryByIdCache = new Map(payload.terms.map((term) => [term.id.toLowerCase(), term]));
-      return payload;
-    });
+    glossaryLoadPromise = import('../../data/glossary.json')
+      .then((module) => {
+        const unknownPayload: unknown = module.default ?? module;
+        const terms = (
+          typeof unknownPayload === 'object'
+          && unknownPayload !== null
+          && Array.isArray((unknownPayload as { terms?: unknown }).terms)
+            ? (unknownPayload as { terms: unknown[] }).terms
+            : []
+        )
+          .filter(isGlossaryTerm)
+          .map((term) => ({
+            ...term,
+            id: term.id.toLowerCase(),
+          }));
+
+        const payload: GlossaryPayload = { terms };
+        glossaryCache = payload;
+        glossaryByIdCache = new Map(payload.terms.map((term) => [term.id, term]));
+        if (process.env.NODE_ENV !== 'production') {
+          console.info(`[Glossary][Codex] Loaded ${payload.terms.length} terms from data/glossary.json`);
+        }
+        return payload;
+      })
+      .catch((error: unknown) => {
+        console.error('[Glossary][Codex] Failed to load glossary data:', error);
+        glossaryCache = EMPTY_GLOSSARY;
+        glossaryByIdCache = new Map();
+        return EMPTY_GLOSSARY;
+      });
   }
   return glossaryLoadPromise;
 }

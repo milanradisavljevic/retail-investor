@@ -1,5 +1,5 @@
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'CHF' | 'JPY';
-export type AssetType = 'equity' | 'commodity';
+export type AssetType = 'equity' | 'commodity' | 'etf';
 export type QuantityUnit = 'shares' | 'grams' | 'ounces';
 
 export interface PortfolioPositionInput {
@@ -93,7 +93,7 @@ export const PHYSICAL_METALS: Record<string, { name: string; priceTicker: string
 
 export const SUPPORTED_CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'CHF', 'JPY'];
 
-export const VALID_ASSET_TYPES: AssetType[] = ['equity', 'commodity'];
+export const VALID_ASSET_TYPES: AssetType[] = ['equity', 'commodity', 'etf'];
 
 export const VALID_QUANTITY_UNITS: QuantityUnit[] = ['shares', 'grams', 'ounces'];
 
@@ -114,5 +114,10 @@ export function getPhysicalMetalInfo(symbol: string): { name: string; priceTicke
 }
 
 export function inferAssetType(symbol: string): AssetType {
-  return isPhysicalMetal(symbol) ? 'commodity' : 'equity';
+  if (isPhysicalMetal(symbol)) return 'commodity';
+  return 'equity';
+}
+
+export function isETFSymbol(symbol: string, etfMetadata: Record<string, unknown>): boolean {
+  return symbol in etfMetadata;
 }

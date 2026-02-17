@@ -11,10 +11,10 @@ type SortKey = 'totalReturn' | 'sharpe' | 'maxDrawdown' | 'outperformance';
 type SortDir = 'asc' | 'desc';
 
 const headers: { key: SortKey; label: string; align?: 'left' | 'right' }[] = [
-  { key: 'totalReturn', label: 'Total Return', align: 'right' },
+  { key: 'totalReturn', label: 'Gesamtrendite', align: 'right' },
   { key: 'sharpe', label: 'Sharpe', align: 'right' },
   { key: 'maxDrawdown', label: 'Max DD', align: 'right' },
-  { key: 'outperformance', label: 'vs. Bench', align: 'right' },
+  { key: 'outperformance', label: 'vs. Benchmark', align: 'right' },
 ];
 
 function formatPct(value: number, digits = 2): string {
@@ -61,7 +61,7 @@ export default function StrategyComparison({ strategies }: Props) {
         <table className="w-full min-w-[640px]">
           <thead className="sticky top-0 bg-slate-900">
             <tr className="border-b border-slate-700 text-xs uppercase tracking-wide text-slate-400">
-              <th className="p-4 text-left">Strategy</th>
+              <th className="p-4 text-left">Strategie</th>
               {headers.map((h) => (
                 <th
                   key={h.key}

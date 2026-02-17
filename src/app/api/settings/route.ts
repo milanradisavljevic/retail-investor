@@ -6,6 +6,16 @@ import { DEFAULT_SETTINGS } from '@/lib/settings/defaults';
 
 const SETTINGS_FILE = join(process.cwd(), 'data', 'settings.json');
 
+function enforceGerman(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    general: {
+      ...settings.general,
+      language: 'de',
+    },
+  };
+}
+
 /**
  * Load settings from JSON file
  */
@@ -20,7 +30,7 @@ function loadSettings(): AppSettings {
     
     // Deep merge with defaults to ensure all fields exist
     const merged = deepMerge(DEFAULT_SETTINGS, parsed);
-    return merged;
+    return enforceGerman(merged);
   } catch (error) {
     console.error('[Settings API] Failed to load settings:', error);
     return DEFAULT_SETTINGS;
@@ -32,11 +42,12 @@ function loadSettings(): AppSettings {
  */
 function saveSettings(settings: AppSettings): void {
   try {
+    const normalized = enforceGerman(settings);
     const dir = join(process.cwd(), 'data');
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
-    writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+    writeFileSync(SETTINGS_FILE, JSON.stringify(normalized, null, 2), 'utf-8');
   } catch (error) {
     console.error('[Settings API] Failed to save settings:', error);
     throw error;
@@ -107,7 +118,7 @@ export async function POST(request: NextRequest) {
     const current = loadSettings();
     
     // Merge updates
-    const updated = deepMerge(current, updates as Record<string, unknown>);
+    const updated = enforceGerman(deepMerge(current, updates as Record<string, unknown>));
     
     // Save to file
     saveSettings(updated);

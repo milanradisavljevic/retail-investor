@@ -5,7 +5,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { addPosition } from '@/data/portfolio';
 import type { PortfolioImportResult, PortfolioPositionInput } from '@/types/portfolio';
 import { inferAssetType } from '@/types/portfolio';
-import { initializeDatabase, closeDatabase } from '@/data/db';
+import { getDatabase } from '@/data/db';
+
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+const MAX_ROWS = 500;
 
 function parseCSV(content: string): string[][] {
   const lines = content.split(/\r?\n/);
@@ -92,8 +95,8 @@ function validateAndParseRow(
     };
   }
   
-  let assetType = rowData.type?.toLowerCase() as 'equity' | 'commodity' | undefined;
-  if (!assetType || !['equity', 'commodity'].includes(assetType)) {
+  let assetType = rowData.type?.toLowerCase() as 'equity' | 'commodity' | 'etf' | undefined;
+  if (!assetType || !['equity', 'commodity', 'etf'].includes(assetType)) {
     assetType = inferAssetType(rowData.symbol);
   }
   
@@ -114,15 +117,29 @@ function validateAndParseRow(
 
 export async function POST(request: NextRequest) {
   try {
-    initializeDatabase();
+    getDatabase();
     
     const formData = await request.formData();
-    const file = formData.get('file');
+    const file = formData.get('file') as File | null;
     
-    if (!file || !(file instanceof File)) {
+    if (!file) {
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    if (!(file instanceof File)) {
       return NextResponse.json(
         { error: 'No file uploaded. Use multipart/form-data with a "file" field.' },
         { status: 400 }
+      );
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: 'File too large. Maximum size: 1MB' },
+        { status: 413 }
       );
     }
     
@@ -133,6 +150,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'CSV file is empty' },
         { status: 400 }
+      );
+    }
+
+    const dataRows = Math.max(0, rows.length - 1);
+    if (dataRows > MAX_ROWS) {
+      return NextResponse.json(
+        { error: `Too many rows (${dataRows}). Maximum: ${MAX_ROWS}` },
+        { status: 413 }
       );
     }
     
@@ -186,7 +211,5 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to import portfolio', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    closeDatabase();
   }
 }

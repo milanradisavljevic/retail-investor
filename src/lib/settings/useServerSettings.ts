@@ -17,14 +17,14 @@ export function useServerSettings() {
       try {
         const response = await fetch('/api/settings');
         if (!response.ok) {
-          throw new Error('Failed to load settings');
+          throw new Error('Einstellungen konnten nicht geladen werden');
         }
         const data = (await response.json()) as AppSettings;
         setSettings(data);
         setIsReady(true);
       } catch (err) {
         console.error('[useServerSettings] Failed to load settings:', err);
-        setError('Failed to load settings');
+        setError('Einstellungen konnten nicht geladen werden');
         setIsReady(true);
       }
     };
@@ -46,7 +46,7 @@ export function useServerSettings() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save settings');
+        throw new Error('Einstellungen konnten nicht gespeichert werden');
       }
 
       const data = (await response.json()) as AppSettings;
@@ -54,7 +54,7 @@ export function useServerSettings() {
       setLastSavedAt(Date.now());
     } catch (err) {
       console.error('[useServerSettings] Failed to save settings:', err);
-      setError('Failed to save settings');
+      setError('Einstellungen konnten nicht gespeichert werden');
     } finally {
       setIsSaving(false);
     }
@@ -81,7 +81,7 @@ export function useServerSettings() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to reset settings');
+        throw new Error('Einstellungen konnten nicht zurueckgesetzt werden');
       }
 
       const data = (await response.json()) as AppSettings;
@@ -89,7 +89,7 @@ export function useServerSettings() {
       setLastSavedAt(Date.now());
     } catch (err) {
       console.error('[useServerSettings] Failed to reset settings:', err);
-      setError('Failed to reset settings');
+      setError('Einstellungen konnten nicht zurueckgesetzt werden');
     } finally {
       setIsSaving(false);
     }

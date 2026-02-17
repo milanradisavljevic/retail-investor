@@ -45,11 +45,11 @@ function scoreBorderClass(score: number | null): string {
 }
 
 function buildHint(entry: EarningsCalendarEntry): string {
-  const scoreLabel = entry.score !== null ? entry.score.toFixed(0) : 'n/a';
+  const scoreLabel = entry.score !== null ? entry.score.toFixed(0) : 'k. A.';
   const dayLabel = entry.days_until <= 0 ? 'heute' : `in ${entry.days_until} Tagen`;
 
   if (entry.score === null) {
-    return `${entry.symbol} berichtet ${dayLabel}. Score: n/a. Kritisch: Ohne Score fehlt eine klare Pre-Earnings Einordnung.`;
+    return `${entry.symbol} berichtet ${dayLabel}. Score: k. A. Kritisch: Ohne Score fehlt eine klare Pre-Earnings Einordnung.`;
   }
 
   if (entry.score > 70) {
@@ -90,7 +90,7 @@ export default function PortfolioUpcomingEarnings() {
         }
       } catch (err) {
         if (active) {
-          setError('Earnings data unavailable');
+          setError('Earnings-Daten nicht verfuegbar');
         }
       } finally {
         if (active) {

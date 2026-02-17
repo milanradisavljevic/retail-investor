@@ -12,7 +12,7 @@ type MacroCardConfig = {
 
 const CARD_CONFIG: MacroCardConfig[] = [
   { ticker: 'GC=F', label: 'Gold' },
-  { ticker: 'CL=F', label: 'WTI Oil' },
+  { ticker: 'CL=F', label: 'WTI Oel' },
   { ticker: '^TNX', label: '10Y Yield' },
   { ticker: 'DX-Y.NYB', label: 'DXY' },
 ];
@@ -177,10 +177,10 @@ export default function MacroSparklineCards() {
 
   return (
     <div className="mt-4 border-t border-slate-800 pt-4">
-      <p className="mb-3 text-[11px] uppercase tracking-[0.16em] text-slate-500">Commodities &amp; Rates</p>
+      <p className="mb-3 text-[11px] uppercase tracking-[0.16em] text-slate-500">Rohstoffe &amp; Zinsen</p>
       {error ? (
         <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400">
-          Macro data unavailable
+          Makro-Daten nicht verfuegbar
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">

@@ -5,11 +5,11 @@ import { NextResponse } from 'next/server';
 import { getPositions } from '@/data/portfolio';
 import { enrichPositions, calculatePortfolioSummary, getPortfolioScore } from '@/data/portfolioEnrichment';
 import type { PortfolioSummary } from '@/types/portfolio';
-import { initializeDatabase, closeDatabase } from '@/data/db';
+import { getDatabase } from '@/data/db';
 
 export async function GET() {
   try {
-    initializeDatabase();
+    getDatabase();
     
     const positions = getPositions();
     const enrichedPositions = enrichPositions(positions);
@@ -53,7 +53,5 @@ export async function GET() {
       { error: 'Failed to load portfolio summary', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    closeDatabase();
   }
 }

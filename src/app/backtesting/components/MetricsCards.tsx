@@ -13,7 +13,7 @@ interface MetricCardProps {
   value: string;
   subtitle?: string;
   highlight?: 'up' | 'down' | 'neutral';
-  accent?: string;
+  accent?: ReactNode;
 }
 
 function MetricCard({ title, value, subtitle, highlight = 'neutral', accent }: MetricCardProps) {
@@ -39,12 +39,19 @@ function formatPct(value: number, digits = 2): string {
   return `${value.toFixed(digits)}%`;
 }
 
+function formatNumber(value: number | null | undefined, digits = 2): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '–';
+  return value.toFixed(digits);
+}
+
 export default function MetricsCards({ summary }: Props) {
   const { metrics, benchmark, outperformance_pct } = summary;
+  const hasCalmarData = metrics.calmar_ratio !== undefined || benchmark.calmar_ratio !== undefined;
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       <MetricCard
-        title="Total Return"
+        title="Gesamtrendite"
         value={formatPct(metrics.total_return_pct)}
         highlight={metrics.total_return_pct >= 0 ? 'up' : 'down'}
         accent={`vs. S&P 500: ${formatPct(outperformance_pct, 1)}`}
@@ -62,10 +69,20 @@ export default function MetricsCards({ summary }: Props) {
         accent={`Benchmark: ${formatPct(benchmark.max_drawdown_pct)}`}
       />
       <MetricCard
-        title="Volatility"
+        title="Volatilitaet"
         value={formatPct(metrics.volatility_pct ?? 0)}
         highlight="neutral"
-        accent="Annualized"
+        subtitle={hasCalmarData ? undefined : 'Annualisiert'}
+        accent={
+          hasCalmarData
+            ? (
+              <>
+                <GlossaryTooltip term="calmar_ratio">Calmar Ratio</GlossaryTooltip>
+                {`: ${formatNumber(metrics.calmar_ratio)} · Benchmark: ${formatNumber(benchmark.calmar_ratio)}`}
+              </>
+            )
+            : 'Annualisiert'
+        }
       />
     </div>
   );

@@ -17,6 +17,7 @@ export interface BacktestSummary {
     annualized_return_pct: number;
     max_drawdown_pct: number;
     sharpe_ratio: number;
+    calmar_ratio?: number;
     volatility_pct?: number;
   };
   benchmark: {
@@ -24,6 +25,7 @@ export interface BacktestSummary {
     annualized_return_pct: number;
     max_drawdown_pct: number;
     sharpe_ratio: number;
+    calmar_ratio?: number;
     volatility_pct?: number;
   };
   outperformance_pct: number;

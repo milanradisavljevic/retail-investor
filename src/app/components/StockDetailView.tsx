@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { PriceTargetCard } from './PriceTargetCard';
 import { PeerComparison } from './PeerComparison';
 import { ScoreHistory } from './ScoreHistory';
@@ -53,6 +54,23 @@ interface Props {
   nextSymbol: string | null;
 }
 
+function getFilenameFromDisposition(
+  contentDisposition: string | null,
+  fallback: string
+): string {
+  if (!contentDisposition) return fallback;
+  const utfMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1].replace(/["']/g, '').trim());
+    } catch {
+      return utfMatch[1].replace(/["']/g, '').trim();
+    }
+  }
+  const plainMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+  return plainMatch?.[1]?.trim() || fallback;
+}
+
 function ScorePill({ label, value }: { label: string; value: number }) {
   const getScoreColor = (v: number) => {
     if (v >= 70) return 'text-accent-green';
@@ -77,7 +95,7 @@ function SignalBadge({ severity }: { severity: Signal['severity'] }) {
   const label: Record<Signal['severity'], string> = {
     good: 'Positive',
     bad: 'Negative',
-    warn: 'Warning',
+    warn: 'Warnung',
     info: 'Info',
   };
   return (
@@ -156,6 +174,7 @@ export function StockDetailView({
   nextSymbol,
 }: Props) {
   const { t } = useTranslation();
+  const [pdfLoading, setPdfLoading] = useState(false);
   const displayName = companyName ?? score.company_name ?? score.symbol;
   const dq = score.data_quality;
   const priceTarget = score.price_target;
@@ -188,12 +207,44 @@ export function StockDetailView({
       ? `${fmtNumber(low52w, { prefix: '$' })} - ${fmtNumber(high52w, { prefix: '$' })}`
       : '—';
 
+  const handlePdfDownload = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      const response = await fetch(`/api/export/pdf?symbol=${encodeURIComponent(score.symbol)}`, {
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = getFilenameFromDisposition(
+        response.headers.get('Content-Disposition'),
+        `INTRINSIC-Stock-${score.symbol}-${new Date().toISOString().slice(0, 10)}.pdf`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Stock PDF download failed', error);
+      window.alert('PDF-Export fehlgeschlagen. Bitte erneut versuchen.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
         <Link href="/" className="hover:text-text-primary">Dashboard</Link>
         <span>&gt;</span>
-        <span>Stock</span>
+        <span>Aktie</span>
         <span>&gt;</span>
         <span className="font-medium text-text-primary">{score.symbol}</span>
       </div>
@@ -205,7 +256,7 @@ export function StockDetailView({
             {displayName} <span className="text-text-muted">({score.symbol})</span>
           </h1>
           <p className="text-sm text-text-secondary">
-            Universe: <span className="text-text-primary">{run.universe.definition.name}</span> · {run.as_of_date}
+            Universum: <span className="text-text-primary">{run.universe.definition.name}</span> · {run.as_of_date}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <KeyMetricBadge label="Market Cap" value={marketCap === null ? '—' : `$${formatCompactNumber(marketCap)}`} />
@@ -220,6 +271,26 @@ export function StockDetailView({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handlePdfDownload}
+            disabled={pdfLoading}
+            className="inline-flex items-center gap-2 rounded-lg border border-navy-700 px-3 py-1 text-sm text-text-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              aria-hidden="true"
+            >
+              <path d="M10 3v8" strokeLinecap="round" />
+              <path d="m6.5 8.5 3.5 3.5 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M4 14.5h12" strokeLinecap="round" />
+            </svg>
+            <span>{pdfLoading ? 'Report wird generiert...' : 'PDF-Report'}</span>
+          </button>
           <Link
             href="/"
             className="rounded-lg border border-navy-700 px-3 py-1 text-sm text-text-secondary hover:text-text-primary"
@@ -237,20 +308,20 @@ export function StockDetailView({
               href={`/stock/${prevSymbol}`}
               className="rounded-lg border border-navy-700 px-3 py-1 text-sm text-text-secondary hover:text-text-primary"
             >
-              Prev: {prevSymbol}
+              Vorher: {prevSymbol}
             </Link>
           ) : (
-            <span className="rounded-lg border border-navy-800 px-3 py-1 text-sm text-text-muted">Prev: —</span>
+            <span className="rounded-lg border border-navy-800 px-3 py-1 text-sm text-text-muted">Vorher: —</span>
           )}
           {nextSymbol ? (
             <Link
               href={`/stock/${nextSymbol}`}
               className="rounded-lg border border-navy-700 px-3 py-1 text-sm text-text-secondary hover:text-text-primary"
             >
-              Next: {nextSymbol}
+              Naechster: {nextSymbol}
             </Link>
           ) : (
-            <span className="rounded-lg border border-navy-800 px-3 py-1 text-sm text-text-muted">Next: —</span>
+            <span className="rounded-lg border border-navy-800 px-3 py-1 text-sm text-text-muted">Naechster: —</span>
           )}
         </div>
       </div>

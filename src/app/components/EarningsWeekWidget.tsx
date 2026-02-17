@@ -50,7 +50,7 @@ export default function EarningsWeekWidget() {
         }
       } catch (err) {
         if (active) {
-          setError('Earnings data unavailable');
+          setError('Earnings-Daten nicht verfuegbar');
         }
       } finally {
         if (active) {

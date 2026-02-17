@@ -57,8 +57,8 @@ export default async function StockDetailPage({ params }: Params) {
   if (!latest) {
     return (
       <div className="text-center py-16">
-        <h2 className="text-xl font-semibold text-text-primary mb-3">No runs available</h2>
-        <p className="text-text-secondary">Generate a daily run to view stock details.</p>
+        <h2 className="text-xl font-semibold text-text-primary mb-3">Keine Runs verfuegbar</h2>
+        <p className="text-text-secondary">Fuehre einen Daily Run aus, um Aktiendetails zu sehen.</p>
       </div>
     );
   }
@@ -71,16 +71,16 @@ export default async function StockDetailPage({ params }: Params) {
     return (
       <div className="text-center py-16">
         <h2 className="text-xl font-semibold text-text-primary mb-3">
-          {symbol} not in latest run
+          {symbol} nicht im neuesten Run
         </h2>
         <p className="text-text-secondary">
-          The latest briefing does not include {getCompanyName(symbol) ?? symbol}.
+          Das aktuelle Briefing enthaelt {getCompanyName(symbol) ?? symbol} nicht.
         </p>
         <a
           href="/"
           className="mt-4 inline-block px-4 py-2 rounded-lg border border-navy-700 text-text-secondary hover:text-text-primary"
         >
-          ← Back to Dashboard
+          ← Zurueck zum Dashboard
         </a>
       </div>
     );

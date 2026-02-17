@@ -38,6 +38,7 @@ export function initializeDatabase(): Database.Database {
 
   // Enable WAL mode for better concurrency
   db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
 
   // Run migrations (idempotent)
   runMigrations(db);
