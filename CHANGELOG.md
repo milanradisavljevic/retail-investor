@@ -8,6 +8,39 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-02-18 (GLM)
+
+#### Added
+- **PWA Support (`public/manifest.json`, `public/icons/`, `public/sw.js`)** — Ich (GLM) habe Progressive Web App Support hinzugefügt: Web App Manifest mit PNG-Icons (192x192, 512x512, maskable), Apple Touch Icon, minimaler Service Worker für Install-Prompt. App ist jetzt auf Desktop und Mobile als installierbare Web-App verfügbar (kein Offline-Support, da Live-Daten benötigt werden).
+- **PWA Metadata (`src/app/layout.tsx`, `src/app/components/PWARegister.tsx`)** — Ich (GLM) habe PWA-Metadata (manifest, appleWebApp, themeColor, viewport) und Service-Worker-Registration hinzugefügt. Icons basieren auf dem bestehenden Lupe+Chart-Logo.
+
+#### Security
+- **Security Headers (`next.config.ts`)** — Ich (GLM) habe HTTP-Security-Header hinzugefügt: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: geolocation=(), microphone=(), camera=()`. CSP folgt in Phase 4 mit Auth/externen Skripten.
+- **Run Lock Mutex (`src/lib/runLock.ts`)** — Ich (GLM) habe ein In-Memory-Mutex implementiert, das parallele Runs verhindert. Bei Konflikt wird HTTP 409 Conflict zurückgegeben. Stale-Lock-Erkennung nach 30 Minuten für abgestürzte Prozesse.
+- **Input Validation Whitelist (`src/lib/inputValidation.ts`)** — Ich (GLM) habe Whitelist-basierte Validierung für `universe` und `preset` IDs implementiert: Pattern-Check (`^[a-z0-9_-]+$`), Längen-Limit (64 Zeichen), Existenz-Check in `config/universes/` und `config/presets/`. Verhindert Command Injection in spawn/exec-Aufrufen.
+- **Error Message Sanitization (`src/lib/apiError.ts`)** — Ich (GLM) habe `sanitizeError()` implementiert: Im Production-Mode werden generische Fehlermeldungen zurückgegeben, im Development-Mode die vollen Details. Integration in Portfolio-, Settings- und Run-Trigger-APIs.
+- **Request Size Limits (`src/middleware.ts`)** — Ich (GLM) habe ein globales 2MB Request-Size-Limit für alle API-POST/PUT/PATCH-Requests via Next.js Middleware hinzugefügt.
+- **Run-Trigger Routes gehärtet** — Ich (GLM) habe `src/app/api/run/trigger/route.ts`, `src/app/api/live-run/route.ts` und `src/app/api/backtest/run/route.ts` mit Input Validation, Run Lock und Error Sanitization ausgestattet. GET-Handler liefern jetzt Run-Status via `getRunStatus()`.
+
+#### Fixed
+- **process.env-Mutationen entfernt (`src/app/api/live-run/route.ts`, `src/scoring/engine.ts`, `src/core/config.ts`)** — Ich (GLM) habe das kritische Security-Problem behoben: `scoreUniverse()` akzeptiert jetzt `universeOverride` und `weightsOverride` als Parameter statt `process.env` zu mutieren. Neue Funktionen: `getConfigWithUniverse()`, `getScoringConfigWithWeights()`. Keine globalen State-Mutationen mehr bei parallelen Runs.
+- **PWA Icons: PNG statt SVG (`public/icons/*.png`)** — Ich (GLM) habe PNG-Icons (192x192, 512x512, maskable, apple-touch-icon) mit `sharp` generiert und das Manifest aktualisiert. PNGs gewährleisten Kompatibilität mit iOS Safari < 16.4 und älteren Android-Versionen. SVGs bleiben als Fallback für moderne Browser.
+
+### 2026-02-18 (Codex)
+
+#### Added
+- **CI/CD Pipeline (`.github/workflows/ci.yml`)** — Ich (Codex) habe eine GitHub-Actions-Pipeline ergänzt: TypeScript-Check, ESLint (derzeit non-blocking), Next.js Build, Vitest-Run (derzeit non-blocking), Python-Syntax-Checks sowie `npm audit`/`pip-audit` (non-blocking). Trigger: Push auf `main`/`develop`, PR auf `main`, plus `workflow_dispatch`.
+- **Deployment-Preparation Job (`.github/workflows/ci.yml`)** — Ich (Codex) habe einen separaten `deploy-check`-Job für `main` ergänzt, der nach erfolgreichem CI-Lauf die Deployment-Bereitschaft bestätigt (kompatibel mit manuellem Vercel- oder VPS-Deployment).
+- **Pre-Deploy Check Script (`scripts/pre-deploy-check.sh`)** — Ich (Codex) habe ein ausführbares lokales Vorab-Check-Skript ergänzt (TypeScript, Build, Security-Header-Prüfung, Env-Datei-Check, Hardcoded-Secret-Scan, npm-Audit-Hinweis).
+- **Environment-Template (`.env.example`)** — Ich (Codex) habe eine zentrale Referenzdatei für Umgebungsvariablen hinzugefügt (Data-Provider, App, DB, Runtime, optionale LLM-Keys) inklusive Hinweis zur regelmäßigen Rotation von `FMP_API_KEY`.
+- **Gitignore-Härtung (`.gitignore`)** — Ich (Codex) habe die Ignore-Regeln für Runtime-Daten/DB-Artefakte konkretisiert und `!.env.example` ergänzt, damit das Env-Template versioniert bleibt.
+
+#### Fixed
+- **Backtest API Fehlerdiagnose + Stabilität (`src/app/api/backtest/run/route.ts`)** — Ich (Codex) habe die Backtest-Route robuster gemacht: `PYTHON_EXECUTABLE` wird nun explizit gesetzt (für `.venv`-Python), das Timeout wurde auf 30 Minuten erhöht, `topK` wird korrekt als `TOP_N` an den Runner durchgereicht, und bei Fehlern liefert die API jetzt detaillierte Ursachen (`detail`, `code`, `signal`, `hint`) statt nur generischem `500`.
+- **Strategy-Lab Backtest-Fehlermeldung (`src/app/strategy-lab/StrategyLabClient.tsx`)** — Ich (Codex) lese die JSON-Fehlerantwort von `/api/backtest/run` jetzt auch im Fehlerfall aus und zeige die Backend-Details in der UI an, damit nicht mehr nur `Backtest-Run fehlgeschlagen (500)` sichtbar ist.
+- **Python-Interpreter-Auswahl für yfinance-Provider (`src/providers/yfinance_provider.ts`, `src/providers/yfinance_batch_provider.ts`)** — Ich (Codex) habe beide Provider auf `resolvePythonExecutable()` umgestellt, damit lokale `.venv`-Interpreter zuverlässig verwendet werden statt hartem `python3`.
+- **Schema-toleranter MarketDataBridge-Fallback (`src/data/market-data-bridge.ts`)** — Ich (Codex) habe die Bridge-Queries (Fundamentals/Technicals/Profile/avgMetrics) fehlertolerant gemacht: bei alten/abweichenden SQLite-Schemata wird jetzt einmalig gewarnt und `null` zurückgegeben, damit der Run auf Provider-Fallback weiterlaufen kann statt pro Symbol zu crashen.
+
 ### 2026-02-17 (Codex)
 
 #### Added
