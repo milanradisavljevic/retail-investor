@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import type { AppSettings, PartialAppSettings } from '@/lib/settings/types';
 import { DEFAULT_SETTINGS } from '@/lib/settings/defaults';
+import { sanitizeError } from '@/lib/apiError';
 
 const SETTINGS_FILE = join(process.cwd(), 'data', 'settings.json');
 
@@ -16,9 +17,6 @@ function enforceGerman(settings: AppSettings): AppSettings {
   };
 }
 
-/**
- * Load settings from JSON file
- */
 function loadSettings(): AppSettings {
   if (!existsSync(SETTINGS_FILE)) {
     return DEFAULT_SETTINGS;
@@ -28,7 +26,6 @@ function loadSettings(): AppSettings {
     const content = readFileSync(SETTINGS_FILE, 'utf-8');
     const parsed = JSON.parse(content);
     
-    // Deep merge with defaults to ensure all fields exist
     const merged = deepMerge(DEFAULT_SETTINGS, parsed);
     return enforceGerman(merged);
   } catch (error) {
@@ -37,9 +34,6 @@ function loadSettings(): AppSettings {
   }
 }
 
-/**
- * Save settings to JSON file
- */
 function saveSettings(settings: AppSettings): void {
   try {
     const normalized = enforceGerman(settings);
@@ -54,9 +48,6 @@ function saveSettings(settings: AppSettings): void {
   }
 }
 
-/**
- * Deep merge utility
- */
 function deepMerge<T extends Record<string, unknown>>(
   target: T,
   source: Partial<T>
@@ -89,10 +80,6 @@ function deepMerge<T extends Record<string, unknown>>(
   return result;
 }
 
-/**
- * GET /api/settings
- * Returns current settings
- */
 export async function GET() {
   try {
     const settings = loadSettings();
@@ -100,34 +87,27 @@ export async function GET() {
   } catch (error) {
     console.error('[Settings API] GET error:', error);
     return NextResponse.json(
-      { error: 'Failed to load settings' },
+      { error: sanitizeError(error) },
       { status: 500 }
     );
   }
 }
 
-/**
- * POST /api/settings
- * Updates and saves settings
- */
 export async function POST(request: NextRequest) {
   try {
     const updates = (await request.json()) as PartialAppSettings;
     
-    // Load current settings
     const current = loadSettings();
     
-    // Merge updates
     const updated = enforceGerman(deepMerge(current, updates as Record<string, unknown>));
     
-    // Save to file
     saveSettings(updated);
     
     return NextResponse.json(updated);
   } catch (error) {
     console.error('[Settings API] POST error:', error);
     return NextResponse.json(
-      { error: 'Failed to save settings' },
+      { error: sanitizeError(error) },
       { status: 500 }
     );
   }

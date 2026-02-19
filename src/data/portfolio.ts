@@ -12,8 +12,6 @@ import type {
 } from '@/types/portfolio';
 import { inferAssetType, SUPPORTED_CURRENCIES as currencies, VALID_ASSET_TYPES as assetTypes, VALID_QUANTITY_UNITS as quantityUnits } from '@/types/portfolio';
 
-const USER_ID = 'default';
-
 function validateSymbol(symbol: string): void {
   if (!symbol || symbol.trim() === '') {
     throw new Error('symbol is required and cannot be empty');
@@ -78,7 +76,7 @@ function validatePositionInput(input: PortfolioPositionInput): void {
   }
 }
 
-export function getPositions(userId: string = USER_ID): PortfolioPosition[] {
+export function getPositions(userId: string): PortfolioPosition[] {
   const db = getDatabase();
   const stmt = db.prepare(`
     SELECT * FROM portfolio_positions 
@@ -88,7 +86,7 @@ export function getPositions(userId: string = USER_ID): PortfolioPosition[] {
   return stmt.all(userId) as PortfolioPosition[];
 }
 
-export function getPositionById(id: number, userId: string = USER_ID): PortfolioPosition | null {
+export function getPositionById(id: number, userId: string): PortfolioPosition | null {
   const db = getDatabase();
   const stmt = db.prepare(`
     SELECT * FROM portfolio_positions 
@@ -98,7 +96,7 @@ export function getPositionById(id: number, userId: string = USER_ID): Portfolio
   return row || null;
 }
 
-export function getPositionsByType(assetType: AssetType, userId: string = USER_ID): PortfolioPosition[] {
+export function getPositionsByType(assetType: AssetType, userId: string): PortfolioPosition[] {
   const db = getDatabase();
   const stmt = db.prepare(`
     SELECT * FROM portfolio_positions 
@@ -108,7 +106,7 @@ export function getPositionsByType(assetType: AssetType, userId: string = USER_I
   return stmt.all(userId, assetType) as PortfolioPosition[];
 }
 
-export function addPosition(input: PortfolioPositionInput, userId: string = USER_ID): number {
+export function addPosition(input: PortfolioPositionInput, userId: string): number {
   validatePositionInput(input);
   
   const db = getDatabase();
@@ -144,7 +142,7 @@ export function addPosition(input: PortfolioPositionInput, userId: string = USER
   return result.lastInsertRowid as number;
 }
 
-export function updatePosition(id: number, updates: Partial<PortfolioPositionInput>, userId: string = USER_ID): boolean {
+export function updatePosition(id: number, updates: Partial<PortfolioPositionInput>, userId: string): boolean {
   const allowedFields = ['symbol', 'asset_type', 'quantity', 'quantity_unit', 'buy_price', 'buy_date', 'currency', 'broker', 'notes'];
   
   const updateFields: string[] = [];
@@ -186,7 +184,7 @@ export function updatePosition(id: number, updates: Partial<PortfolioPositionInp
   return result.changes > 0;
 }
 
-export function deletePosition(id: number, userId: string = USER_ID): boolean {
+export function deletePosition(id: number, userId: string): boolean {
   const db = getDatabase();
   const stmt = db.prepare(`
     DELETE FROM portfolio_positions 
@@ -196,7 +194,7 @@ export function deletePosition(id: number, userId: string = USER_ID): boolean {
   return result.changes > 0;
 }
 
-export function getPositionCount(userId: string = USER_ID): { equity: number; commodity: number } {
+export function getPositionCount(userId: string): { equity: number; commodity: number } {
   const db = getDatabase();
   const stmt = db.prepare(`
     SELECT asset_type, COUNT(*) as count 

@@ -11,6 +11,7 @@ import type {
   TechnicalMetrics,
 } from './types';
 import { createChildLogger } from '@/utils/logger';
+import { resolvePythonExecutable } from '@/utils/python';
 
 const logger = createChildLogger('yfinance_batch');
 
@@ -31,7 +32,7 @@ interface BatchResult {
 }
 
 export class YFinanceBatchProvider implements MarketDataProvider {
-  private readonly pythonPath = 'python3';
+  private readonly pythonPath = resolvePythonExecutable();
   private readonly batchScriptPath = path.join(
     process.cwd(),
     'src',

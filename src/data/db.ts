@@ -4,7 +4,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { readFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { createChildLogger } from '@/utils/logger';
 
@@ -102,9 +102,7 @@ export function resetDatabase(): void {
 
   const dbPath = getDbPath();
   if (existsSync(dbPath)) {
-    const { unlinkSync } = require('fs');
     unlinkSync(dbPath);
-    // Also remove WAL and SHM files if they exist
     const walPath = dbPath + '-wal';
     const shmPath = dbPath + '-shm';
     if (existsSync(walPath)) unlinkSync(walPath);

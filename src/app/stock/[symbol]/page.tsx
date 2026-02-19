@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { StockDetailView } from '@/app/components/StockDetailView';
 import { getCompanyName } from '@/core/company';
 import { getLatestRun } from '@/lib/runLoader';
@@ -76,12 +77,12 @@ export default async function StockDetailPage({ params }: Params) {
         <p className="text-text-secondary">
           Das aktuelle Briefing enthaelt {getCompanyName(symbol) ?? symbol} nicht.
         </p>
-        <a
+        <Link
           href="/"
           className="mt-4 inline-block px-4 py-2 rounded-lg border border-navy-700 text-text-secondary hover:text-text-primary"
         >
           ← Zurueck zum Dashboard
-        </a>
+        </Link>
       </div>
     );
   }

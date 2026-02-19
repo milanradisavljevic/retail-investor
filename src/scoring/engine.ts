@@ -4,9 +4,9 @@
  */
 
 import { createChildLogger } from '@/utils/logger';
-import { getUniverse } from '@/core/universe';
-import { getScoringConfig } from './scoring_config';
-import { getConfig } from '@/core/config';
+import { getUniverse, getUniverseWithConfig, getUniverseInfoWithConfig } from '@/core/universe';
+import { getScoringConfig, getScoringConfigWithWeights, type PillarWeights } from './scoring_config';
+import { getConfig, getConfigWithUniverse, type AppConfig } from '@/core/config';
 import {
   calculateFundamentalScore,
   type FundamentalScoreResult,
@@ -62,6 +62,7 @@ import {
 } from './filters';
 import { PerformanceTracker } from '@/lib/performance/tracker';
 import { progressStore } from '@/lib/progress/progressStore';
+import { updateRunProgress } from '@/data/repositories/run_lock_repo';
 
 const logger = createChildLogger('scoring_engine');
 
@@ -229,21 +230,29 @@ export async function scoreSymbol(
 
 export async function scoreUniverse(
   filterConfig?: Partial<LiveRunFilterConfig>,
-  runIdOverride?: string
+  runIdOverride?: string,
+  options?: {
+    universeOverride?: string;
+    weightsOverride?: Partial<PillarWeights>;
+  }
 ): Promise<ScoringResult> {
-  const symbols = getUniverse();
-  const appConfig = getConfig();
+  const appConfig = options?.universeOverride
+    ? getConfigWithUniverse(options.universeOverride)
+    : getConfig();
+  const symbols = getUniverseWithConfig(appConfig);
+  const baseScoringConfig = getScoringConfig();
+  const scoringConfig = options?.weightsOverride
+    ? getScoringConfigWithWeights(options.weightsOverride, baseScoringConfig)
+    : baseScoringConfig;
   const errors: string[] = [];
   const scores: SymbolScore[] = [];
   const scanOnlyScores: SymbolScore[] = [];
   const scoredAt = Date.now();
-  const scoringConfig = getScoringConfig();
   const pipelineCfg = scoringConfig.pipeline ?? {};
   const maxSymbolsPerRun = pipelineCfg.maxSymbolsPerRun;
   const throttler = new RequestThrottler(pipelineCfg.throttleMs ?? 0);
   const MAX_CONCURRENCY = pipelineCfg.maxConcurrency ?? 4;
 
-  // Initialize run ID and trackers
   const runId = runIdOverride || `run_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const perfTracker = new PerformanceTracker(
     runId,
@@ -251,8 +260,8 @@ export async function scoreUniverse(
     symbols.length
   );
 
-  // Initialize progress tracking
   progressStore.initRun(runId, appConfig.universe.name, symbols.length);
+  updateRunProgress(1, `Initialisierung (${appConfig.universe.name})...`);
 
   // Apply filters BEFORE scoring to save API calls
   let filteredResult: FilteredSymbolsResult | null = null;
@@ -321,6 +330,7 @@ export async function scoreUniverse(
     // Pass 1: fetch raw data with cache + throttling
     perfTracker.startPhase('data_fetch');
     progressStore.updateProgress(runId, { currentPhase: 'data_fetch' });
+    updateRunProgress(5, 'Marktdaten werden geladen...');
 
     const BATCH_SIZE = 50; // Fetch 50 symbols per batch
     const USE_BATCH_MODE = process.env.BATCH_FETCH_ENABLED !== 'false'; // Default: enabled
@@ -362,6 +372,11 @@ export async function scoreUniverse(
           progressStore.updateProgress(runId, {
             processedSymbols: Math.min(i + BATCH_SIZE, symbolsToScore.length),
           });
+          const processed = Math.min(i + BATCH_SIZE, symbolsToScore.length);
+          const pct = symbolsToScore.length > 0
+            ? 5 + Math.round((processed / symbolsToScore.length) * 50)
+            : 5;
+          updateRunProgress(pct, `Daten laden (${processed}/${symbolsToScore.length})`);
 
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -439,6 +454,10 @@ export async function scoreUniverse(
             }
           }
           processedCount++;
+          const pct = symbolsToScore.length > 0
+            ? 5 + Math.round((processedCount / symbolsToScore.length) * 50)
+            : 5;
+          updateRunProgress(pct, `Daten laden (${processedCount}/${symbolsToScore.length})`);
         },
         Math.min(MAX_CONCURRENCY, symbolsToScore.length)
       );
@@ -578,6 +597,8 @@ export async function scoreUniverse(
                   psScore: 50,
                   roeScore: 50,
                   debtEquityScore: 50,
+                  grossMarginScore: 50,
+                  fcfYieldScore: 50,
                 },
                 missingFields: ['all'],
                 assumptions: [`Scoring failed: ${message}`],
@@ -606,6 +627,10 @@ export async function scoreUniverse(
           currentSymbol: symbol,
           processedSymbols: symbolsToScore.length + scoredCount,
         });
+        const pct = symbolsToScore.length > 0
+          ? 60 + Math.round((scoredCount / symbolsToScore.length) * 35)
+          : 60;
+        updateRunProgress(pct, `Scoring ${symbol} (${scoredCount}/${symbolsToScore.length})`);
       },
       Math.min(MAX_CONCURRENCY, symbolsToScore.length)
     );
@@ -745,6 +770,7 @@ export async function scoreUniverse(
     // Selection phase
     perfTracker.startPhase('selection');
     progressStore.updateProgress(runId, { currentPhase: 'selection' });
+    updateRunProgress(96, 'Top-Symbole werden selektiert...');
     const actualRequests =
       provider.getRequestCount() + (fallbackProvider ? fallbackProvider.getRequestCount() : 0);
     const estimatedRequests = symbolsToScore.length * 3;
@@ -780,6 +806,7 @@ export async function scoreUniverse(
     // Start persistence phase (computed by run builder/writer)
     perfTracker.startPhase('persistence');
     progressStore.updateProgress(runId, { currentPhase: 'persistence' });
+    updateRunProgress(98, 'Run wird finalisiert...');
 
     const dataQualitySummary = summarizeDataQuality(
       scores.map((s) => ({ symbol: s.symbol, dataQuality: s.dataQuality })),
@@ -808,6 +835,7 @@ export async function scoreUniverse(
 
     // Mark run as complete
     progressStore.completeRun(runId);
+    updateRunProgress(99, 'Run abgeschlossen, Ergebnisse werden bereitgestellt...');
 
     return {
       scores,

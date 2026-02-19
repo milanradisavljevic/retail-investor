@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPositionById, updatePosition, deletePosition } from '@/data/portfolio';
 import type { PortfolioPositionInput } from '@/types/portfolio';
 import { getDatabase } from '@/data/db';
+import { sanitizeError } from '@/lib/apiError';
+import { getAuthUserId } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -12,6 +14,7 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const userId = await getAuthUserId();
     getDatabase();
     
     const { id } = await params;
@@ -24,7 +27,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
     
-    const position = getPositionById(positionId);
+    const position = getPositionById(positionId, userId);
     
     if (!position) {
       return NextResponse.json(
@@ -35,9 +38,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     
     return NextResponse.json(position);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('[API /portfolio/[id]] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to load position', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: sanitizeError(error) },
       { status: 500 }
     );
   }
@@ -45,6 +51,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const userId = await getAuthUserId();
     getDatabase();
     
     const { id } = await params;
@@ -58,7 +65,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     
     const body = await request.json() as Partial<PortfolioPositionInput>;
-    const success = updatePosition(positionId, body);
+    const success = updatePosition(positionId, body, userId);
     
     if (!success) {
       return NextResponse.json(
@@ -72,17 +79,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       message: 'Position updated successfully',
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('[API /portfolio/[id]] Error updating position:', error);
     
     if (error instanceof Error && error.message.includes('must be')) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.message },
+        { error: 'Validation error' },
         { status: 400 }
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to update position', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: sanitizeError(error) },
       { status: 500 }
     );
   }
@@ -90,6 +100,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const userId = await getAuthUserId();
     getDatabase();
     
     const { id } = await params;
@@ -102,7 +113,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
     
-    const success = deletePosition(positionId);
+    const success = deletePosition(positionId, userId);
     
     if (!success) {
       return NextResponse.json(
@@ -116,9 +127,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       message: 'Position deleted successfully',
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('[API /portfolio/[id]] Error deleting position:', error);
     return NextResponse.json(
-      { error: 'Failed to delete position', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: sanitizeError(error) },
       { status: 500 }
     );
   }

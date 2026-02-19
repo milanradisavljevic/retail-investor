@@ -13,7 +13,9 @@
   "fundamental_thresholds": {
     "dividendYield": { "low": 1.5, "high": 7.0 },
     "payoutRatio": { "low": 0, "high": 75 },
-    "debtEquity": { "low": 0.1, "high": 2.5 }
+    "debtEquity": { "low": 0.1, "high": 2.5 },
+    "grossMargin": { "low": 20, "high": 60 },
+    "fcfYield": { "low": 2, "high": 10 }
   },
   "filters": {
     "min_quality_score": 55,

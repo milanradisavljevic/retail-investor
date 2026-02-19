@@ -6,8 +6,10 @@ import { addPosition } from '@/data/portfolio';
 import type { PortfolioImportResult, PortfolioPositionInput } from '@/types/portfolio';
 import { inferAssetType } from '@/types/portfolio';
 import { getDatabase } from '@/data/db';
+import { sanitizeError } from '@/lib/apiError';
+import { getAuthUserId } from '@/lib/auth';
 
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+const MAX_FILE_SIZE = 1 * 1024 * 1024;
 const MAX_ROWS = 500;
 
 function parseCSV(content: string): string[][] {
@@ -117,6 +119,7 @@ function validateAndParseRow(
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getAuthUserId();
     getDatabase();
     
     const formData = await request.formData();
@@ -194,21 +197,23 @@ export async function POST(request: NextRequest) {
       }
       
       try {
-        const positionId = addPosition(position);
+        const positionId = addPosition(position, userId);
         result.imported++;
         result.imported_positions?.push({ id: positionId, symbol: position.symbol });
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-        result.errors.push(`Line ${lineNumber}: Failed to save position - ${errorMsg}`);
+        result.errors.push(`Line ${lineNumber}: Failed to save position`);
         result.skipped++;
       }
     }
     
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('[API /portfolio/import] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to import portfolio', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: sanitizeError(error) },
       { status: 500 }
     );
   }

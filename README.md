@@ -64,18 +64,21 @@ npm install --legacy-peer-deps
 
 # Configure environment
 cp .env.example .env.local
-# Edit .env.local and add your API keys
+# Edit .env.local:
+# 1. Add your FMP/FRED API keys
+# 2. Add Clerk keys (create free account at clerk.com)
 
 # Start development server
 npm run dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Then open [http://localhost:3000](http://localhost:3000) and create an account at `/sign-up`.
 
 ### Prerequisites
 
-- **Node.js 22+** (for Next.js 14 App Router)
+- **Node.js 22+** (for Next.js 16 App Router)
 - **Python 3.11+** (for ETL pipelines and Monte Carlo)
+- **Clerk Account** (free at [clerk.com](https://clerk.com) for authentication)
 - **FRED API Key** (free at [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html))
 
 ---
@@ -86,10 +89,14 @@ Then open [http://localhost:3000](http://localhost:3000).
 ┌─────────────────────────────────────────────────────────────┐
 │                      INTRINSIC Architecture                  │
 ├─────────────────────────────────────────────────────────────┤
-│  Frontend (Next.js 14 App Router)                           │
+│  Frontend (Next.js 16 App Router)                           │
 │  ├── Dashboard / Strategy Lab / Stock Detail                │
 │  ├── Recharts Visualizations                                │
 │  └── Tailwind CSS Dark Theme                                │
+├─────────────────────────────────────────────────────────────┤
+│  Authentication (Clerk)                                     │
+│  ├── Sign-up / Sign-in / User Management                    │
+│  └── Protected Routes                                        │
 ├─────────────────────────────────────────────────────────────┤
 │  Scoring Engine (TypeScript)                                │
 │  ├── 4-Pillar Model: Valuation, Quality, Technical, Risk   │
@@ -152,7 +159,7 @@ INTRINSIC uses a rule-based 4-regime system based on macro indicators:
 
 ```
 src/
-├── app/                    # Next.js 14 App Router
+├── app/                    # Next.js 16 App Router
 │   ├── components/         # Shared UI components
 │   ├── strategy-lab/       # Strategy Lab page
 │   ├── stock/[symbol]/     # Stock detail pages

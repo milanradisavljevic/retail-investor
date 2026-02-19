@@ -5,14 +5,23 @@ import { WatchlistNavLink } from "@/app/components/WatchlistNavLink";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRightLeft, Briefcase } from "lucide-react";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
+import { isAuthBypassEnabledClient } from "@/lib/authMode";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+  const authBypassEnabled = isAuthBypassEnabledClient();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  if (pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up')) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -73,6 +82,27 @@ export function Shell({ children }: { children: React.ReactNode }) {
               >
                 Makro-Kontext
               </Link>
+              {authBypassEnabled ? (
+                <span className="text-[11px] text-accent-gold border border-accent-gold/40 px-2 py-1 rounded">
+                  Auth Bypass (Dev)
+                </span>
+              ) : (
+                <>
+                  <SignedIn>
+                    <div className="ml-2 flex items-center">
+                      <UserButton afterSignOutUrl="/sign-in" />
+                    </div>
+                  </SignedIn>
+                  <SignedOut>
+                    <Link
+                      href="/sign-in"
+                      className="text-text-secondary hover:text-text-primary transition-colors"
+                    >
+                      Anmelden
+                    </Link>
+                  </SignedOut>
+                </>
+              )}
             </nav>
           </div>
         </div>

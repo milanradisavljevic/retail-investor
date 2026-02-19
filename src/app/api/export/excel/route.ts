@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateRunExport, generatePortfolioExport, getExportFilename } from '@/lib/excelExport';
+import { getAuthUserId } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const userId = await getAuthUserId();
     let buffer: Buffer;
     let filename: string;
 
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
       buffer = await generateRunExport(runId);
       filename = getExportFilename('run', runId?.split('__')[0]);
     } else {
-      buffer = await generatePortfolioExport();
+      buffer = await generatePortfolioExport(userId);
       filename = getExportFilename('portfolio');
     }
 
@@ -37,6 +39,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[API /export/excel] Error:', message);
     

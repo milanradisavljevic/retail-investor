@@ -13,7 +13,9 @@
     "pb": { "low": 2, "high": 8 },
     "ps": { "low": 1, "high": 6 },
     "roe": { "low": 10, "high": 35 },
-    "debtEquity": { "low": 0.3, "high": 3 }
+    "debtEquity": { "low": 0.3, "high": 3 },
+    "grossMargin": { "low": 20, "high": 60 },
+    "fcfYield": { "low": 2, "high": 10 }
   },
   "filters": {
     "min_technical_score": 65,

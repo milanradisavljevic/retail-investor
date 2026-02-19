@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
 
   const scores = getETFScoresFromRun();
 
-  let etfList: Array<{ metadata: ETFMetadata; score: ETFScoreData | null }> = [];
+  const etfList: Array<{ metadata: ETFMetadata; score: ETFScoreData | null }> = [];
 
   for (const [ticker, raw] of Object.entries(metadata.etfs)) {
     if (requestedTickers && !requestedTickers.includes(ticker)) {

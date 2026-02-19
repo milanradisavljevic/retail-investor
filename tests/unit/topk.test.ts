@@ -32,6 +32,8 @@ function makeScore(symbol: string, score: number, isScanOnly?: boolean): SymbolS
           psScore: score,
           roeScore: score,
           debtEquityScore: score,
+          grossMarginScore: score,
+          fcfYieldScore: score,
         },
         missingFields: [],
         assumptions: [],

@@ -174,6 +174,48 @@ export function getConfig(): AppConfig {
   return cachedConfig;
 }
 
+export function loadConfigWithUniverse(universeId: string): AppConfig {
+  const projectRoot = getProjectRoot();
+  const configPath = join(projectRoot, 'config');
+
+  const universePath = resolveUniversePathWithOverride(projectRoot, universeId);
+  const universeJson = readFileSync(universePath, 'utf-8');
+  const universe = normalizeUniverse(JSON.parse(universeJson));
+
+  const cacheTtlJson = readFileSync(join(configPath, 'cache_ttl.json'), 'utf-8');
+  const cacheTtl: CacheTtlConfig = JSON.parse(cacheTtlJson);
+
+  return {
+    universe,
+    cacheTtl,
+    projectRoot,
+  };
+}
+
+function resolveUniversePathWithOverride(projectRoot: string, universeId: string): string {
+  const asPack = universeId.endsWith('.json') || universeId.includes('/')
+    ? universeId
+    : join('universes', `${universeId}.json`);
+  const packPath = isAbsolute(asPack)
+    ? asPack
+    : join(projectRoot, asPack.startsWith('config/') ? asPack : join('config', asPack));
+  
+  if (existsSync(packPath)) {
+    return packPath;
+  }
+
+  const displayNamePath = resolveUniverseByDisplayName(projectRoot, universeId);
+  if (displayNamePath) {
+    return displayNamePath;
+  }
+
+  throw new Error(`Universe not found: ${universeId}`);
+}
+
+export function getConfigWithUniverse(universeId: string): AppConfig {
+  return loadConfigWithUniverse(universeId);
+}
+
 export function resetConfig(): void {
   cachedConfig = null;
 }

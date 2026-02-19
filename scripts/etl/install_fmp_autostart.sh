@@ -17,8 +17,7 @@ After=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=$PROJECT_DIR
-ExecStart=/usr/bin/env python3 scripts/etl/fmp_autofill_boot.py
-Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/env bash -lc 'cd "$PROJECT_DIR" && PYTHONUNBUFFERED=1 && if [ -x .venv/bin/python ]; then .venv/bin/python scripts/etl/fmp_autofill_boot.py; else python3 scripts/etl/fmp_autofill_boot.py; fi'
 Nice=10
 
 [Install]
@@ -40,12 +39,21 @@ Unit=intrinsic-fmp-autofill.service
 WantedBy=timers.target
 EOF
 
-systemctl --user daemon-reload
-systemctl --user enable --now "$TIMER_NAME"
+run_systemctl_user() {
+  if systemctl --user "$@" 2>/dev/null; then
+    return 0
+  fi
+  dbus-run-session -- systemctl --user "$@"
+}
+
+run_systemctl_user daemon-reload
+run_systemctl_user enable --now "$TIMER_NAME"
 
 echo "Installed and enabled: $TIMER_NAME"
 echo "Service file: $UNIT_DIR/$SERVICE_NAME"
 echo "Timer file: $UNIT_DIR/$TIMER_NAME"
 echo ""
 echo "Next runs:"
-systemctl --user list-timers --all | grep -F "intrinsic-fmp-autofill" || true
+if ! run_systemctl_user list-timers --all | grep -F "intrinsic-fmp-autofill"; then
+  true
+fi

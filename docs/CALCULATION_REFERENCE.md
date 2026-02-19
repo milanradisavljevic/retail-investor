@@ -33,19 +33,31 @@ Default-Thresholds:
 - `ps: low 1, high 5`
 - `roe: low 8, high 35`
 - `debtEquity: low 0.2, high 1.5`
+- `grossMargin: low 20, high 60`
+- `fcfYield: low 2, high 10`
 
 ### 2.1 Einzelmetriken
 
-- `peScore`, `pbScore`, `psScore`, `roeScore` via `normalizeToRange(...)`
+- `peScore`, `pbScore`, `psScore`, `roeScore`, `grossMarginScore` via `normalizeToRange(...)`
 - `debtEquityScore`:
   - wenn `debtToEquity < 0` -> `0`
   - sonst `normalizeToRange(..., invert=true)`
+- `grossMarginScore`:
+  - via `normalizeToRange(grossMargin, thresholds.grossMargin, invert=false)`
+  - Default: low=20, high=60 (higher is better, in %)
+  - Akademische Basis: Novy-Marx 2013 "The Other Side of Value"
+- `fcfYieldScore`:
+  - Berechnung: `fcfYield = (freeCashFlow / marketCap) * 100` (in %)
+  - Falls `fcfYield < 0`: Score = 0 (Cash-Burner werden bestraft)
+  - Sonst: `normalizeToRange(fcfYield, thresholds.fcfYield, invert=false)`
+  - Default: low=2, high=10 (higher is better, in %)
 
 ### 2.2 Valuation-Pillar
 
-- Komponenten: `P/E`, `P/B`, `P/S`
-- Falls mindestens 2 Inputs verfuegbar: gleichgewichtetes Mittel der verfuegbaren Scores
+- Komponenten: `P/E`, `P/B`, `P/S`, `FCF Yield` (NEU)
+- Falls mindestens 2 von 4 Inputs verfuegbar: gleichgewichtetes Mittel der verfuegbaren Scores
 - Falls <2 Inputs: `valuation = 0` und `isInsufficient = true`
+- FCF Yield Sonderbehandlung: Negative FCF -> Score 0 (nicht neutral)
 
 ### 2.3 GARP-Overlay
 
@@ -66,8 +78,11 @@ Code: `src/scoring/formulas/peg.ts`, `src/scoring/fundamental.ts`
 
 ### 2.4 Quality-Pillar und Fundamental Total
 
-- Quality = Mittel aus verfuegbaren `roeScore` und `debtEquityScore`
-- Keine Quality-Inputs -> `quality = 0`
+- Komponenten: `ROE`, `D/E`, `Gross Margin` (NEU)
+- Falls mindestens 2 von 3 Inputs verfuegbar: gleichgewichtetes Mittel der verfuegbaren Scores
+- Falls <2 Inputs: `quality = 0`
+- Gross Margin: Novy-Marx 2013 zeigt dass Gross Profitability der staerkste Quality-Predictor ist
+- Vorher: min 1 von 2 (zu tolerant). Nachher: min 2 von 3 (konsistent mit Valuation)
 - Fundamental-Total:
   - falls `isInsufficient`: `0`
   - sonst `(valuation + quality) / 2`
@@ -91,8 +106,17 @@ Code: `src/scoring/technical.ts`
 
 ### 3.2 Momentum-Score
 
-Durchschnitt aus verfuegbaren Signalen (5D, 13W, 26W, 52W), jeweils diskret auf 0-100 gemappt.
-Wenn keine Returns vorliegen -> `50`.
+- 5-Day Momentum: unveraendert (Short-Term Signal)
+- 13-Week Momentum: unveraendert (Medium-Term)
+- 26-Week Momentum: unveraendert (Intermediate)
+- 52-Week Momentum: ERSETZT durch 12-1 Momentum
+  - `momentum12m1m = priceReturn52Week - (priceReturn5Day * 4)`
+  - Akademische Basis: Jegadeesh & Titman 1993, Gray "Quantitative Momentum" 2016
+  - "past 12-month cumulative returns, skipping the most recent month"
+  - Approximation: 5D * 4 ≈ 1 Monat. Exaktes 4W-Feld als Follow-Up geplant.
+  - Fallback: Falls priceReturn5Day = null, wird shortTermComponent = 0 (unreinigter 52W Return)
+- Durchschnitt aus verfuegbaren Signalen, jeweils diskret auf 0-100 gemappt.
+- Wenn keine Returns vorliegen -> `50`.
 
 ### 3.3 Volatility-Score
 
@@ -134,20 +158,23 @@ Confidence (Erklaerungsebene):
 
 Code: `src/scoring/pure/score_symbol.ts`, `scripts/backtesting/rank_stocks_preset.ts`
 
-Hinweis: Dieser Pfad ist absichtlich leichtgewichtig und nicht identisch zum Live-Scoring.
+Hinweis: Dieser Pfad nutzt dieselben Kennzahlen wie das Live-Scoring, aber mit leichtgewichtiger Implementierung.
 
 ### 5.1 Valuation (pure)
 
-Pro Metrik (`PE/PB/PS`):
+Pro Metrik (`PE/PB/PS/FCF_YIELD`):
 
 - missing -> `50`
 - `<= low -> 100`
 - `low..high -> 100 - ((m-low)/(high-low))*40` (also 100..60)
 - `> high -> max(10, 60 - min((m-high)/high, 1.5)*40)`
+- FCF Yield: Negativer FCF -> Score 0 (Cash-Burner)
 
-Valuation = Mittel der 3 Metriken, danach ggf. GARP-Blend (70/30 mit PEG).
+Valuation = Mittel der 4 Metriken (min 2/4 erforderlich), danach ggf. GARP-Blend (70/30 mit PEG).
 
 ### 5.2 Quality (pure)
+
+Komponenten: `ROE`, `D/E`, `GROSS_MARGIN` (min 2/3 erforderlich)
 
 Start bei `50`:
 
@@ -159,12 +186,17 @@ Start bei `50`:
   - `<= de.low` -> `+15`
   - `<= de.high` -> `+5`
   - sonst `-15`
+- Gross Margin:
+  - `>= gm.high` -> `+20`
+  - `>= gm.low` -> `+8`
+  - sonst `-8`
 
 Clamping auf `0..100`.
 
 ### 5.3 Technical (pure)
 
 - Momentum:
+  - `momentum12m1m = return52w - (return5d * 4)` (12-1 Momentum)
   - `momentum = clamp(((r13*0.6 + r26*0.4) + 0.5) * 100)`
 - Range-Score aus 52W-Position (piecewise)
 - Wenn Returns vorhanden:
@@ -259,3 +291,17 @@ Code: `scripts/backtesting/run-backtest.ts`
 `regime_periods`:
 
 - Aufeinanderfolgende Quartale mit gleichem Regime werden zu einer Periode zusammengefasst (`quarters_count`).
+
+## 10) Default-Thresholds Uebersicht
+
+| Metrik | Low | High | Richtung | Quelle |
+|--------|-----|------|----------|--------|
+| P/E | 15 | 30 | lower is better | Standard |
+| P/B | 1.5 | 5 | lower is better | Standard |
+| P/S | 1 | 5 | lower is better | Standard |
+| ROE | 8% | 35% | higher is better | Standard |
+| D/E | 0.2 | 1.5 | lower is better | Standard |
+| Gross Margin | 20% | 60% | higher is better | Novy-Marx 2013 |
+| FCF Yield | 2% | 10% | higher is better | Standard |
+
+Hinweis: Presets koennen diese Thresholds ueberschreiben. Die obige Tabelle zeigt die Defaults.

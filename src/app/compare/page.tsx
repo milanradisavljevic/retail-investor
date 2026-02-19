@@ -1,6 +1,7 @@
 import { getCompanyName } from '@/core/company';
 import { enrichPositions } from '@/data/portfolioEnrichment';
 import { getPositions } from '@/data/portfolio';
+import { getAuthUserId } from '@/lib/auth';
 import {
   getAvailableRuns,
   getRunHistory,
@@ -98,11 +99,12 @@ function getPositionValue(position: {
 }
 
 function buildPortfolioImpact(
+  userId: string,
   previousRun: RunV1SchemaJson,
   currentRun: RunV1SchemaJson
 ): PortfolioImpactData | null {
   try {
-    const positions = enrichPositions(getPositions());
+    const positions = enrichPositions(getPositions(userId));
     if (positions.length === 0) return null;
 
     const previousScores = toScoreMap(previousRun);
@@ -169,6 +171,18 @@ export default async function CompareRunsPage({
 }: {
   searchParams?: SearchParamsShape;
 }) {
+  let userId: string;
+  try {
+    userId = await getAuthUserId();
+  } catch {
+    return (
+      <div className="rounded-xl border border-navy-700 bg-navy-800 p-6">
+        <h1 className="text-xl font-semibold text-text-primary">Run-Vergleich</h1>
+        <p className="mt-2 text-sm text-text-secondary">Unauthorized</p>
+      </div>
+    );
+  }
+
   const resolved = (await searchParams) ?? {};
   const selectedRunId = resolved.runId?.trim();
   const selectedCompareTo = resolved.compareTo?.trim();
@@ -239,7 +253,7 @@ export default async function CompareRunsPage({
   if (compareCandidate) {
     comparison = compareRuns(compareCandidate.run, current.run);
     movers = getBiggestMovers(comparison, 10);
-    portfolioImpact = buildPortfolioImpact(compareCandidate.run, current.run);
+    portfolioImpact = buildPortfolioImpact(userId, compareCandidate.run, current.run);
   }
 
   return (

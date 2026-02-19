@@ -60,6 +60,9 @@ describe('Fundamental Scoring', () => {
         psRatio: 0.8,
         roe: 25,
         debtToEquity: 0.3,
+        grossMargin: 45,
+        freeCashFlow: 500_000_000,
+        marketCap: 10_000_000_000,
       });
 
       const result = calculateFundamentalScore(data);
@@ -168,6 +171,8 @@ describe('Fundamental Scoring', () => {
         psRatio: 2,
         roe: 15,
         debtToEquity: 0.5,
+        freeCashFlow: 250_000_000,
+        marketCap: 10_000_000_000,
       });
 
       const result = calculateFundamentalScore(data);

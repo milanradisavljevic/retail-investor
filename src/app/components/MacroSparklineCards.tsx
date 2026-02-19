@@ -146,12 +146,21 @@ export default function MacroSparklineCards() {
       setError(false);
       try {
         const res = await fetch(`/api/macro?ticker=${encodeURIComponent(tickerParam)}`);
-        if (!res.ok) throw new Error(`status ${res.status}`);
+        if (!res.ok) {
+          // Missing macro snapshot is an expected runtime state (e.g. ETL not run yet).
+          if (res.status === 503) {
+            if (!isMounted) return;
+            setError(true);
+            setData([]);
+            return;
+          }
+          throw new Error(`status ${res.status}`);
+        }
         const payload = (await res.json()) as MacroApiResponse;
         if (!isMounted) return;
         setData(payload.data ?? []);
       } catch (err) {
-        console.error('[MacroSparklineCards] fetch failed', err);
+        console.error('[MacroSparklineCards] fetch failed (unexpected)', err);
         if (!isMounted) return;
         setError(true);
       } finally {

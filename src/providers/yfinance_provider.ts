@@ -10,6 +10,7 @@ import {
   Quote,
   TechnicalMetrics,
 } from './types';
+import { resolvePythonExecutable } from '@/utils/python';
 
 interface CandlePoint {
   t: number;
@@ -29,7 +30,7 @@ interface AnalystData {
 }
 
 export class YFinanceProvider implements MarketDataProvider {
-  private readonly pythonPath = 'python3';
+  private readonly pythonPath = resolvePythonExecutable();
   private readonly scriptPath = path.join(
     process.cwd(),
     'src',
@@ -282,9 +283,7 @@ export class YFinanceProvider implements MarketDataProvider {
       payoutRatio: this.decimalToPercent(metrics.payoutRatio),
       freeCashFlow:
         metrics.freeCashflow ??
-        (latestFcf !== null && metrics.sharesOutstanding
-          ? latestFcf / metrics.sharesOutstanding
-          : null),
+        latestFcf,
       marketCap: metrics.marketCapitalization ?? null,
       enterpriseValue: metrics.enterpriseValue ?? null,
       revenueGrowth: this.decimalToPercent(metrics.revenueGrowthTTM),

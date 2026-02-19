@@ -21,6 +21,8 @@ export interface FundamentalScoreResult {
     psScore: number;
     roeScore: number;
     debtEquityScore: number;
+    grossMarginScore: number;
+    fcfYieldScore: number;
     pegScore?: number;
     pegRatio?: number | null;
   };
@@ -44,6 +46,8 @@ export const DEFAULT_THRESHOLDS: FundamentalThresholds = {
   // D/E: Most profitable small caps have <0.3, so low=0.2 for spread
   roe: { low: 8, high: 35 }, // Higher is better (%)
   debtEquity: { low: 0.2, high: 1.5 }, // Lower is better
+  grossMargin: { low: 20, high: 60 }, // Higher is better (%)
+  fcfYield: { low: 2, high: 10 }, // Higher is better (%)
 };
 
 function toFiniteNumber(value: unknown): number | null {
@@ -93,6 +97,8 @@ export function calculateFundamentalScore(
         psScore: 0,
         roeScore: 0,
         debtEquityScore: 0,
+        grossMarginScore: 0,
+        fcfYieldScore: 0,
       },
       missingFields: ['all_fundamentals'],
       assumptions: ['No fundamental data available - insufficient data'],
@@ -128,6 +134,7 @@ export function calculateFundamentalScore(
   const psObj = impute(data.psRatio, universeMediData?.psRatio, 'psRatio');
   const roeObj = impute(data.roe, universeMediData?.roe, 'roe');
   const debtEquityObj = impute(data.debtToEquity, universeMediData?.debtToEquity, 'debtToEquity');
+  const grossMarginObj = impute(data.grossMargin, universeMediData?.grossMargin, 'grossMargin');
 
   // Calculate individual scores
   // Note: normalizeToRange returns 50 for NaN. We only use these scores if !isMissing.
@@ -135,6 +142,7 @@ export function calculateFundamentalScore(
   const pbScore = normalizeToRange(pbObj.value, thresholds.pb, true);
   const psScore = normalizeToRange(psObj.value, thresholds.ps, true);
   const roeScore = normalizeToRange(roeObj.value, thresholds.roe, false);
+  const grossMarginScore = normalizeToRange(grossMarginObj.value, thresholds.grossMargin, false);
 
   // Special handling for Debt/Equity
   let debtEquityScore: number;
@@ -145,12 +153,40 @@ export function calculateFundamentalScore(
     debtEquityScore = normalizeToRange(debtEquityObj.value, thresholds.debtEquity, true);
   }
 
-  // Valuation pillar: P/E, P/B, P/S
+  // FCF Yield = free cash flow / market cap (%)
+  const freeCashFlow = data.freeCashFlow ?? null;
+  const marketCap = data.marketCap ?? null;
+  let fcfYield: number | null = null;
+  if (freeCashFlow !== null && marketCap !== null && marketCap > 0) {
+    fcfYield = (freeCashFlow / marketCap) * 100;
+  }
+
+  let fcfYieldScore: number;
+  let fcfYieldPresent: boolean;
+  if (fcfYield !== null) {
+    present.push('fcfYield');
+    if (fcfYield < 0) {
+      fcfYieldScore = 0;
+      assumptions.push('fcfYield: negative FCF (cash burner) - scored 0');
+    } else {
+      fcfYieldScore = normalizeToRange(fcfYield, thresholds.fcfYield, false);
+    }
+    fcfYieldPresent = true;
+  } else {
+    missingFields.push('fcfYield');
+    missingMetrics.push('fcfYield');
+    fcfYieldScore = 50;
+    fcfYieldPresent = false;
+    assumptions.push('fcfYield: missing (freeCashFlow or marketCap unavailable)');
+  }
+
+  // Valuation pillar: P/E, P/B, P/S, FCF Yield
   // We only consider a component "present" if it wasn't missing (original or imputed)
   const valuationComponents = [
     { key: 'pe', score: peScore, present: !peObj.isMissing },
     { key: 'pb', score: pbScore, present: !pbObj.isMissing },
     { key: 'ps', score: psScore, present: !psObj.isMissing },
+    { key: 'fcfYield', score: fcfYieldScore, present: fcfYieldPresent },
   ];
 
   const presentValuation = valuationComponents.filter((c) => c.present);
@@ -162,7 +198,7 @@ export function calculateFundamentalScore(
     // We have at least 2 valuation metrics. Average them.
     const weight = 1 / presentValuation.length;
     valuation = presentValuation.reduce((sum, c) => sum + c.score * weight, 0);
-    strategy = presentValuation.length === 3 ? 'full' : 'partial';
+    strategy = presentValuation.length === valuationComponents.length ? 'full' : 'partial';
     
     const missingList = valuationComponents.filter((c) => !c.present).map((c) => c.key.toUpperCase());
     if (missingList.length > 0) {
@@ -186,25 +222,21 @@ export function calculateFundamentalScore(
     }
   }
 
-  // Quality pillar: ROE, Debt/Equity
-  // Quality is less strict? Or also require data?
-  // User didn't specify strict rules for Quality, but "Quality Score = 81 (suspiciously high)" suggests we should be strict.
-  // Let's require at least 1 quality metric.
+  // Quality pillar: ROE, Debt/Equity, Gross Margin
   const qualityComponents = [
       { key: 'roe', score: roeScore, present: !roeObj.isMissing },
-      { key: 'de', score: debtEquityScore, present: !debtEquityObj.isMissing }
+      { key: 'de', score: debtEquityScore, present: !debtEquityObj.isMissing },
+      { key: 'grossMargin', score: grossMarginScore, present: !grossMarginObj.isMissing }
   ];
   const presentQuality = qualityComponents.filter(c => c.present);
   
   let quality = 0;
-  if (presentQuality.length > 0) {
+  if (presentQuality.length >= 2) {
        const weight = 1 / presentQuality.length;
        quality = presentQuality.reduce((sum, c) => sum + c.score * weight, 0);
   } else {
-       quality = 0; // or 50? User dislikes high scores for missing data. 0 seems safer.
-       assumptions.push('quality: insufficient inputs; score=0');
-       // If quality is missing, is it insufficient overall?
-       // Maybe not strictly, but let's keep it consistent.
+       quality = 0;
+       assumptions.push('quality: insufficient inputs (< 2 available); score=0');
   }
 
   // Total fundamental score
@@ -223,6 +255,8 @@ export function calculateFundamentalScore(
       psScore: !psObj.isMissing ? roundScore(psScore) : 0,
       roeScore: !roeObj.isMissing ? roundScore(roeScore) : 0,
       debtEquityScore: !debtEquityObj.isMissing ? roundScore(debtEquityScore) : 0,
+      grossMarginScore: !grossMarginObj.isMissing ? roundScore(grossMarginScore) : 0,
+      fcfYieldScore: fcfYieldPresent ? roundScore(fcfYieldScore) : 0,
       ...(pegResult
         ? {
             pegScore: roundScore(pegResult.pegScore),

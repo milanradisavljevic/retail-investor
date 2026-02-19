@@ -2,8 +2,10 @@ import type { FundamentalsData } from '@/data/repositories/fundamentals_repo';
 
 export interface TechnicalSnapshot {
   currentPrice: number | null;
+  return5d: number | null;
   return13w: number | null;
   return26w: number | null;
+  return52w: number | null;
   high52w: number | null;
   low52w: number | null;
   volatility3m: number | null;

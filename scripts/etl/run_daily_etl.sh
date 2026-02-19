@@ -4,12 +4,18 @@
 
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LOG_DIR="$PROJECT_DIR/logs/etl"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 STATUS_FILE="$PROJECT_DIR/data/etl-status.json"
+PYTHON_BIN="$PROJECT_DIR/.venv/bin/python"
+
+if [ ! -x "$PYTHON_BIN" ]; then
+    PYTHON_BIN="python3"
+fi
 
 mkdir -p "$LOG_DIR"
+mkdir -p "$(dirname "$STATUS_FILE")"
 
 echo "============================================================================"
 echo "Starting daily ETL at $(date)"
@@ -35,7 +41,7 @@ run_universe() {
     echo "Config: $universe_file" | tee -a "$LOG_DIR/daily_${TIMESTAMP}.log"
     echo ""
     
-    if python3 "$PROJECT_DIR/scripts/etl/daily_data_pipeline.py" \
+    if "$PYTHON_BIN" "$PROJECT_DIR/scripts/etl/daily_data_pipeline.py" \
         --universe-file "$universe_file" \
         >> "$LOG_DIR/daily_${TIMESTAMP}.log" 2>&1; then
         SUCCESS=$((SUCCESS + 1))

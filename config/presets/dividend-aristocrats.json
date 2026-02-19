@@ -13,7 +13,9 @@
     "pb": { "low": 1, "high": 4 },
     "ps": { "low": 0.5, "high": 3 },
     "roe": { "low": 10, "high": 30 },
-    "debtEquity": { "low": 0.2, "high": 1.5 }
+    "debtEquity": { "low": 0.2, "high": 1.5 },
+    "grossMargin": { "low": 20, "high": 60 },
+    "fcfYield": { "low": 2, "high": 10 }
   },
   "filters": {
     "min_dividend_yield": 0.02,

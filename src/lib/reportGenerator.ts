@@ -528,6 +528,7 @@ function buildStockReportData(symbolInput: string): StockReportDocumentData {
 }
 
 async function buildDailyReportData(
+  userId: string,
   sections?: ReportSection[]
 ): Promise<DailyReportDocumentData> {
   const now = new Date();
@@ -641,7 +642,7 @@ async function buildDailyReportData(
   let portfolioSymbols = new Set<string>();
   try {
     getDatabase();
-    const positions = enrichPositions(getPositions());
+    const positions = enrichPositions(getPositions(userId));
     portfolioSymbols = new Set(positions.map((item) => item.symbol.toUpperCase()));
 
     if (positions.length > 0) {
@@ -769,8 +770,11 @@ export function parseReportSections(raw: string | null): ReportSection[] | undef
   return Array.from(new Set(selected));
 }
 
-export async function generateDailyReport(options?: { sections?: ReportSection[] }): Promise<Buffer> {
-  const data = await buildDailyReportData(options?.sections);
+export async function generateDailyReport(
+  userId: string,
+  options?: { sections?: ReportSection[] }
+): Promise<Buffer> {
+  const data = await buildDailyReportData(userId, options?.sections);
   const element = React.createElement(DailyReportDocument, { data }) as unknown as ReactElement<DocumentProps>;
   return renderToBuffer(element);
 }

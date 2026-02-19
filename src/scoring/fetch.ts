@@ -58,9 +58,18 @@ export interface FetchResult {
   fromCache: boolean;
 }
 
-const marketDataBridge = new MarketDataBridge();
 const bridgeLogger = createChildLogger('market-data-bridge');
+const marketDataBridge = initMarketDataBridge();
 let bridgeSampleCount = 0;
+
+function initMarketDataBridge(): MarketDataBridge | null {
+  try {
+    return new MarketDataBridge();
+  } catch (err) {
+    bridgeLogger.warn({ err }, 'MarketDataBridge disabled; continuing without market-data.db');
+    return null;
+  }
+}
 
 export async function fetchSymbolDataWithCache(
   symbol: string,
@@ -139,7 +148,7 @@ export async function fetchSymbolDataWithCache(
   }
 
   if (!fundamentals) {
-    const bridgeFundamentals = marketDataBridge.getFundamentals(symbol, 7);
+    const bridgeFundamentals = marketDataBridge?.getFundamentals(symbol, 7);
     if (bridgeFundamentals) {
       fundamentals = bridgeFundamentals;
       bridgeFundamentalsUsed = true;
@@ -179,7 +188,7 @@ export async function fetchSymbolDataWithCache(
   }
 
   if (!technical) {
-    const bridgeTechnical = marketDataBridge.getTechnicals(symbol);
+    const bridgeTechnical = marketDataBridge?.getTechnicals(symbol);
     if (bridgeTechnical) {
       technical = bridgeTechnical;
       bridgeTechnicalUsed = true;
@@ -201,7 +210,7 @@ export async function fetchSymbolDataWithCache(
   }
 
   if (!profile) {
-    const bridgeProfile = marketDataBridge.getProfile(symbol);
+    const bridgeProfile = marketDataBridge?.getProfile(symbol);
     if (bridgeProfile) {
       profile = bridgeProfile;
       bridgeProfileUsed = true;
@@ -226,7 +235,7 @@ export async function fetchSymbolDataWithCache(
   if (fundamentals) {
     const t0 = Date.now();
     try {
-      const avgMetrics = marketDataBridge.getAvgMetrics(symbol);
+      const avgMetrics = marketDataBridge?.getAvgMetrics(symbol);
       
       if (avgMetrics) {
         // Only override if the avgMetrics values are more reliable than current values
@@ -374,7 +383,7 @@ export async function fetchSymbolsBatch(
     let bridgeProfileUsed = false;
 
     if (!fundamentals) {
-      const bridgeFundamentals = marketDataBridge.getFundamentals(symbol, 7);
+      const bridgeFundamentals = marketDataBridge?.getFundamentals(symbol, 7);
       if (bridgeFundamentals) {
         fundamentals = bridgeFundamentals;
         bridgeFundamentalsUsed = true;
@@ -395,7 +404,7 @@ export async function fetchSymbolsBatch(
     }
 
     if (!technical) {
-      const bridgeTechnical = marketDataBridge.getTechnicals(symbol);
+      const bridgeTechnical = marketDataBridge?.getTechnicals(symbol);
       if (bridgeTechnical) {
         technical = bridgeTechnical;
         bridgeTechnicalUsed = true;
@@ -404,7 +413,7 @@ export async function fetchSymbolsBatch(
     }
 
     if (!profile) {
-      const bridgeProfile = marketDataBridge.getProfile(symbol);
+      const bridgeProfile = marketDataBridge?.getProfile(symbol);
       if (bridgeProfile) {
         profile = bridgeProfile;
         bridgeProfileUsed = true;
@@ -480,7 +489,7 @@ export async function fetchSymbolsBatch(
         // Enhance fundamentals with avgMetrics from database
         if (fundamentals) {
           try {
-            const avgMetrics = marketDataBridge.getAvgMetrics(symbol);
+            const avgMetrics = marketDataBridge?.getAvgMetrics(symbol);
             if (avgMetrics) {
               fundamentals = {
                 ...fundamentals,

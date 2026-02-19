@@ -114,12 +114,12 @@ export default async function HistoryPage({
             Apply
           </button>
           {(symbolFilter || universeFilter) && (
-            <a
+            <Link
               href="/history"
               className="text-sm px-3 py-2 rounded-lg border border-navy-700 text-text-secondary hover:text-text-primary"
             >
               Clear
-            </a>
+            </Link>
           )}
         </form>
       </div>

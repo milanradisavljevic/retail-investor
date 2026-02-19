@@ -146,14 +146,22 @@ export function calculateTechnicalScore(
     momentumSignals++;
   }
 
-  // 52-week momentum (long-term)
+  // 12-1 momentum (52-week minus short-term reversal component)
   if (priceReturn52Week !== null) {
-    if (priceReturn52Week > 30) momentumTotal += 80;
-    else if (priceReturn52Week > 15) momentumTotal += 65;
-    else if (priceReturn52Week > 0) momentumTotal += 50;
-    else if (priceReturn52Week > -15) momentumTotal += 35;
+    // Approximation: remove the last month by scaling 5-day return (~20 trading days/month)
+    const shortTermComponent = priceReturn5Day !== null ? priceReturn5Day * 4 : 0;
+    const momentum12m1m = priceReturn52Week - shortTermComponent;
+
+    if (momentum12m1m > 30) momentumTotal += 80;
+    else if (momentum12m1m > 15) momentumTotal += 65;
+    else if (momentum12m1m > 0) momentumTotal += 50;
+    else if (momentum12m1m > -15) momentumTotal += 35;
     else momentumTotal += 20;
     momentumSignals++;
+
+    assumptions.push(
+      `momentum12m1m: ${momentum12m1m.toFixed(1)}% (52w=${priceReturn52Week.toFixed(1)}% - shortTerm=${shortTermComponent.toFixed(1)}%)`
+    );
   }
 
   if (momentumSignals > 0) {

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateDailyReport, generateStockReport, parseReportSections } from '@/lib/reportGenerator';
+import { getAuthUserId } from '@/lib/auth';
 
 function sanitizeSymbol(value: string): string {
   return value.trim().toUpperCase();
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
   const sectionsParam = searchParams.get('sections');
 
   try {
+    const userId = await getAuthUserId();
     const now = new Date();
     const datePart = now.toISOString().slice(0, 10);
 
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     const sections = parseReportSections(sectionsParam);
-    const buffer = await generateDailyReport({ sections });
+    const buffer = await generateDailyReport(userId, { sections });
     const filename = `INTRINSIC-Report-${datePart}.pdf`;
 
     return new NextResponse(new Uint8Array(buffer), {
@@ -49,6 +51,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[API /export/pdf] Error:', message);
 

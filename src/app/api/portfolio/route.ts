@@ -4,14 +4,17 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPositions, addPosition } from '@/data/portfolio';
 import { enrichPositions, calculatePortfolioSummary, getPortfolioScore } from '@/data/portfolioEnrichment';
-import type { PortfolioPositionInput, PortfolioApiResponse, PortfolioSummary } from '@/types/portfolio';
+import type { PortfolioPositionInput, PortfolioApiResponse } from '@/types/portfolio';
 import { getDatabase } from '@/data/db';
+import { sanitizeError } from '@/lib/apiError';
+import { getAuthUserId } from '@/lib/auth';
 
 export async function GET() {
   try {
+    const userId = await getAuthUserId();
     getDatabase();
     
-    const positions = getPositions();
+    const positions = getPositions(userId);
     const enrichedPositions = enrichPositions(positions);
     const summary = calculatePortfolioSummary(enrichedPositions);
     
@@ -51,9 +54,12 @@ export async function GET() {
     
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('[API /portfolio] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to load portfolio', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: sanitizeError(error) },
       { status: 500 }
     );
   }
@@ -61,6 +67,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getAuthUserId();
     getDatabase();
     
     const body = await request.json() as PortfolioPositionInput;
@@ -72,7 +79,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const positionId = addPosition(body);
+    const positionId = addPosition(body, userId);
     
     return NextResponse.json({
       success: true,
@@ -80,17 +87,20 @@ export async function POST(request: NextRequest) {
       message: 'Position created successfully',
     }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('[API /portfolio] Error creating position:', error);
     
     if (error instanceof Error && error.message.includes('must be')) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.message },
+        { error: 'Validation error' },
         { status: 400 }
       );
     }
     
     return NextResponse.json(
-      { error: 'Failed to create position', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: sanitizeError(error) },
       { status: 500 }
     );
   }

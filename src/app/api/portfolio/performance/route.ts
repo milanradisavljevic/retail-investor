@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { getDatabase } from '@/data/db';
+import { getAuthUserId } from '@/lib/auth';
 
 interface Snapshot {
   snapshot_date: string;
@@ -45,16 +46,16 @@ const PERIOD_DAYS: Record<string, number> = {
   'max': 3650,
 };
 
-function getSnapshots(days: number): Snapshot[] {
+function getSnapshots(days: number, userId: string): Snapshot[] {
   const db = getDatabase();
   const stmt = db.prepare(`
     SELECT snapshot_date, total_value_usd
     FROM portfolio_snapshots
-    WHERE user_id = 'default'
+    WHERE user_id = ?
     AND date(snapshot_date) >= date('now', ?)
     ORDER BY snapshot_date ASC
   `);
-  const rows = stmt.all(`-${days} days`) as Snapshot[];
+  const rows = stmt.all(userId, `-${days} days`) as Snapshot[];
   return rows;
 }
 
@@ -203,7 +204,8 @@ export async function GET(request: NextRequest) {
   const days = PERIOD_DAYS[period] || 90;
   
   try {
-    const snapshots = getSnapshots(days);
+    const userId = await getAuthUserId();
+    const snapshots = getSnapshots(days, userId);
     
     if (snapshots.length < 2) {
       return NextResponse.json({
@@ -286,6 +288,9 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('[API /portfolio/performance] Error:', error);
     return NextResponse.json(
       { error: 'Failed to load performance data', details: error instanceof Error ? error.message : 'Unknown error' },

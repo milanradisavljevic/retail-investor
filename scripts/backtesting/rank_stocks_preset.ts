@@ -32,10 +32,14 @@ function buildTechnicalSnapshot(symbolData: any, asOfDate: string, allDates: str
     const i = Math.max(0, idx - offset);
     return symbolData.prices.get(allDates[i])?.close ?? null;
   };
+  const price5d = getPrice(5);
   const price13w = getPrice(65);
   const price26w = getPrice(130);
+  const price52w = getPrice(252);
+  const return5d = price5d && currentPrice ? (currentPrice - price5d) / price5d : null;
   const return13w = price13w && currentPrice ? (currentPrice - price13w) / price13w : null;
   const return26w = price26w && currentPrice ? (currentPrice - price26w) / price26w : null;
+  const return52w = price52w && currentPrice ? (currentPrice - price52w) / price52w : null;
 
   let high52w = currentPrice ?? 0;
   let low52w = currentPrice ?? 0;
@@ -62,8 +66,10 @@ function buildTechnicalSnapshot(symbolData: any, asOfDate: string, allDates: str
 
   return {
     currentPrice,
+    return5d,
     return13w,
     return26w,
+    return52w,
     high52w: high52w || null,
     low52w: low52w || null,
     volatility3m: vol,

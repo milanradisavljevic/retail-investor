@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { getDatabase } from '@/data/db';
 import { getPositions } from '@/data/portfolio';
 import { enrichPositions } from '@/data/portfolioEnrichment';
+import { getAuthUserId } from '@/lib/auth';
 import {
   loadEarningsCalendar,
   parseDaysParam,
@@ -66,8 +67,9 @@ export async function GET(request: Request) {
   } else if (portfolioOnly) {
     source = 'portfolio';
     try {
+      const userId = await getAuthUserId();
       getDatabase();
-      const positions = enrichPositions(getPositions()).filter((p) => p.asset_type === 'equity');
+      const positions = enrichPositions(getPositions(userId)).filter((p) => p.asset_type === 'equity');
       const context = new Map<string, { name: string; score: number | null; quality: number | null }>();
 
       for (const pos of positions) {
@@ -82,6 +84,9 @@ export async function GET(request: Request) {
 
       filtered = mapPortfolioContext(filtered, new Set(context.keys()), context);
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
       console.error('[API /earnings] Failed to load portfolio context:', error);
       return NextResponse.json(
         { error: 'Failed to load portfolio context' },

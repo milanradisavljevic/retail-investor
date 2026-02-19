@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import type { MacroTickerData, MacroCategory, MacroApiResponse } from '@/types/macro';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/types/macro';
@@ -505,12 +506,12 @@ export function MacroPageClient({ initialData }: MacroPageClientProps) {
             {interpretation}
           </p>
           <div className="mt-4 pt-4 border-t border-navy-700 flex items-center justify-between">
-            <a 
+            <Link 
               href="/" 
               className="text-sm text-accent-blue hover:text-accent-blue/80 transition-colors"
             >
               Aktuelles Regime auf dem Dashboard ansehen →
-            </a>
+            </Link>
             <span className="text-xs text-text-muted">
               Regelbasierte Analyse (keine Finanzberatung)
             </span>

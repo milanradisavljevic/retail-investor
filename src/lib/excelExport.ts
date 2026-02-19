@@ -267,8 +267,8 @@ interface EnrichedPosition extends PortfolioPosition {
   total_score?: number | null;
 }
 
-export async function generatePortfolioExport(): Promise<Buffer> {
-  const positions = getPositions();
+export async function generatePortfolioExport(userId: string): Promise<Buffer> {
+  const positions = getPositions(userId);
   const enrichedPositions = enrichPositions(positions) as EnrichedPosition[];
   const summary = calculatePortfolioSummary(enrichedPositions);
   const portfolioScore = getPortfolioScore(summary.weighted_score_sum, summary.scored_equity_value);

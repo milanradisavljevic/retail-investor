@@ -81,6 +81,19 @@ type BacktestResultResponse = {
   drawdown?: Array<{ date: string; drawdown_pct: number }>;
 };
 
+type RunLockState = {
+  status: "idle" | "running" | "failed";
+  run_type: string | null;
+  universe: string | null;
+  preset: string | null;
+  started_by: string | null;
+  started_at: string | null;
+  updated_at: string | null;
+  progress_pct: number;
+  progress_msg: string | null;
+  error_msg: string | null;
+};
+
 // Universes are now loaded server-side and passed as props
 
 const WEIGHT_PRESETS: Record<
@@ -835,6 +848,7 @@ export default function StrategyLabClient({
   const [liveError, setLiveError] = useState<string | null>(null);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [runComplete, setRunComplete] = useState(false);
+  const [runState, setRunState] = useState<RunLockState | null>(null);
 
   const [backtestMetrics, setBacktestMetrics] = useState<BacktestMetrics>(SAMPLE_BACKTEST);
   const [backtestLoading, setBacktestLoading] = useState(false);
@@ -849,11 +863,41 @@ export default function StrategyLabClient({
     () => universes.find(u => u.id === selectedUniverse),
     [universes, selectedUniverse]
   );
+  const isGlobalRunActive = runState?.status === "running";
+  const runProgressText = runState?.progress_msg ?? "Run läuft...";
+  const runProgressPct = runState?.progress_pct ?? 0;
 
   // Fetch backtest results when component mounts or strategy changes
   useEffect(() => {
     fetchBacktestResults(strategy);
   }, [strategy]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/run/status", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as RunLockState;
+        if (!cancelled) {
+          setRunState(data);
+        }
+      } catch {
+        // Ignore transient polling errors in UI
+      }
+    };
+
+    void poll();
+    const interval = setInterval(() => {
+      void poll();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Format runtime display
   const formatRuntime = (min: number) => {
@@ -1080,15 +1124,22 @@ export default function StrategyLabClient({
           startingCapital,
         }),
       });
-      if (!res.ok) throw new Error(`Backtest-Run fehlgeschlagen (${res.status})`);
-      await res.json(); // ignore payload, fetch results separately
+      const payload = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) {
+        const detail =
+          (typeof payload.detail === "string" && payload.detail) ||
+          (typeof payload.error === "string" && payload.error) ||
+          `Backtest-Run fehlgeschlagen (${res.status})`;
+        throw new Error(detail);
+      }
       await fetchBacktestResults(strategy);
 
       // Clear draft after successful run
       clearDraft();
     } catch (err) {
       console.error(err);
-      setBacktestError("Backtest fehlgeschlagen. Beispielkennzahlen werden angezeigt.");
+      const message = err instanceof Error ? err.message : "Backtest fehlgeschlagen.";
+      setBacktestError(`${message} Beispielkennzahlen werden angezeigt.`);
       setBacktestMetrics(SAMPLE_BACKTEST);
       setEquityCurve([]);
       setDrawdown([]);
@@ -1159,8 +1210,8 @@ export default function StrategyLabClient({
           onClick={activeTab === "live" ? handleLiveRun : handleBacktestRun}
           disabled={
             activeTab === "live"
-              ? liveLoading || !!currentRunId
-              : backtestLoading || !periodValid
+              ? liveLoading || !!currentRunId || isGlobalRunActive
+              : backtestLoading || !periodValid || isGlobalRunActive
           }
           className={classNames(
             "w-full py-3 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2",
@@ -1170,9 +1221,10 @@ export default function StrategyLabClient({
           )}
         >
           {activeTab === "live" ? (
-            currentRunId ? (
+            currentRunId || isGlobalRunActive ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" /> {t('strategyLab.actions.running')}
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {isGlobalRunActive ? `Run läuft... (${runProgressPct}%)` : t('strategyLab.actions.running')}
               </>
             ) : (
               <>
@@ -1185,6 +1237,16 @@ export default function StrategyLabClient({
             </>
           )}
         </button>
+        {isGlobalRunActive && (
+          <p className="text-xs text-[#F59E0B]">
+            {runProgressText}
+          </p>
+        )}
+        {runState?.status === "failed" && runState.error_msg && (
+          <p className="text-xs text-[#EF4444]">
+            Letzter Run fehlgeschlagen: {runState.error_msg}
+          </p>
+        )}
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-[#94A3B8]">
           {selectedUniverseMeta && (
@@ -1325,11 +1387,11 @@ export default function StrategyLabClient({
             <div className="flex flex-wrap gap-2 mt-4">
               <button
                 onClick={handleLiveRun}
-                disabled={liveLoading || !!currentRunId}
+                disabled={liveLoading || !!currentRunId || isGlobalRunActive}
                 className="px-4 py-2 text-sm rounded-lg border border-[#3B82F6] bg-[#3B82F6]/10 text-[#E2E8F0] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {currentRunId
-                  ? "Laeuft..."
+                {currentRunId || isGlobalRunActive
+                  ? `Laeuft... (${runProgressPct}%)`
                   : liveLoading
                     ? "Starte..."
                     : t('strategyLab.actions.generatePicks')}

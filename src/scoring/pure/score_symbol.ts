@@ -32,22 +32,54 @@ function scoreValuation(
   options?: { useGarpPeg?: boolean }
 ): number {
   if (!f) return 50;
+
   const triples: Array<[number | null | undefined, { low: number; high: number }]> = [
     [f.peRatio ?? (f as any).pe ?? null, t.pe],
     [f.pbRatio ?? (f as any).pb ?? null, t.pb],
     [f.psRatio ?? (f as any).ps ?? null, t.ps],
   ];
-  const parts = triples.map(([m, thr]) => {
-    if (m == null) return 50;
-    if (m <= thr.low) return 100;
-    if (m <= thr.high) {
+
+  const parts: Array<{ score: number; present: boolean }> = triples.map(([m, thr]) => {
+    if (m == null) return { score: 50, present: false };
+
+    let score: number;
+    if (m <= thr.low) {
+      score = 100;
+    } else if (m <= thr.high) {
       const span = thr.high - thr.low || 1;
-      return 100 - ((m - thr.low) / span) * 40;
+      score = 100 - ((m - thr.low) / span) * 40;
+    } else {
+      const excess = Math.min((m - thr.high) / thr.high, 1.5);
+      score = Math.max(10, 60 - excess * 40);
     }
-    const excess = Math.min((m - thr.high) / thr.high, 1.5);
-    return Math.max(10, 60 - excess * 40);
+    return { score, present: true };
   });
-  const baseValuation = clamp01(parts.reduce((a, b) => a + b, 0) / parts.length);
+
+  // FCF Yield (higher is better)
+  const fcf = f.freeCashFlow;
+  const mktCap = f.marketCap;
+  let fcfYieldPart: { score: number; present: boolean } = { score: 50, present: false };
+  if (fcf != null && mktCap != null && mktCap > 0) {
+    const fcfYield = (fcf / mktCap) * 100;
+    if (fcfYield < 0) {
+      fcfYieldPart = { score: 0, present: true };
+    } else if (fcfYield >= t.fcfYield.high) {
+      fcfYieldPart = { score: 95, present: true };
+    } else if (fcfYield >= t.fcfYield.low) {
+      const span = t.fcfYield.high - t.fcfYield.low || 1;
+      fcfYieldPart = { score: ((fcfYield - t.fcfYield.low) / span) * 95, present: true };
+    } else {
+      fcfYieldPart = { score: 0, present: true };
+    }
+  }
+  parts.push(fcfYieldPart);
+
+  const presentParts = parts.filter((p) => p.present);
+  if (presentParts.length < 2) return 0;
+
+  const baseValuation = clamp01(
+    presentParts.reduce((sum, p) => sum + p.score, 0) / presentParts.length
+  );
   if (!options?.useGarpPeg) return baseValuation;
 
   const trailingPE = f.peRatio ?? (f as any).pe ?? null;
@@ -57,28 +89,77 @@ function scoreValuation(
 
 function scoreQuality(f: MarketDataSnapshot['fundamentals'], t: FundamentalThresholds): number {
   if (!f) return 50;
+
+  const components: number[] = [];
+
+  // ROE (higher is better)
   const roe = f.roe;
-  const de = f.debtToEquity;
-  let score = 50;
   if (roe != null) {
-    if (roe >= t.roe.high) score += 25;
-    else if (roe >= t.roe.low) score += 10;
-    else score -= 10;
+    if (roe >= t.roe.high) {
+      components.push(95);
+    } else if (roe >= t.roe.low) {
+      const span = t.roe.high - t.roe.low || 1;
+      components.push(((roe - t.roe.low) / span) * 95);
+    } else {
+      components.push(0);
+    }
   }
+
+  // D/E (lower is better)
+  const de = f.debtToEquity;
   if (de != null) {
-    if (de <= t.debtEquity.low) score += 15;
-    else if (de <= t.debtEquity.high) score += 5;
-    else score -= 15;
+    if (de < 0) {
+      components.push(0);
+    } else if (de <= t.debtEquity.low) {
+      components.push(95);
+    } else if (de <= t.debtEquity.high) {
+      const span = t.debtEquity.high - t.debtEquity.low || 1;
+      components.push(95 - ((de - t.debtEquity.low) / span) * 95);
+    } else {
+      components.push(0);
+    }
   }
-  return clamp01(score);
+
+  // Gross Margin (higher is better)
+  const gm = f.grossMargin;
+  if (gm != null) {
+    if (gm >= t.grossMargin.high) {
+      components.push(95);
+    } else if (gm >= t.grossMargin.low) {
+      const span = t.grossMargin.high - t.grossMargin.low || 1;
+      components.push(((gm - t.grossMargin.low) / span) * 95);
+    } else {
+      components.push(0);
+    }
+  }
+
+  if (components.length < 2) return 0;
+  return clamp01(components.reduce((a, b) => a + b, 0) / components.length);
 }
 
 function scoreTechnical(tech: MarketDataSnapshot['technical']): number {
-  const { return13w, return26w, high52w, low52w, currentPrice } = tech;
-  const hasReturns = return13w != null || return26w != null;
-  const r13 = return13w ?? 0;
-  const r26 = return26w ?? r13;
-  const momentum = clamp01(((r13 * 0.6 + r26 * 0.4) + 0.5) * 100);
+  const { return5d, return13w, return26w, return52w, high52w, low52w, currentPrice } = tech;
+  const hasReturns = return13w != null || return26w != null || return52w != null;
+  const momentumParts: number[] = [];
+
+  if (return13w != null) {
+    momentumParts.push(clamp01(((return13w + 0.3) / 0.6) * 100));
+  }
+
+  if (return26w != null) {
+    momentumParts.push(clamp01(((return26w + 0.4) / 0.8) * 100));
+  }
+
+  if (return52w != null) {
+    const shortTermComponent = return5d != null ? return5d * 4 : 0;
+    const momentum12m1m = return52w - shortTermComponent;
+    momentumParts.push(clamp01(((momentum12m1m + 0.5) / 1.0) * 100));
+  }
+
+  const momentum =
+    momentumParts.length > 0
+      ? momentumParts.reduce((a, b) => a + b, 0) / momentumParts.length
+      : 50;
 
   let rangeScore = 50;
   if (currentPrice && high52w && low52w && high52w > low52w) {

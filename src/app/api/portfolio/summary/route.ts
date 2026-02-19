@@ -6,12 +6,14 @@ import { getPositions } from '@/data/portfolio';
 import { enrichPositions, calculatePortfolioSummary, getPortfolioScore } from '@/data/portfolioEnrichment';
 import type { PortfolioSummary } from '@/types/portfolio';
 import { getDatabase } from '@/data/db';
+import { getAuthUserId } from '@/lib/auth';
 
 export async function GET() {
   try {
+    const userId = await getAuthUserId();
     getDatabase();
     
-    const positions = getPositions();
+    const positions = getPositions(userId);
     const enrichedPositions = enrichPositions(positions);
     const summary = calculatePortfolioSummary(enrichedPositions);
     
@@ -48,6 +50,9 @@ export async function GET() {
     
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('[API /portfolio/summary] Error:', error);
     return NextResponse.json(
       { error: 'Failed to load portfolio summary', details: error instanceof Error ? error.message : 'Unknown error' },

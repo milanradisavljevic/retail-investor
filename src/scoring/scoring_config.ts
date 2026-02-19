@@ -18,6 +18,8 @@ export interface FundamentalThresholds {
   ps: Threshold;
   roe: Threshold;
   debtEquity: Threshold;
+  grossMargin: Threshold;
+  fcfYield: Threshold;
 }
 
 export interface PillarWeights {
@@ -140,6 +142,8 @@ const DEFAULT_CONFIG: ScoringConfig = {
     ps: { low: 1, high: 5 },
     roe: { low: 5, high: 20 },
     debtEquity: { low: 0.5, high: 2 },
+    grossMargin: { low: 20, high: 60 },
+    fcfYield: { low: 2, high: 10 },
   },
   pillarWeights: {
     valuation: 0.25,
@@ -265,6 +269,8 @@ function mergeThresholds(
     ps: { ...base.ps, ...override.ps },
     roe: { ...base.roe, ...override.roe },
     debtEquity: { ...base.debtEquity, ...override.debtEquity },
+    grossMargin: { ...base.grossMargin, ...override.grossMargin },
+    fcfYield: { ...base.fcfYield, ...override.fcfYield },
   };
 }
 
@@ -368,7 +374,10 @@ export function getScoringConfig(): ScoringConfig {
   }
 
   const universeName = getConfig().universe.name;
-  const baseThresholds = raw.default.fundamental_thresholds ?? DEFAULT_CONFIG.fundamentalThresholds;
+  const baseThresholds = mergeThresholds(
+    DEFAULT_CONFIG.fundamentalThresholds,
+    raw.default.fundamental_thresholds
+  );
   const baseWeights = raw.default.pillar_weights ?? DEFAULT_CONFIG.pillarWeights;
   const basePriceTarget = mergePriceTarget(DEFAULT_PRICE_TARGET, raw.default.price_target);
   const basePipeline = mergePipeline(DEFAULT_CONFIG.pipeline!, (raw.default as any).pipeline);
@@ -407,4 +416,28 @@ export function getScoringConfig(): ScoringConfig {
   }
 
   return config;
+}
+
+export function getScoringConfigWithWeights(
+  weightsOverride?: Partial<PillarWeights>,
+  baseConfig?: ScoringConfig
+): ScoringConfig {
+  const base = baseConfig ?? getScoringConfig();
+  
+  if (!weightsOverride) {
+    return base;
+  }
+
+  const normalizedOverride: Partial<PillarWeights> = {};
+  if (weightsOverride.valuation !== undefined) normalizedOverride.valuation = weightsOverride.valuation / 100;
+  if (weightsOverride.quality !== undefined) normalizedOverride.quality = weightsOverride.quality / 100;
+  if (weightsOverride.technical !== undefined) normalizedOverride.technical = weightsOverride.technical / 100;
+  if (weightsOverride.risk !== undefined) normalizedOverride.risk = weightsOverride.risk / 100;
+
+  const mergedWeights = mergeWeights(base.pillarWeights, normalizedOverride);
+  
+  return {
+    ...base,
+    pillarWeights: normalizeWeights(mergedWeights),
+  };
 }

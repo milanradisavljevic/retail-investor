@@ -6,7 +6,9 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src tests",
+    "lint:strict": "eslint src tests --max-warnings 0",
+    "lint:all": "eslint src tests scripts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:golden": "vitest tests/golden",
@@ -45,6 +47,8 @@
     "test:perf:watch": "vitest tests/performance"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.38.0",
+    "@clerk/themes": "^2.4.54",
     "@react-pdf/renderer": "^4.3.2",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",

@@ -39,7 +39,7 @@ export interface RunComparison {
   summary: RunComparisonSummary;
 }
 
-export interface Mover extends DiffRow {}
+export type Mover = DiffRow;
 
 export interface ScoreTrend {
   symbol: string;
