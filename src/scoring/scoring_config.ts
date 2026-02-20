@@ -17,6 +17,7 @@ export interface FundamentalThresholds {
   pb: Threshold;
   ps: Threshold;
   roe: Threshold;
+  roa: Threshold;
   debtEquity: Threshold;
   grossMargin: Threshold;
   fcfYield: Threshold;
@@ -141,6 +142,7 @@ const DEFAULT_CONFIG: ScoringConfig = {
     pb: { low: 1.5, high: 5 },
     ps: { low: 1, high: 5 },
     roe: { low: 5, high: 20 },
+    roa: { low: 3, high: 15 },
     debtEquity: { low: 0.5, high: 2 },
     grossMargin: { low: 20, high: 60 },
     fcfYield: { low: 2, high: 10 },
@@ -268,6 +270,7 @@ function mergeThresholds(
     pb: { ...base.pb, ...override.pb },
     ps: { ...base.ps, ...override.ps },
     roe: { ...base.roe, ...override.roe },
+    roa: { ...base.roa, ...override.roa },
     debtEquity: { ...base.debtEquity, ...override.debtEquity },
     grossMargin: { ...base.grossMargin, ...override.grossMargin },
     fcfYield: { ...base.fcfYield, ...override.fcfYield },

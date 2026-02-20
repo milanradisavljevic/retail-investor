@@ -15,6 +15,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -108,6 +109,62 @@ def load_dotenv(env_path: str = ".env") -> dict[str, str]:
         if key not in os.environ:
             os.environ[key] = value
     return parsed
+
+
+def get_fmp_api_keys() -> list[str]:
+    """Resolve FMP keys from env with stable order and deduping.
+
+    Supported:
+    - FMP_API_KEYS (comma-separated explicit order)
+    - FMP_API_KEY
+    - FMP_API_KEY2 / FMP_API_KEY3 / ... (numeric suffix)
+    """
+    raw_values: list[str] = []
+
+    multi_raw = os.environ.get("FMP_API_KEYS", "").strip()
+    if multi_raw:
+        raw_values.extend(part.strip() for part in multi_raw.split(","))
+
+    base_value = os.environ.get("FMP_API_KEY", "").strip()
+    if base_value:
+        raw_values.append(base_value)
+
+    numbered_keys: list[tuple[int, str]] = []
+    pattern = re.compile(r"^FMP_API_KEY(\d+)$")
+    for env_key, env_val in os.environ.items():
+        m = pattern.match(env_key)
+        if not m:
+            continue
+        suffix = int(m.group(1))
+        value = env_val.strip()
+        if value:
+            numbered_keys.append((suffix, value))
+
+    for _, value in sorted(numbered_keys, key=lambda item: item[0]):
+        raw_values.append(value)
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for value in raw_values:
+        if not value or value in seen:
+            continue
+        deduped.append(value)
+        seen.add(value)
+
+    return deduped
+
+
+def provider_budget_key_for_slot(slot_idx: int, slot_count: int) -> str:
+    if slot_count <= 1:
+        return "fmp"
+    return f"fmp:key{slot_idx + 1}"
+
+
+def preferred_slot_order(symbol: str, slot_count: int) -> list[int]:
+    if slot_count <= 1:
+        return [0]
+    preferred = sum(ord(ch) for ch in symbol) % slot_count
+    return [preferred] + [i for i in range(slot_count) if i != preferred]
 
 
 def emit(event: str, **payload: Any) -> None:
@@ -389,9 +446,12 @@ def main() -> int:
         db_path=str(db_path),
     )
 
-    api_key = os.environ.get("FMP_API_KEY")
-    if not args.dry_run and not args.force_remap and not api_key:
-        emit("fmp_load.error", error="Missing FMP_API_KEY environment variable")
+    api_keys = get_fmp_api_keys()
+    if not args.dry_run and not args.force_remap and not api_keys:
+        emit(
+            "fmp_load.error",
+            error="Missing FMP API credentials (set FMP_API_KEYS or FMP_API_KEY/FMP_API_KEY2...)",
+        )
         return 1
     if (
         shell_fmp_key
@@ -408,14 +468,60 @@ def main() -> int:
     conn.execute("PRAGMA journal_mode = WAL;")
     ensure_provider_budget_table(conn)
     usage_date = datetime.now(timezone.utc).date().isoformat()
-    calls_used_before = get_provider_daily_calls(conn, "fmp", usage_date)
-    daily_calls_available = max(0, FMP_DAILY_BUDGET - calls_used_before)
+    if not api_keys:
+        # For dry-run/cache-remap paths we still need a client object.
+        api_keys = ["cache-remap"]
+
+    slot_count = len(api_keys)
+    legacy_calls_used = get_provider_daily_calls(conn, "fmp", usage_date)
+
+    key_slots: list[dict[str, Any]] = []
+    for idx, api_key in enumerate(api_keys):
+        provider_budget_key = provider_budget_key_for_slot(idx, slot_count)
+        calls_before = get_provider_daily_calls(conn, provider_budget_key, usage_date)
+        if slot_count > 1 and idx == 0:
+            # Backward compatibility with pre-sharding daily usage row.
+            calls_before = max(calls_before, legacy_calls_used)
+
+        daily_available = max(0, FMP_DAILY_BUDGET - calls_before)
+        session_call_cap = (
+            FMP_DAILY_BUDGET
+            if args.dry_run or args.force_remap
+            else daily_available
+        )
+        key_slots.append(
+            {
+                "index": idx,
+                "label": f"key{idx + 1}",
+                "provider_budget_key": provider_budget_key,
+                "calls_used_before": calls_before,
+                "daily_calls_available": daily_available,
+                "session_call_cap": session_call_cap,
+            }
+        )
+
+    calls_used_before = sum(int(slot["calls_used_before"]) for slot in key_slots)
+    daily_calls_available = sum(int(slot["daily_calls_available"]) for slot in key_slots)
+    daily_budget_total = FMP_DAILY_BUDGET * slot_count
+
     emit(
         "fmp_load.budget",
         usage_date=usage_date,
         daily_budget=FMP_DAILY_BUDGET,
+        daily_budget_total=daily_budget_total,
+        key_slots=len(key_slots),
         daily_calls_used_before=calls_used_before,
         daily_calls_available=daily_calls_available,
+        per_key=[
+            {
+                "slot": slot["label"],
+                "provider_budget_key": slot["provider_budget_key"],
+                "daily_calls_used_before": slot["calls_used_before"],
+                "daily_calls_available": slot["daily_calls_available"],
+                "session_call_cap": slot["session_call_cap"],
+            }
+            for slot in key_slots
+        ],
     )
 
     if not args.dry_run and not args.force_remap and daily_calls_available <= 0:
@@ -423,24 +529,19 @@ def main() -> int:
             "fmp_load.error",
             error="FMP daily call budget exhausted for today",
             usage_date=usage_date,
-            daily_budget=FMP_DAILY_BUDGET,
+            daily_budget=daily_budget_total,
             calls_used_today=calls_used_before,
         )
         conn.close()
         return 2
 
-    session_call_cap = (
-        FMP_DAILY_BUDGET
-        if args.dry_run or args.force_remap
-        else daily_calls_available
-    )
-
     cache = SQLiteCache(db_path=str(db_path), ttl_hours=24 * FRESHNESS_DAYS, provider="fmp")
-    client = FMPClient(
-        api_key=api_key or "cache-remap",
-        cache=cache,
-        max_calls_per_session=session_call_cap,
-    )
+    for slot in key_slots:
+        slot["client"] = FMPClient(
+            api_key=api_keys[slot["index"]],
+            cache=cache,
+            max_calls_per_session=slot["session_call_cap"],
+        )
     calls_used_after = calls_used_before
 
     processed = 0
@@ -472,9 +573,10 @@ def main() -> int:
                     break
                 actions_taken += 1
 
-            api_calls_before = client.calls_made
+            api_calls_before = sum(slot["client"].calls_made for slot in key_slots)
             mode = "api_fetch"
             fundamentals: dict[str, Any] | None = None
+            selected_slot_label = key_slots[0]["label"] if key_slots else "key1"
 
             if args.dry_run:
                 dry_run_count += 1
@@ -533,23 +635,54 @@ def main() -> int:
 
             if action == "remap_cache_forced":
                 mode = "cache_remap_forced"
-                fundamentals = client.build_fundamentals(
+                fundamentals = key_slots[0]["client"].build_fundamentals(
                     symbol=symbol,
                     ratios=cache_state["ratios"],
                     profile=cache_state["profile"],
                 )
             elif action == "remap_missing_snapshot":
                 mode = "cache_remap_missing_snapshot"
-                fundamentals = client.build_fundamentals(
+                fundamentals = key_slots[0]["client"].build_fundamentals(
                     symbol=symbol,
                     ratios=cache_state["ratios"],
                     profile=cache_state["profile"],
                 )
 
             if fundamentals is None:
-                try:
-                    fundamentals = client.fetch_fundamentals(symbol)
-                except RuntimeError as exc:
+                fetch_error: str | None = None
+                fetch_hard_failed = False
+                for slot_idx in preferred_slot_order(symbol, len(key_slots)):
+                    slot = key_slots[slot_idx]
+                    client = slot["client"]
+                    selected_slot_label = slot["label"]
+                    try:
+                        fundamentals = client.fetch_fundamentals(symbol)
+                        break
+                    except RuntimeError as exc:
+                        fetch_error = str(exc)
+                        err_l = fetch_error.lower()
+                        if (
+                            "budget exhausted" in err_l
+                            or "forbidden" in err_l
+                            or "403" in err_l
+                        ):
+                            continue
+                        failed += 1
+                        emit(
+                            "fmp_load.progress",
+                            index=idx,
+                            total=scan_total,
+                            symbol=symbol,
+                            status="failed",
+                            action=action,
+                            key_slot=selected_slot_label,
+                            error=fetch_error,
+                            message=f"[{idx}/{scan_total}] {symbol}: failed ({fetch_error})",
+                        )
+                        fetch_hard_failed = True
+                        break
+
+                if fundamentals is None and fetch_error is not None and not fetch_hard_failed:
                     failed += 1
                     emit(
                         "fmp_load.progress",
@@ -558,14 +691,16 @@ def main() -> int:
                         symbol=symbol,
                         status="failed",
                         action=action,
-                        error=str(exc),
-                        message=f"[{idx}/{scan_total}] {symbol}: failed ({exc})",
+                        key_slot=selected_slot_label,
+                        error=fetch_error,
+                        message=f"[{idx}/{scan_total}] {symbol}: failed ({fetch_error})",
                     )
-                    if "budget exhausted" in str(exc).lower() or "403" in str(exc):
+                    err_l = fetch_error.lower()
+                    if "budget exhausted" in err_l or "forbidden" in err_l or "403" in err_l:
                         break
                     continue
 
-            api_calls_used = client.calls_made - api_calls_before
+            api_calls_used = sum(slot["client"].calls_made for slot in key_slots) - api_calls_before
             raw_fmp = fundamentals.get("rawFmp") or {}
             has_data = raw_fmp.get("ratios") is not None or raw_fmp.get("profile") is not None
             if not has_data:
@@ -578,6 +713,7 @@ def main() -> int:
                         symbol=symbol,
                         status="skipped_no_cache",
                         action=action,
+                        key_slot=selected_slot_label,
                         api_calls=api_calls_used,
                         message=f"[{idx}/{scan_total}] {symbol}: skipped (cached payload empty)",
                     )
@@ -590,6 +726,7 @@ def main() -> int:
                         symbol=symbol,
                         status="failed",
                         action=action,
+                        key_slot=selected_slot_label,
                         api_calls=api_calls_used,
                         message=(
                             f"[{idx}/{scan_total}] {symbol}: failed (no FMP data returned, "
@@ -630,6 +767,7 @@ def main() -> int:
                 peRatio=pe,
                 roe=roe,
                 marketCap=mcap,
+                key_slot=selected_slot_label,
                 api_calls=api_calls_used,
                 mode=mode,
                 message=(
@@ -639,11 +777,25 @@ def main() -> int:
                 ),
             )
     finally:
-        if not args.dry_run and client.calls_made > 0:
-            calls_used_after = calls_used_before + client.calls_made
+        if not args.dry_run:
+            calls_used_after = 0
+            for slot in key_slots:
+                client = slot["client"]
+                slot_calls_after = int(slot["calls_used_before"]) + int(client.calls_made)
+                slot["calls_used_after"] = slot_calls_after
+                set_provider_daily_calls(
+                    conn,
+                    str(slot["provider_budget_key"]),
+                    usage_date,
+                    slot_calls_after,
+                )
+                calls_used_after += slot_calls_after
+
+            # Keep legacy aggregate row for compatibility with existing tooling.
             set_provider_daily_calls(conn, "fmp", usage_date, calls_used_after)
             conn.commit()
-        client.close()
+        for slot in key_slots:
+            slot["client"].close()
         conn.close()
 
     attempted = actions_taken
@@ -664,14 +816,25 @@ def main() -> int:
         "processed": processed,
         "failed": failed,
         "attempted": attempted,
-        "api_calls_total": client.calls_made,
-        "api_calls_remaining_budget": max(0, client.max_calls_per_session - client.calls_made),
-        "session_call_cap": client.max_calls_per_session,
+        "api_keys_configured": len(key_slots),
+        "api_calls_total": sum(slot["client"].calls_made for slot in key_slots),
+        "api_calls_total_by_key": {
+            slot["label"]: int(slot["client"].calls_made) for slot in key_slots
+        },
+        "api_calls_remaining_budget": max(0, daily_budget_total - calls_used_after),
+        "session_call_cap": sum(int(slot["session_call_cap"]) for slot in key_slots),
         "daily_budget": FMP_DAILY_BUDGET,
+        "daily_budget_total": daily_budget_total,
         "daily_usage_date": usage_date,
         "daily_calls_used_before": calls_used_before,
         "daily_calls_used_after": calls_used_after,
-        "daily_calls_remaining": max(0, FMP_DAILY_BUDGET - calls_used_after),
+        "daily_calls_used_after_by_key": {
+            slot["label"]: int(
+                slot.get("calls_used_after", int(slot["calls_used_before"]))
+            )
+            for slot in key_slots
+        },
+        "daily_calls_remaining": max(0, daily_budget_total - calls_used_after),
         "coverage_pe_ratio": (with_pe / loaded) if loaded else 0.0,
         "coverage_roe": (with_roe / loaded) if loaded else 0.0,
         "coverage_market_cap": (with_market_cap / loaded) if loaded else 0.0,

@@ -59,6 +59,7 @@ describe('Fundamental Scoring', () => {
         pbRatio: 1.5,
         psRatio: 0.8,
         roe: 25,
+        roa: 12,
         debtToEquity: 0.3,
         grossMargin: 45,
         freeCashFlow: 500_000_000,

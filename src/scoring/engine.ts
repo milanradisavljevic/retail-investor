@@ -587,22 +587,23 @@ export async function scoreUniverse(
             priceTarget: null,
             priceTargetDiagnostics: null,
             isScanOnly: true,
-            raw: {
-              fundamental: {
-                total: 50,
-                components: { valuation: 50, quality: 50 },
-                breakdown: {
-                  peScore: 50,
-                  pbScore: 50,
-                  psScore: 50,
-                  roeScore: 50,
-                  debtEquityScore: 50,
-                  grossMarginScore: 50,
-                  fcfYieldScore: 50,
-                },
-                missingFields: ['all'],
-                assumptions: [`Scoring failed: ${message}`],
-              },
+    raw: {
+               fundamental: {
+                 total: 50,
+                 components: { valuation: 50, quality: 50 },
+                 breakdown: {
+                   peScore: 50,
+                   pbScore: 50,
+                   psScore: 50,
+                   roeScore: 50,
+                   roaScore: 50,
+                   debtEquityScore: 50,
+                   grossMarginScore: 50,
+                   fcfYieldScore: 50,
+                 },
+                 missingFields: ['all'],
+                 assumptions: [`Scoring failed: ${message}`],
+               },
               technical: {
                 total: 50,
                 components: { trend: 50, momentum: 50, volatility: 50 },

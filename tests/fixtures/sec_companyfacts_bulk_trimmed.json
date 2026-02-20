@@ -1,0 +1,145 @@
+{
+  "entityName": "Bulk Test Co",
+  "facts": {
+    "us-gaap": {
+      "NetIncomeLoss": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-K",
+              "start": "2024-01-01",
+              "end": "2024-12-31",
+              "fp": "FY",
+              "val": 100
+            }
+          ]
+        }
+      },
+      "Assets": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-Q",
+              "end": "2025-03-31",
+              "val": 1000
+            },
+            {
+              "form": "10-K",
+              "end": "2024-12-31",
+              "val": 900
+            }
+          ]
+        }
+      },
+      "StockholdersEquity": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-Q",
+              "end": "2025-03-31",
+              "val": 500
+            }
+          ]
+        }
+      },
+      "LongTermDebt": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-Q",
+              "end": "2025-03-31",
+              "val": 200
+            }
+          ]
+        }
+      },
+      "Revenues": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-K",
+              "start": "2024-01-01",
+              "end": "2024-12-31",
+              "fp": "FY",
+              "val": 600
+            }
+          ]
+        }
+      },
+      "GrossProfit": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-K",
+              "start": "2024-01-01",
+              "end": "2024-12-31",
+              "fp": "FY",
+              "val": 300
+            }
+          ]
+        }
+      },
+      "NetCashProvidedByOperatingActivities": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-K",
+              "start": "2024-01-01",
+              "end": "2024-12-31",
+              "fp": "FY",
+              "val": 150
+            }
+          ]
+        }
+      },
+      "PaymentsToAcquirePropertyPlantAndEquipment": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-K",
+              "start": "2024-01-01",
+              "end": "2024-12-31",
+              "fp": "FY",
+              "val": -40
+            }
+          ]
+        }
+      },
+      "AssetsCurrent": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-Q",
+              "end": "2025-03-31",
+              "val": 300
+            }
+          ]
+        }
+      },
+      "LiabilitiesCurrent": {
+        "units": {
+          "USD": [
+            {
+              "form": "10-Q",
+              "end": "2025-03-31",
+              "val": 150
+            }
+          ]
+        }
+      }
+    },
+    "dei": {
+      "EntityCommonStockSharesOutstanding": {
+        "units": {
+          "shares": [
+            {
+              "form": "10-Q",
+              "end": "2025-03-31",
+              "val": 100
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,16 +1,19 @@
 /**
  * Multi-Provider Fundamentals Merge
  * Strategy: Best field from best source per symbol
- * Priority: FMP > yfinance (for fundamental ratios)
+ * Priority: sec_edgar_bulk > sec_edgar > fmp > yfinance (for accounting metrics)
+ *           FMP > yfinance (for default fundamental ratios)
  *           yfinance > FMP (for price-derived metrics)
  */
 
 import { getDatabase } from '@/data/db';
 import type { FundamentalsData } from '@/data/repositories/fundamentals_repo';
 
-type ProviderSource = 'fmp' | 'yfinance';
+type ProviderSource = 'sec_edgar_bulk' | 'sec_edgar' | 'fmp' | 'yfinance';
 
 interface SnapshotBySource {
+  sec_edgar_bulk: SnapshotEntry | null;
+  sec_edgar: SnapshotEntry | null;
   fmp: SnapshotEntry | null;
   yfinance: SnapshotEntry | null;
 }
@@ -23,6 +26,8 @@ interface SnapshotEntry {
 export interface MergedFundamentalsData extends FundamentalsData {
   _merge_meta?: {
     sources: Record<string, string>;
+    sec_edgar_bulk_available?: boolean;
+    sec_edgar_available?: boolean;
     fmp_available: boolean;
     yfinance_available: boolean;
     merged_at: number;
@@ -43,11 +48,6 @@ const FMP_PREFERRED_FIELDS: (keyof FundamentalsData)[] = [
   'pbRatio',
   'psRatio',
   'pegRatio',
-  'roe',
-  'roa',
-  'debtToEquity',
-  'currentRatio',
-  'grossMargin',
   'operatingMargin',
   'netMargin',
   'dividendYield',
@@ -59,6 +59,27 @@ const FMP_PREFERRED_FIELDS: (keyof FundamentalsData)[] = [
 ];
 
 const YFINANCE_PREFERRED_FIELDS: (keyof FundamentalsData)[] = ['beta', 'freeCashFlow'];
+
+const ACCOUNTING_PRIORITY_FIELDS = [
+  'roe',
+  'roa',
+  'debtToEquity',
+  'grossMargin',
+  'fcf',
+  'currentRatio',
+  'revenue',
+  'netIncome',
+  'assets',
+  'equity',
+  'debt',
+] as const;
+
+const ACCOUNTING_SOURCE_PRIORITY: ProviderSource[] = [
+  'sec_edgar_bulk',
+  'sec_edgar',
+  'fmp',
+  'yfinance',
+];
 
 const COVERAGE_FIELDS: (keyof FundamentalsData)[] = [
   ...new Set<keyof FundamentalsData>([
@@ -72,6 +93,8 @@ function hasValue(value: unknown): boolean {
 }
 
 function normalizeSource(rawSource: unknown): ProviderSource {
+  if (rawSource === 'sec_edgar_bulk') return 'sec_edgar_bulk';
+  if (rawSource === 'sec_edgar') return 'sec_edgar';
   if (rawSource === 'fmp') return 'fmp';
   return 'yfinance';
 }
@@ -90,7 +113,12 @@ function getLatestSnapshotsBySource(symbol: string): SnapshotBySource {
   `);
 
   const rows = stmt.all(symbol) as Array<{ fetchedAt: number; data_json: string }>;
-  const snapshots: SnapshotBySource = { fmp: null, yfinance: null };
+  const snapshots: SnapshotBySource = {
+    sec_edgar_bulk: null,
+    sec_edgar: null,
+    fmp: null,
+    yfinance: null,
+  };
 
   for (const row of rows) {
     let data: FundamentalsData;
@@ -108,7 +136,7 @@ function getLatestSnapshotsBySource(symbol: string): SnapshotBySource {
       };
     }
 
-    if (snapshots.fmp && snapshots.yfinance) {
+    if (snapshots.sec_edgar_bulk && snapshots.sec_edgar && snapshots.fmp && snapshots.yfinance) {
       break;
     }
   }
@@ -117,30 +145,90 @@ function getLatestSnapshotsBySource(symbol: string): SnapshotBySource {
 }
 
 function mergeFromSnapshots(snapshots: SnapshotBySource): MergedFundamentalsData | null {
+  const secEdgarBulkData = snapshots.sec_edgar_bulk?.data ?? null;
+  const secEdgarData = snapshots.sec_edgar?.data ?? null;
   const fmpData = snapshots.fmp?.data ?? null;
   const yfData = snapshots.yfinance?.data ?? null;
 
-  if (!fmpData && !yfData) {
+  if (!secEdgarBulkData && !secEdgarData && !fmpData && !yfData) {
     return null;
   }
 
-  const merged: FundamentalsData = yfData ? { ...yfData } : { ...(fmpData as FundamentalsData) };
+  const baseData = yfData ?? fmpData ?? secEdgarData ?? secEdgarBulkData;
+  const merged: FundamentalsData = { ...(baseData as FundamentalsData) };
   const mergedRecord = merged as unknown as Record<string, unknown>;
   const sources: Record<string, string> = {};
+
+  const getSourceData = (source: ProviderSource): FundamentalsData | null => {
+    if (source === 'sec_edgar_bulk') return secEdgarBulkData;
+    if (source === 'sec_edgar') return secEdgarData;
+    if (source === 'fmp') return fmpData;
+    return yfData;
+  };
+
+  const getAccountingFieldValue = (data: FundamentalsData | null, field: string): unknown => {
+    if (!data) return null;
+    const record = data as unknown as Record<string, unknown>;
+    const secEdgar = record.secEdgar as Record<string, unknown> | undefined;
+
+    switch (field) {
+      case 'fcf':
+        return record.fcf ?? record.freeCashFlow ?? null;
+      case 'revenue':
+        return record.revenue ?? secEdgar?.revenue ?? null;
+      case 'netIncome':
+        return record.netIncome ?? secEdgar?.netIncome ?? null;
+      case 'assets':
+        return record.assets ?? record.totalAssets ?? secEdgar?.totalAssets ?? null;
+      case 'equity':
+        return (
+          record.equity ??
+          record.totalEquity ??
+          record.stockholdersEquity ??
+          secEdgar?.stockholdersEquity ??
+          null
+        );
+      case 'debt':
+        return record.debt ?? record.totalDebt ?? secEdgar?.totalDebt ?? null;
+      default:
+        return record[field] ?? null;
+    }
+  };
+
+  const pickAccountingField = (field: (typeof ACCOUNTING_PRIORITY_FIELDS)[number]): void => {
+    for (const source of ACCOUNTING_SOURCE_PRIORITY) {
+      const value = getAccountingFieldValue(getSourceData(source), field);
+      if (!hasValue(value)) continue;
+
+      mergedRecord[field] = value;
+      sources[field] = source;
+
+      if (field === 'fcf') {
+        mergedRecord.freeCashFlow = value;
+        sources.freeCashFlow = source;
+      }
+      return;
+    }
+
+    mergedRecord[field] = null;
+    if (field === 'fcf') {
+      mergedRecord.freeCashFlow = null;
+    }
+  };
 
   const pickField = (
     field: keyof FundamentalsData,
     primary: ProviderSource,
     secondary: ProviderSource
   ): void => {
-    const primaryValue = (primary === 'fmp' ? fmpData : yfData)?.[field];
+    const primaryValue = getSourceData(primary)?.[field];
     if (hasValue(primaryValue)) {
       mergedRecord[String(field)] = primaryValue;
       sources[String(field)] = primary;
       return;
     }
 
-    const secondaryValue = (secondary === 'fmp' ? fmpData : yfData)?.[field];
+    const secondaryValue = getSourceData(secondary)?.[field];
     if (hasValue(secondaryValue)) {
       mergedRecord[String(field)] = secondaryValue;
       sources[String(field)] = secondary;
@@ -149,6 +237,10 @@ function mergeFromSnapshots(snapshots: SnapshotBySource): MergedFundamentalsData
 
     mergedRecord[String(field)] = null;
   };
+
+  for (const field of ACCOUNTING_PRIORITY_FIELDS) {
+    pickAccountingField(field);
+  }
 
   for (const field of FMP_PREFERRED_FIELDS) {
     pickField(field, 'fmp', 'yfinance');
@@ -162,6 +254,8 @@ function mergeFromSnapshots(snapshots: SnapshotBySource): MergedFundamentalsData
     ...merged,
     _merge_meta: {
       sources,
+      sec_edgar_bulk_available: Boolean(snapshots.sec_edgar_bulk),
+      sec_edgar_available: Boolean(snapshots.sec_edgar),
       fmp_available: Boolean(snapshots.fmp),
       yfinance_available: Boolean(snapshots.yfinance),
       merged_at: Date.now(),
@@ -182,6 +276,10 @@ export function getMergedFundamentalsIfFresh(
   const now = Date.now();
 
   const hasFreshSource =
+    (snapshots.sec_edgar_bulk &&
+      now - normalizeFetchedAtMs(snapshots.sec_edgar_bulk.fetchedAt) <= maxAgeMs) ||
+    (snapshots.sec_edgar &&
+      now - normalizeFetchedAtMs(snapshots.sec_edgar.fetchedAt) <= maxAgeMs) ||
     (snapshots.fmp &&
       now - normalizeFetchedAtMs(snapshots.fmp.fetchedAt) <= maxAgeMs) ||
     (snapshots.yfinance &&

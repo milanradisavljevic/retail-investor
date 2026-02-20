@@ -1,6 +1,6 @@
 {
   "name": "Magic Formula (Greenblatt)",
-  "description": "Joel Greenblatt's bewährte Strategie: Gute Unternehmen zu günstigen Preisen. Fokus auf hohe Kapitalrendite (ROIC) kombiniert mit attraktiver Bewertung (Earnings Yield).",
+  "description": "Joel Greenblatt-inspirierter Ansatz: gute Unternehmen zu guenstigen Preisen. Fokus auf hohe Profitabilitaet (ROE + ROA) kombiniert mit attraktiver Bewertung.",
   "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.40,
@@ -31,7 +31,7 @@
   "philosophy": {
     "author": "Joel Greenblatt",
     "book": "The Little Book That Beats the Market",
-    "key_metrics": ["ROIC", "Earnings Yield"],
+    "key_metrics": ["ROE", "ROA", "Valuation Multiples"],
     "target_holding_period": "1-3 years",
     "rebalance_frequency": "annual"
   }

@@ -184,6 +184,7 @@ export function getUniverseMedians(symbols: string[]): Partial<FundamentalsData>
     pbRatio: calculateMedian(relevantData.map((d) => d.pbRatio)),
     psRatio: calculateMedian(relevantData.map((d) => d.psRatio)),
     roe: calculateMedian(relevantData.map((d) => d.roe)),
+    roa: calculateMedian(relevantData.map((d) => d.roa)),
     debtToEquity: calculateMedian(relevantData.map((d) => d.debtToEquity)),
     grossMargin: calculateMedian(relevantData.map((d) => d.grossMargin)),
   };

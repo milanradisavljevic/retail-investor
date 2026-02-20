@@ -8,6 +8,138 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### [Phase 3e Block D] Quality Pillar Validation (Old vs New) - 2026-02-20 (GLM)
+
+#### Added
+- **Validierungsskript (`scripts/validation/quality_pillar_comparison.ts`)** — Ich (GLM) habe ein Standalone-Skript erstellt, das OLD Quality (2-Metric: ROE + D/E) gegen NEW Quality (3-Metric*: ROE + D/E + GM) vergleicht. *ROA noch nicht in DB verfügbar.
+
+#### Results (Russell 2000, 1840 symbols, 94.7% coverage)
+- **Mean Delta: -18.3 points** — NEW scoring is stricter
+- **Financial Services: -36.3 avg delta** — Banks have GM≈0%, heavily penalized
+- **79.3% of symbols declined**, 20.6% improved
+- **50.2% had |delta| > 20** — Major reordering expected
+
+#### Key Insights
+- **Without ROA data**, the 3-metric NEW system over-penalizes Financials (GM≈0%)
+- **Real Estate least affected** (-3.2 avg delta) because REITs have high GM
+- **Score spread increased** (StdDev: 14.2 → 18.1) — more differentiation
+- **Full validation pending** ROA data ingestion into market-data.db
+
+#### Output
+- Console report with coverage, distribution, delta analysis, sector breakdown, sanity checks
+- JSON export to `data/validation/quality-pillar-comparison.json`
+
+### [Phase 3e Block E] Piotroski Stock Detail + Text Cleanup - 2026-02-20 (Codex)
+
+#### Added
+- **Piotroski Detail Card (`src/app/components/scoring/PiotroskiCard.tsx`)** - Ich (Codex) habe eine eigene Stock-Detail-Karte fuer den Piotroski F-Score ergaenzt: Score-Badge, 9-Check-Status (true/false/null), Gruppierung nach Profitability / Leverage & Liquidity / Operating Efficiency, Fiscal-Year-Hinweis und Fallback-Placeholder bei fehlenden SEC-Daten.
+- **UI-Tests fuer die Karte (`tests/unit/piotroski-card.test.ts`)** - Ich (Codex) habe drei Tests hinzugefuegt (9/9, Partial mit null-Checks, Placeholder ohne Daten).
+
+#### Changed
+- **Run-Serialization erweitert (`src/run/builder.ts`)** - Ich (Codex) habe `raw.fundamental.piotroski` in den serialisierten Run-Score aufgenommen, damit die Stock-Detail-Ansicht das Signal direkt aus `data/runs/*.json` lesen kann.
+- **Stock-Detail-Integration (`src/app/components/StockDetailView.tsx`)** - Ich (Codex) habe die Piotroski-Daten aus `score.raw.fundamental.piotroski` extrahiert und die neue Karte unter den vier Pillar-Werten eingebunden, ohne Pillar-Logik zu veraendern.
+- **False-Promise Textbereinigung (`config/presets/piotroski.json`, `config/presets/magic-formula.json`)** - Ich (Codex) habe Strategie-Texte angepasst: Piotroski explizit als separates Signal markiert und ROIC-Claims durch aktuell berechnete Metriken (ROE + ROA) ersetzt.
+
+### [Phase 3e Block C] Piotroski C3 Interface Hardening - 2026-02-20 (Codex)
+
+#### Changed
+- **Piotroski-Modul auf C3-Interface umgestellt (`src/scoring/formulas/piotroski.ts`)** - Ich (Codex) habe die Berechnung auf ein separates 9-Check-Modell mit `PiotroskiCheck` und `PiotroskiResult` (`score`, `maxScore`, `f1..f9`) umgestellt. `passed: null` wird jetzt konsistent fuer nicht berechenbare Checks gesetzt.
+- **Kompatibilitaets-Wrapper beibehalten (`src/scoring/formulas/piotroski.ts`)** - Ich (Codex) habe `calculatePiotroskiFScore` und `mapFundamentalsToPiotroski` kompatibel belassen, damit bestehende Aufrufer nicht brechen, waehrend intern die neue C3-Struktur genutzt wird.
+- **Minimaler Verbrauch in Fundamental-Flow angepasst (`src/scoring/fundamental.ts`)** - Ich (Codex) habe nur die Partial-Data-Notiz von `isComplete/checksSkipped` auf `maxScore` umgestellt (`9 - maxScore`), ohne Pillar-Berechnungen zu veraendern.
+
+#### Added
+- **Piotroski Unit-Tests (`tests/unit/piotroski.test.ts`)** - Ich (Codex) habe Tests fuer 9/9, 0/9, Partial-Data (`maxScore`), No-Data, Division-by-Zero und Negative-Equity-Edge-Case ergaenzt.
+
+### [Phase 3e Block C] Quality Pillar Upgrade (C1) - 2026-02-20 (GLM)
+
+#### Changed
+- **Quality Pillar auf 4 Metriken erweitert (`src/scoring/fundamental.ts`)** — Ich (GLM) habe ROA als 4. Quality-Metrik hinzugefügt. Quality = ROE + ROA + D/E + Gross Margin (min 2/4 erforderlich, Gewichte renormalisiert). FCF Yield bewusst weggelassen (benötigt market_cap via Provider-Merge).
+- **FundamentalThresholds Interface (`src/scoring/scoring_config.ts`)** — Ich (GLM) habe `roa: { low: 3, high: 15 }` zum Interface und DEFAULT_CONFIG hinzugefügt.
+- **Universe Medians (`src/data/repositories/fundamentals_repo.ts`)** — Ich (GLM) habe roa zu den berechneten Medians hinzugefügt.
+- **Score Breakdown Interface (`src/scoring/fundamental.ts`)** — Ich (GLM) habe `roaScore` zum Breakdown und `qualityInputCoverage` zur Ergebnisstruktur hinzugefügt.
+- **Engine Fallback (`src/scoring/engine.ts`)** — Ich (GLM) habe roaScore zum Fallback-Breakdown hinzugefügt.
+
+#### Fixed
+- **Test Compatibility (`tests/unit/fundamental.test.ts`, `tests/unit/topk.test.ts`)** — Ich (GLM) habe Testdaten um roa ergänzt.
+
+#### Removed
+- **scoring-upload Ordner gelöscht** — War nicht mehr aktuell und blockierte Build.
+
+### [Phase 3e Block C] YoY-ETL-Patch (C2) - 2026-02-20 (GLM)
+
+#### Added
+- **Prior Year Fields in RawAccountingData (`scripts/etl/sec_edgar_poc.py`)** — Ich (GLM) habe `*_py` Felder für alle Piotroski-relevanten Metriken hinzugefügt: net_income_py, total_assets_py, operating_cash_flow_py, total_debt_py, revenue_py, gross_profit_py, current_assets_py, current_liabilities_py, shares_outstanding_py.
+- **Year-over-Year Extraction Functions (`scripts/etl/sec_edgar_poc.py`)** — Ich (GLM) habe `_get_annual_value_with_prior()` und `_get_instant_value_with_prior()` implementiert. Logik: Sortiere 10-K FY facts nach End-Datum absteigend, Index 0 = Current Year, Index 1 = Prior Year.
+- **Piotroski-Ready Flag in Bulk Audit (`scripts/etl/sec_edgar_bulk_audit.py`)** — Ich (GLM) habe eine Prüfung hinzugefügt, ob ein Ticker alle erforderlichen Felder für beide Jahre hat. Coverage: 26.8% (514/1918 tickers).
+
+#### Changed
+- **Bulk Audit Extended (`scripts/etl/sec_edgar_bulk_audit.py`)** — Ich (GLM) habe RAW_FIELDS_PY für Prior Year Extraktion hinzugefügt und Coverage-Reporting für `*_py` Felder erweitert.
+
+#### Results
+- **Prior Year Coverage:** net_income_py 94%, total_assets_py 95%, operating_cash_flow_py 95%, total_debt_py 66%, revenue_py 79%, gross_profit_py 44%, current_assets_py 72%, current_liabilities_py 72%, shares_outstanding_py 84%
+
+### [Phase 3e Block C] Piotroski F-Score (C3) - 2026-02-20 (GLM)
+
+#### Added
+- **Piotroski F-Score Implementation (`src/scoring/formulas/piotroski.ts`)** — Ich (GLM) habe die vollständige 9-Punkte Piotroski F-Score Berechnung implementiert basierend auf Joseph Piotroskis 2002 Paper. 3 Kategorien: Profitability (4 checks), Leverage (2 checks), Operating Efficiency (3 checks).
+- **Piotroski Result Interface (`src/scoring/formulas/piotroski.ts`)** — Ich (GLM) habe `PiotroskiResult` mit `score` (0-9), detaillierten `checks` pro Kategorie, `checksPassed/Failed/Skipped`, und `isComplete` Flag definiert.
+- **Fundamentals-to-Piotroski Mapper (`src/scoring/formulas/piotroski.ts`)** — Ich (GLM) habe `mapFundamentalsToPiotroski()` für robuste Mapping von Raw-Daten zu Piotroski-Inputs mit Fallback-Aliassen (camelCase/snake_case).
+- **Piotroski Score Labels (`src/scoring/formulas/piotroski.ts`)** — Ich (GLM) habe `getPiotroskiLabel()` hinzugefügt: 8-9=Excellent, 7=Strong, 5-6=Average, 3-4=Weak, 0-2=Poor.
+
+#### Changed
+- **FundamentalScoreResult Extended (`src/scoring/fundamental.ts`)** — Ich (GLM) habe `piotroski?: PiotroskiResult` zur Ergebnisstruktur hinzugefügt.
+- **Piotroski Calculation Integrated (`src/scoring/fundamental.ts`)** — Ich (GLM) habe die Piotroski-Berechnung in `calculateFundamentalScore()` integriert. Berechnung erfolgt nur wenn `raw`-Daten verfügbar sind. Partial results werden mit Assumption-Log dokumentiert.
+
+#### Notes
+- **Piotroski-Ready Coverage: 26.8%** (514/1918 Russell 2000 tickers) — Limitiert durch gross_profit Coverage (44%). Prior Year Data ist stark (66-95% je nach Feld).
+
+### [Phase 3e] FMP Multi-Key Sharding - 2026-02-20 (Codex)
+
+#### Changed
+- **FMP Loader auf 2 API-Keys erweitert (`scripts/etl/fmp_load.py`)** - Ich (Codex) habe `FMP_API_KEY` + `FMP_API_KEY2` (optional auch `FMP_API_KEYS`) eingebunden, Budget-Tracking pro Key-Slot (`fmp:key1`, `fmp:key2`) ergänzt und Legacy-Budget (`fmp`) kompatibel in die neue Zählung übernommen.
+- **Koordinierte Call-Verteilung ohne Duplikate (`scripts/etl/fmp_load.py`)** - Ich (Codex) habe eine deterministische Symbol-Zuordnung pro Key umgesetzt (`preferred_slot_order`) und Fallback auf den jeweils anderen Key bei Budget-/403-Problemen ergänzt.
+- **Summary/Budget-Reporting erweitert (`scripts/etl/fmp_load.py`)** - Ich (Codex) habe Gesamtbudget über alle Keys (`daily_budget_total`), per-Key-Counters und aggregierte Kompatibilitätswerte im Event-Output ergänzt.
+- **Auf beliebig viele Keys erweitert (`scripts/etl/fmp_load.py`)** - Ich (Codex) habe die Key-Erkennung auf `FMP_API_KEY`, `FMP_API_KEY2`, `FMP_API_KEY3`, `FMP_API_KEY4` (und weitere numerische Suffixe) erweitert; alternativ bleibt `FMP_API_KEYS` (kommagetrennt) unterstützt.
+
+### [Phase 3e] SEC EDGAR XBRL Mapping Fix - 2026-02-20 (GLM)
+
+#### Fixed
+- **Operating Cash Flow XBRL Tags erweitert (`scripts/etl/sec_edgar_poc.py`)** — Ich (GLM) habe `NetCashProvidedByUsedInOperatingActivities` und `NetCashProvidedByUsedInOperatingActivitiesContinuingOperations` zum OCF-Mapping hinzugefügt. **Coverage: 0% → 95.15%**
+- **Debt Current XBRL Tag ergänzt (`scripts/etl/sec_edgar_poc.py`)** — Ich (GLM) habe `LongTermDebtCurrent` zum TotalDebt-Mapping hinzugefügt. **Coverage: 76.38% → 76.75%**
+
+#### Results
+- **Overall Field Coverage:** 75.25% → 83.93%
+- **FCF Analysis Strategy:** 0% → 87.17% ✅
+- **Piotroski-9 Ready:** 0% → 35.87% ✅
+- **Liquidity (Current Ratio):** 73.62% (unchanged)
+- **Quality Pillar:** 37.02% → 37.33% (limitiert durch gross_margin 44.9%)
+
+### [Phase 3e] Provider Merge Priority Update (SEC Bulk) - 2026-02-20 (Codex)
+
+#### Changed
+- **Provider-Merge auf SEC Bulk erweitert (`src/data/repositories/provider_merge.ts`)** - Ich (Codex) habe `sec_edgar_bulk` und `sec_edgar` als erkannte Quellen ergänzt und die Priorität für Accounting-Metriken auf `sec_edgar_bulk -> sec_edgar -> fmp -> yfinance` gesetzt (u. a. `roe`, `roa`, `debtToEquity`, `grossMargin`, `fcf/currentRatio` sowie `revenue/netIncome/assets/equity/debt`).
+- **Merge-Test ergänzt (`tests/unit/provider-merge.test.ts`)** - Ich (Codex) habe einen minimalen Test hinzugefügt, der sicherstellt, dass `sec_edgar_bulk` bei `roe` und `debtToEquity` gegenüber `yfinance` gewinnt.
+
+### [Phase 3e] SEC EDGAR Bulk Audit Prep (Block B) - 2026-02-20 (Codex)
+
+#### Added
+- **Offline Bulk-Audit Skript (`scripts/etl/sec_edgar_bulk_audit.py`)** - Ich (Codex) habe ein lokales Bulk-CompanyFacts-Audit fuer SEC-Dateien hinzugefuegt (kein Network). Das Skript mapped Ticker -> CIK aus lokaler `company_tickers.json`, liest `CIK##########.json`, extrahiert die PoC-Felder, berechnet Derived Metrics (inkl. `FCF = OperatingCashFlow - abs(CapEx)`), schreibt einen Audit-Report nach `data/audits/` und kann optional in `fundamentals_snapshot` schreiben.
+- **Bulk-Audit Unit-Tests + Fixture (`tests/test_sec_edgar_bulk_audit.py`, `tests/fixtures/sec_companyfacts_bulk_trimmed.json`)** - Ich (Codex) habe drei netzwerkfreie Tests fuer CIK-Dateiname, Feldextraktion und Metric-Mathematik (inkl. CapEx-Signhandling) ergaenzt.
+
+#### Changed
+- **Block-B README Snippet (`SEC_EDGAR_POC_README.md`)** - Ich (Codex) habe die exakten Bulk-Audit Run-Commands, Test-Command und erwartete Konsolen-/Audit-Output beschrieben.
+
+### [Phase 3e] SEC EDGAR PoC Audit & Patch (Block A) - 2026-02-20 (Codex)
+
+#### Changed
+- **PoC-Skript gehaertet und in Zielpfad abgelegt (`scripts/etl/sec_edgar_poc.py`)** - Ich (Codex) habe den SEC-CompanyFacts-Endpunkt von `CID{cik}` auf `CIK{cik}` korrigiert, den Shares-Outstanding-Alias-Tippfehler (`WeightedAverageNumberOfSharesOutstandingBasicAndDiluted`) behoben, Instant-Value-Auswahl auf den neuesten Filing-Zeitpunkt (10-Q/10-K unabhaengig) umgestellt, FCF-CapEx-Vorzeichenkonsistenz (`OperatingCashFlow - abs(CapEx)`) eingefuehrt, `us-gaap:DebtCurrent` als minimalen Debt-Alias ergaenzt und die Validierungsgrenze von 5% auf 15% angehoben (inkl. zusaetzlichem NetIncome-Vergleich).
+- **Robustheit bei Netzwerk-/Abhaengigkeitsfehlern (`scripts/etl/sec_edgar_poc.py`)** - Ich (Codex) habe CIK-Mapping/SEC-Requests mit Fehlerbehandlung und Timeouts versehen, wiederholte Mapping-Fehlversuche pro Run unterbunden und Validation ohne installierte `yfinance`-Dependency als weiches Ergebnis statt Hard-Crash umgesetzt.
+- **Schema-sicheres DB-Write (`scripts/etl/sec_edgar_poc.py`)** - Ich (Codex) habe eine Schema-Pruefung fuer `fundamentals_snapshot` eingebaut; bei Abweichung von den PoC-Spalten (`symbol`, `fetched_at`, `data_json`) schreibt das Skript automatisch in die PoC-Tabelle `fundamentals_snapshot_sec_poc`, um das bestehende Produktivschema nicht zu brechen.
+- **PoC-Dokumentation aktualisiert (`SEC_EDGAR_POC_README.md`)** - Ich (Codex) habe Setup/Run/Erwartungswerte, DB-Fallback-Verhalten und Abkuerzungserklaerungen (CIK/XBRL/TTM) dokumentiert.
+
+#### Added
+- **Netzwerkfreie Mini-Tests fuer Block A (`tests/test_sec_edgar_poc.py`, `tests/fixtures/sec_companyfacts_trimmed.json`)** - Ich (Codex) habe drei kleine Unit-Tests fuer `_find_facts`, `_get_instant_value` und die CapEx-Normalisierung in der FCF-Berechnung hinzugefuegt.
+
 ### [Phase 3d] Dev-Fix: Clerk Host Invalid Fallback — 2026-02-19 (Codex)
 
 #### Added

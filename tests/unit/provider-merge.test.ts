@@ -123,6 +123,37 @@ describe('provider merge repository', () => {
     expect(merged?._merge_meta?.yfinance_available).toBe(true);
   });
 
+  it('prefers sec_edgar_bulk over yfinance for accounting metrics', () => {
+    const now = Date.now();
+
+    saveFundamentals(
+      'SEC1',
+      makeFundamentals({
+        _source: 'yfinance',
+        roe: 9,
+        debtToEquity: 1.9,
+      }),
+      now - 10_000
+    );
+
+    saveFundamentals(
+      'SEC1',
+      makeFundamentals({
+        _source: 'sec_edgar_bulk',
+        roe: 17,
+        debtToEquity: 0.42,
+      }),
+      now
+    );
+
+    const merged = getMergedFundamentals('SEC1');
+    expect(merged).not.toBeNull();
+    expect(merged?.roe).toBe(17);
+    expect(merged?.debtToEquity).toBe(0.42);
+    expect(merged?._merge_meta?.sources.roe).toBe('sec_edgar_bulk');
+    expect(merged?._merge_meta?.sources.debtToEquity).toBe('sec_edgar_bulk');
+  });
+
   it('computes provider coverage statistics for mixed availability', () => {
     const now = Date.now();
 

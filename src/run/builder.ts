@@ -173,6 +173,12 @@ export function buildRunRecord(
           fair_value: s.priceTargetDiagnostics.fair_value,
         }
       : undefined,
+    // Keep Piotroski available for Stock Detail without changing pillar logic.
+    raw: {
+      fundamental: {
+        piotroski: s.raw?.fundamental?.piotroski ?? null,
+      },
+    },
   }));
 
   // Find symbols with missing documents

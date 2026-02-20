@@ -23,21 +23,22 @@ function makeScore(symbol: string, score: number, isScanOnly?: boolean): SymbolS
     priceTargetDiagnostics: null,
     isScanOnly,
     raw: {
-      fundamental: {
-        total: score,
-        components: { valuation: score, quality: score },
-        breakdown: {
-          peScore: score,
-          pbScore: score,
-          psScore: score,
-          roeScore: score,
-          debtEquityScore: score,
-          grossMarginScore: score,
-          fcfYieldScore: score,
-        },
-        missingFields: [],
-        assumptions: [],
-      },
+       fundamental: {
+         total: score,
+         components: { valuation: score, quality: score },
+         breakdown: {
+           peScore: score,
+           pbScore: score,
+           psScore: score,
+           roeScore: score,
+           roaScore: score,
+           debtEquityScore: score,
+           grossMarginScore: score,
+           fcfYieldScore: score,
+         },
+         missingFields: [],
+         assumptions: [],
+       },
       technical: {
         total: score,
         components: { trend: score, momentum: score, volatility: score },

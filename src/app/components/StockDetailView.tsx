@@ -5,9 +5,11 @@ import { useState } from 'react';
 import { PriceTargetCard } from './PriceTargetCard';
 import { PeerComparison } from './PeerComparison';
 import { ScoreHistory } from './ScoreHistory';
+import { PiotroskiCard } from './scoring/PiotroskiCard';
 import { buildExplainSignals, type Signal } from '@/lib/explainSignals';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
+import type { PiotroskiResult } from '@/scoring/formulas/piotroski';
 
 function fmtNumber(
   value: number | null | undefined,
@@ -53,6 +55,14 @@ interface Props {
   prevSymbol: string | null;
   nextSymbol: string | null;
 }
+
+type ScoreWithPiotroski = RunV1SchemaJson['scores'][number] & {
+  raw?: {
+    fundamental?: {
+      piotroski?: PiotroskiResult | null;
+    };
+  };
+};
 
 function getFilenameFromDisposition(
   contentDisposition: string | null,
@@ -182,6 +192,7 @@ export function StockDetailView({
   const explain = buildExplainSignals(score, run);
   const isScanOnly = score.is_scan_only;
   const valueCoverage = score.valuation_input_coverage ?? score.value_input_coverage;
+  const piotroski = (score as ScoreWithPiotroski).raw?.fundamental?.piotroski ?? null;
 
   const inputs = diagnostics?.inputs;
   const components = diagnostics?.components;
@@ -342,6 +353,8 @@ export function StockDetailView({
               <ScorePill label={t('stockDetail.risk')} value={score.evidence.risk} />
             </div>
           </div>
+
+          <PiotroskiCard piotroski={piotroski} />
 
           <PeerComparison run={run} currentScore={score} />
 

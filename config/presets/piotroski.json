@@ -1,6 +1,6 @@
 {
   "name": "Piotroski F-Score",
-  "description": "Finanzielle Gesundheit durch 9 Qualitätschecks. Identifiziert fundamental starke Value-Aktien mit steigendem ROA, positiven Cashflows und verbesserter Bilanzqualität.",
+  "description": "Quality/Value-Blend mit Fokus auf Bilanzstaerke. Der Piotroski F-Score wird als separates Signal in der Stock-Detail-Ansicht angezeigt (kein eigener Pillar).",
   "regime_overlay_recommended": false,
   "pillar_weights": {
     "valuation": 0.25,
@@ -32,7 +32,7 @@
     "author": "Joseph Piotroski",
     "paper": "Value Investing: The Use of Historical Financial Statement Information",
     "key_metrics": ["ROA", "Cash Flow", "Debt Ratio", "Gross Margin"],
-    "scoring_system": "9-point checklist (max 9 points)",
+    "scoring_system": "Piotroski F-Score als separates 9-Punkte-Signal in der Detailansicht",
     "target_market": "Small-cap value stocks"
   }
 }

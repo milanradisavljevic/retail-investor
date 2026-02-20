@@ -8,6 +8,7 @@ import { normalizeToRange, roundScore } from './normalize';
 import type { FundamentalsData } from '@/data/repositories/fundamentals_repo';
 import type { FundamentalThresholds } from './scoring_config';
 import { calculatePEG } from './formulas/peg';
+import { calculatePiotroskiFScore, mapFundamentalsToPiotroski, type PiotroskiResult } from './formulas/piotroski';
 
 export interface FundamentalScoreResult {
   total: number;
@@ -20,16 +21,22 @@ export interface FundamentalScoreResult {
     pbScore: number;
     psScore: number;
     roeScore: number;
+    roaScore: number;
     debtEquityScore: number;
     grossMarginScore: number;
     fcfYieldScore: number;
     pegScore?: number;
     pegRatio?: number | null;
   };
+  piotroski?: PiotroskiResult;
   valuationInputCoverage?: {
     present: string[];
     missing: string[];
     strategy_used: 'full' | 'partial' | 'fallback_neutral' | 'insufficient_data';
+  };
+  qualityInputCoverage?: {
+    present: string[];
+    missing: string[];
   };
   missingFields: string[];
   assumptions: string[];
@@ -38,16 +45,14 @@ export interface FundamentalScoreResult {
 
 // Thresholds for scoring (based on spec)
 export const DEFAULT_THRESHOLDS: FundamentalThresholds = {
-  pe: { low: 15, high: 30 }, // Lower is better
-  pb: { low: 1.5, high: 5 }, // Lower is better
-  ps: { low: 1, high: 5 }, // Lower is better
-  // Quality thresholds calibrated for Russell 2000 Small Caps (Jan 2026)
-  // ROE: Top quartile ~25-30%, so high=35% for differentiation
-  // D/E: Most profitable small caps have <0.3, so low=0.2 for spread
-  roe: { low: 8, high: 35 }, // Higher is better (%)
-  debtEquity: { low: 0.2, high: 1.5 }, // Lower is better
-  grossMargin: { low: 20, high: 60 }, // Higher is better (%)
-  fcfYield: { low: 2, high: 10 }, // Higher is better (%)
+  pe: { low: 15, high: 30 },
+  pb: { low: 1.5, high: 5 },
+  ps: { low: 1, high: 5 },
+  roe: { low: 8, high: 35 },
+  roa: { low: 3, high: 15 },
+  debtEquity: { low: 0.2, high: 1.5 },
+  grossMargin: { low: 20, high: 60 },
+  fcfYield: { low: 2, high: 10 },
 };
 
 function toFiniteNumber(value: unknown): number | null {
@@ -96,6 +101,7 @@ export function calculateFundamentalScore(
         pbScore: 0,
         psScore: 0,
         roeScore: 0,
+        roaScore: 0,
         debtEquityScore: 0,
         grossMarginScore: 0,
         fcfYieldScore: 0,
@@ -133,6 +139,7 @@ export function calculateFundamentalScore(
   const pbObj = impute(data.pbRatio, universeMediData?.pbRatio, 'pbRatio');
   const psObj = impute(data.psRatio, universeMediData?.psRatio, 'psRatio');
   const roeObj = impute(data.roe, universeMediData?.roe, 'roe');
+  const roaObj = impute(data.roa, universeMediData?.roa, 'roa');
   const debtEquityObj = impute(data.debtToEquity, universeMediData?.debtToEquity, 'debtToEquity');
   const grossMarginObj = impute(data.grossMargin, universeMediData?.grossMargin, 'grossMargin');
 
@@ -142,6 +149,7 @@ export function calculateFundamentalScore(
   const pbScore = normalizeToRange(pbObj.value, thresholds.pb, true);
   const psScore = normalizeToRange(psObj.value, thresholds.ps, true);
   const roeScore = normalizeToRange(roeObj.value, thresholds.roe, false);
+  const roaScore = normalizeToRange(roaObj.value, thresholds.roa, false);
   const grossMarginScore = normalizeToRange(grossMarginObj.value, thresholds.grossMargin, false);
 
   // Special handling for Debt/Equity
@@ -222,9 +230,10 @@ export function calculateFundamentalScore(
     }
   }
 
-  // Quality pillar: ROE, Debt/Equity, Gross Margin
+  // Quality pillar: ROE, ROA, Debt/Equity, Gross Margin (4 metrics)
   const qualityComponents = [
       { key: 'roe', score: roeScore, present: !roeObj.isMissing },
+      { key: 'roa', score: roaScore, present: !roaObj.isMissing },
       { key: 'de', score: debtEquityScore, present: !debtEquityObj.isMissing },
       { key: 'grossMargin', score: grossMarginScore, present: !grossMarginObj.isMissing }
   ];
@@ -237,6 +246,18 @@ export function calculateFundamentalScore(
   } else {
        quality = 0;
        assumptions.push('quality: insufficient inputs (< 2 available); score=0');
+  }
+
+  // Piotroski F-Score calculation (requires raw data with prior year fields)
+  let piotroski: PiotroskiResult | undefined;
+  if (data.raw) {
+    const piotroskiInputs = mapFundamentalsToPiotroski(data.raw as Record<string, unknown>);
+    if (piotroskiInputs.netIncome !== null || piotroskiInputs.operatingCashFlow !== null) {
+      piotroski = calculatePiotroskiFScore(piotroskiInputs);
+      if (piotroski.maxScore < 9) {
+        assumptions.push(`piotroski: partial data (${9 - piotroski.maxScore}/9 checks skipped)`);
+      }
+    }
   }
 
   // Total fundamental score
@@ -254,6 +275,7 @@ export function calculateFundamentalScore(
       pbScore: !pbObj.isMissing ? roundScore(pbScore) : 0,
       psScore: !psObj.isMissing ? roundScore(psScore) : 0,
       roeScore: !roeObj.isMissing ? roundScore(roeScore) : 0,
+      roaScore: !roaObj.isMissing ? roundScore(roaScore) : 0,
       debtEquityScore: !debtEquityObj.isMissing ? roundScore(debtEquityScore) : 0,
       grossMarginScore: !grossMarginObj.isMissing ? roundScore(grossMarginScore) : 0,
       fcfYieldScore: fcfYieldPresent ? roundScore(fcfYieldScore) : 0,
@@ -264,10 +286,15 @@ export function calculateFundamentalScore(
           }
         : {}),
     },
+    piotroski,
     valuationInputCoverage: {
       present: presentValuation.map((c) => c.key),
       missing: valuationComponents.filter((c) => !c.present).map((c) => c.key),
       strategy_used: strategy,
+    },
+    qualityInputCoverage: {
+      present: presentQuality.map((c) => c.key),
+      missing: qualityComponents.filter((c) => !c.present).map((c) => c.key),
     },
     missingFields,
     assumptions,
