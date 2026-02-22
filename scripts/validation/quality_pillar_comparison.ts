@@ -12,7 +12,7 @@ import { join } from 'path';
 
 const THRESHOLDS = {
   roe: { low: 8, high: 35 },
-  roa: { low: 3, high: 15 },
+  roa: { low: 0, high: 10 },
   debtEquity: { low: 0.2, high: 1.5 },
   grossMargin: { low: 20, high: 60 },
 };
@@ -113,7 +113,7 @@ function generateReason(
       parts.push(`ROA=${roa.toFixed(1)}% boost`);
     } else if (grossMargin !== null && grossMargin > 40) {
       parts.push(`GM=${grossMargin.toFixed(1)}% boost`);
-    } else if (roa !== null && roa > 10) {
+    } else if (roa !== null && roa > 8) {
       parts.push(`ROA=${roa.toFixed(1)}% boost`);
     }
   } else if (entry.delta < -10) {
@@ -121,7 +121,7 @@ function generateReason(
       parts.push('GM missing');
     } else if (grossMargin !== null && grossMargin < 25) {
       parts.push(`GM=${grossMargin.toFixed(1)}% drags down`);
-    } else if (roa !== null && roa < 3) {
+    } else if (roa !== null && roa < 0) {
       parts.push(`ROA=${roa.toFixed(1)}% drags down`);
     }
   }
@@ -155,11 +155,16 @@ function calculateStats(values: number[]): { mean: number; median: number; stdDe
   };
 }
 
+function toPct(part: number, total: number): string {
+  if (total <= 0) return '0.0';
+  return ((part / total) * 100).toFixed(1);
+}
+
 function main() {
   console.log('================================================================');
-  console.log('QUALITY PILLAR VALIDATION: OLD (2-Metric) vs NEW (3-Metric*)');
+  console.log('QUALITY PILLAR VALIDATION: OLD (2-Metric) vs NEW (4-Metric)');
   console.log(`Russell 2000 | ${new Date().toISOString().split('T')[0]}`);
-  console.log('*NEW would use 4 metrics (ROE+ROA+D/E+GM) but ROA not in DB yet');
+  console.log('Data source: privatinvestor.db fundamentals_snapshot (SSOT)');
   console.log('================================================================\n');
 
   const projectRoot = process.cwd();
@@ -174,7 +179,7 @@ function main() {
   const symbols: string[] = universeData.symbols || [];
   console.log(`Loaded ${symbols.length} symbols from universe\n`);
 
-  const dbPath = join(projectRoot, 'data', 'market-data.db');
+  const dbPath = join(projectRoot, 'data', 'privatinvestor.db');
   if (!existsSync(dbPath)) {
     console.error(`Database not found: ${dbPath}`);
     process.exit(1);
@@ -186,33 +191,77 @@ function main() {
   const sectorMap = new Map<string, string | null>();
 
   const fundRows = db.prepare(`
-    SELECT symbol, roe, debt_equity, gross_margin
-    FROM fundamentals
-    WHERE date = (SELECT MAX(date) FROM fundamentals)
-  `).all() as { symbol: string; roe: number | null; debt_equity: number | null; gross_margin: number | null }[];
+    WITH latest AS (
+      SELECT symbol, MAX(fetched_at) as fetched_at
+      FROM fundamentals_snapshot
+      GROUP BY symbol
+    )
+    SELECT
+      f.symbol as symbol,
+      json_extract(f.data_json, '$.roe') as roe,
+      COALESCE(
+        json_extract(f.data_json, '$.roa'),
+        json_extract(f.data_json, '$.secEdgar.roa')
+      ) as roa,
+      COALESCE(
+        json_extract(f.data_json, '$.debtToEquity'),
+        json_extract(f.data_json, '$.secEdgar.debtToEquity')
+      ) as debt_to_equity,
+      COALESCE(
+        json_extract(f.data_json, '$.grossMargin'),
+        json_extract(f.data_json, '$.secEdgar.grossMargin')
+      ) as gross_margin
+    FROM fundamentals_snapshot f
+    JOIN latest l
+      ON l.symbol = f.symbol
+     AND l.fetched_at = f.fetched_at
+  `).all() as {
+    symbol: string;
+    roe: number | null;
+    roa: number | null;
+    debt_to_equity: number | null;
+    gross_margin: number | null;
+  }[];
 
   for (const row of fundRows) {
     fundamentalsMap.set(row.symbol, {
       roe: isValidNumber(row.roe) ? row.roe : null,
-      roa: null,
-      debtToEquity: isValidNumber(row.debt_equity) ? row.debt_equity : null,
+      roa: isValidNumber(row.roa) ? row.roa : null,
+      debtToEquity: isValidNumber(row.debt_to_equity) ? row.debt_to_equity : null,
       grossMargin: isValidNumber(row.gross_margin) ? row.gross_margin : null,
     });
   }
 
-  const metaRows = db.prepare(`
-    SELECT symbol, sector FROM metadata
-  `).all() as { symbol: string; sector: string | null }[];
+  const hasCompanyProfileTable = db
+    .prepare(
+      `SELECT 1 FROM sqlite_master WHERE type='table' AND name='company_profile' LIMIT 1`
+    )
+    .get();
 
-  for (const row of metaRows) {
-    sectorMap.set(row.symbol, row.sector);
+  if (hasCompanyProfileTable) {
+    const profileRows = db.prepare(`
+      WITH latest_profiles AS (
+        SELECT symbol, MAX(fetched_at) as fetched_at
+        FROM company_profile
+        GROUP BY symbol
+      )
+      SELECT p.symbol, p.sector
+      FROM company_profile p
+      JOIN latest_profiles lp
+        ON lp.symbol = p.symbol
+       AND lp.fetched_at = p.fetched_at
+    `).all() as { symbol: string; sector: string | null }[];
+
+    for (const row of profileRows) {
+      sectorMap.set(row.symbol, row.sector);
+    }
   }
 
   db.close();
 
   console.log(`Loaded ${fundamentalsMap.size} fundamentals snapshots`);
   console.log(`Loaded ${sectorMap.size} company profiles`);
-  console.log(`Note: ROA not available in current data - NEW Quality uses ROE + D/E + GM (3/4 metrics)\n`);
+  console.log('Note: NEW Quality uses ROE + ROA + D/E + GM (full 4-metric mode)\n');
 
   const entries: ComparisonEntry[] = [];
 
@@ -306,16 +355,16 @@ function main() {
   console.log(`  Mean delta:     ${deltaStats.mean >= 0 ? '+' : ''}${deltaStats.mean.toFixed(1)} points`);
   console.log(`  Median delta:   ${deltaStats.median >= 0 ? '+' : ''}${deltaStats.median.toFixed(1)} points`);
   console.log(
-    `  Symbols improved (delta > 0):    ${improved.length} (${((improved.length / bothScorable.length) * 100).toFixed(1)}%)`
+    `  Symbols improved (delta > 0):    ${improved.length} (${toPct(improved.length, bothScorable.length)}%)`
   );
   console.log(
-    `  Symbols declined (delta < 0):    ${declined.length} (${((declined.length / bothScorable.length) * 100).toFixed(1)}%)`
+    `  Symbols declined (delta < 0):    ${declined.length} (${toPct(declined.length, bothScorable.length)}%)`
   );
   console.log(
-    `  Symbols unchanged (delta = 0):   ${unchanged.length} (${((unchanged.length / bothScorable.length) * 100).toFixed(1)}%)`
+    `  Symbols unchanged (delta = 0):   ${unchanged.length} (${toPct(unchanged.length, bothScorable.length)}%)`
   );
   console.log(
-    `  Symbols with |delta| > 20:      ${bigChanges.length} (${((bigChanges.length / bothScorable.length) * 100).toFixed(1)}%)\n`
+    `  Symbols with |delta| > 20:      ${bigChanges.length} (${toPct(bigChanges.length, bothScorable.length)}%)\n`
   );
 
   const sortedByDeltaDesc = [...bothScorable].sort((a, b) => b.delta - a.delta);
@@ -382,19 +431,16 @@ function main() {
   let checksPassed = 0;
   let checksFailed = 0;
 
-  if (financialsSector && financialsSector.avgDelta < 0) {
-    console.log('  ✓ Financials sector avg delta is negative (expected: GM often missing)');
-    checksPassed++;
-  } else if (financialsSector) {
-    console.log(`  ✗ Financials sector avg delta is ${financialsSector.avgDelta.toFixed(1)} (expected negative)`);
-    checksFailed++;
+  if (financialsSector) {
+    console.log(
+      `  ℹ Financial Services avg delta: ${financialsSector.avgDelta.toFixed(1)} (informational, no sign expectation)`
+    );
   } else {
     console.log('  - Financials sector not found (skipped)');
   }
 
-  // Tech check is now conditional - without ROA, tech may not gain
   if (techSector) {
-    console.log(`  ℹ Technology sector avg delta is ${techSector.avgDelta.toFixed(1)} (ROA unavailable - may not be positive)`);
+    console.log(`  ℹ Technology sector avg delta: ${techSector.avgDelta.toFixed(1)}`);
   } else {
     console.log('  - Technology sector not found (skipped)');
   }
@@ -434,12 +480,18 @@ function main() {
       checksFailed++;
     }
   } else {
-    console.log('  ℹ Not enough data to compare variance (ROA unavailable in current dataset)');
+    console.log('  ℹ Not enough mixed coverage to compare full-metric vs partial-metric variance');
   }
 
   console.log(`\n  Passed: ${checksPassed}, Failed: ${checksFailed}`);
-  console.log(`\nKEY FINDING: Without ROA data, the NEW system heavily penalizes Financials (GM≈0%).`);
-  console.log(`  Real Estate was least affected (${realEstateSector?.avgDelta.toFixed(1) || 'N/A'} avg delta) because REITs have high GM.`);
+  if (allFourMetrics.length > 0) {
+    console.log('\nKEY FINDING: SSOT validation is running in full 4-metric mode (ROE + ROA + D/E + GM).');
+  } else {
+    console.log('\nKEY FINDING: 4-metric quality logic is active, but current snapshot coverage is still limited.');
+  }
+  console.log(
+    `  Real Estate avg delta: ${realEstateSector?.avgDelta.toFixed(1) || 'N/A'} (informational).`
+  );
 
   const outputDir = join(projectRoot, 'data', 'validation');
   if (!existsSync(outputDir)) {
@@ -468,11 +520,17 @@ function main() {
       mean: deltaStats.mean,
       median: deltaStats.median,
       improved_count: improved.length,
-      improved_pct: Math.round((improved.length / bothScorable.length) * 1000) / 10,
+      improved_pct: bothScorable.length
+        ? Math.round((improved.length / bothScorable.length) * 1000) / 10
+        : 0,
       declined_count: declined.length,
-      declined_pct: Math.round((declined.length / bothScorable.length) * 1000) / 10,
+      declined_pct: bothScorable.length
+        ? Math.round((declined.length / bothScorable.length) * 1000) / 10
+        : 0,
       unchanged_count: unchanged.length,
-      unchanged_pct: Math.round((unchanged.length / bothScorable.length) * 1000) / 10,
+      unchanged_pct: bothScorable.length
+        ? Math.round((unchanged.length / bothScorable.length) * 1000) / 10
+        : 0,
       big_changes_count: bigChanges.length,
       big_changes_pct: Math.round((bigChanges.length / bothScorable.length) * 1000) / 10,
     },

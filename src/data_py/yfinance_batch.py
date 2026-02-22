@@ -7,7 +7,10 @@ Usage:
     echo '{"symbols": ["AAPL", "MSFT"], "methods": ["basic_financials", "quote"]}' | python3 yfinance_batch.py
 """
 import json
+import os
 import sys
+import tempfile
+from pathlib import Path
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
 
@@ -17,6 +20,35 @@ try:
 except ImportError as e:
     print(json.dumps({"error": f"Missing dependency: {e}"}), file=sys.stderr)
     sys.exit(1)
+
+
+def configure_yfinance_cache() -> None:
+    """
+    Ensure yfinance uses a writable cache directory.
+    """
+    cache_override = os.environ.get("YFINANCE_CACHE_DIR")
+    cache_dir = (
+        Path(cache_override)
+        if cache_override
+        else Path(tempfile.gettempdir()) / "retail-investor" / "yfinance-cache-batch"
+    )
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        cache_api = getattr(yf, "cache", None)
+        if cache_api is None:
+            return
+
+        if hasattr(cache_api, "set_cache_location"):
+            cache_api.set_cache_location(str(cache_dir))
+        elif hasattr(cache_api, "set_tz_cache_location"):
+            cache_api.set_tz_cache_location(str(cache_dir))
+    except Exception as exc:
+        # Best effort only: fetch should continue even if cache API changes.
+        print(
+            json.dumps({"warning": f"Unable to configure yfinance cache: {exc}"}),
+            file=sys.stderr,
+        )
 
 
 def fetch_batch(symbols: List[str], methods: List[str]) -> Dict[str, Dict[str, Any]]:
@@ -116,6 +148,8 @@ def fetch_batch(symbols: List[str], methods: List[str]) -> Dict[str, Dict[str, A
 def main():
     """Read JSON from stdin, fetch batch, write JSON to stdout."""
     try:
+        configure_yfinance_cache()
+
         # Read JSON input from stdin
         input_data = json.loads(sys.stdin.read())
         symbols = input_data.get('symbols', [])

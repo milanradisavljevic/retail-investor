@@ -1,6 +1,7 @@
 import {
   Activity,
   AlertTriangle,
+  LineChart,
   CheckCircle,
   Clock,
   Database as DatabaseIcon,
@@ -100,6 +101,26 @@ function formatFieldName(field: string): string {
   return field
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/^./, (char) => char.toUpperCase());
+}
+
+function pctTone(pct: number): string {
+  if (pct >= 80) return 'text-accent-green';
+  if (pct >= 50) return 'text-accent-gold';
+  return 'text-accent-red';
+}
+
+function metricCoveragePct(
+  item: {
+    metric_coverage: Array<{ field: string; coverage_pct: number }>;
+  },
+  field: string
+): number {
+  return item.metric_coverage.find((m) => m.field === field)?.coverage_pct ?? 0;
+}
+
+function formatDays(value: number | null): string {
+  if (value === null) return 'n/a';
+  return `${value.toFixed(1)}d`;
 }
 
 function ProviderCoverageCard({
@@ -308,6 +329,113 @@ export default async function HealthPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="rounded-xl border border-navy-700 bg-navy-800 p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <LineChart className="h-4 w-4 text-accent-blue" />
+          <h2 className="text-lg font-semibold text-text-primary">F4 Data Quality Monitor</h2>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="rounded-lg border border-navy-700 bg-navy-900/60 p-4">
+            <h3 className="mb-3 text-sm font-semibold text-text-primary">Universe Fundamentals Health</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-navy-700 text-left text-[10px] uppercase tracking-wider text-text-muted">
+                    <th className="px-2 py-2">Universe</th>
+                    <th className="px-2 py-2 text-right">Fundamentals</th>
+                    <th className="px-2 py-2 text-right">Piotroski</th>
+                    <th className="px-2 py-2 text-right">Freshness</th>
+                    <th className="px-2 py-2 text-right">Providers</th>
+                    <th className="px-2 py-2 text-right">ROA / GM / D/E</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-navy-700/70">
+                  {health.quality_monitor.universes.slice(0, 12).map((item) => {
+                    const source = item.provider_breakdown;
+                    const roaPct = metricCoveragePct(item, 'roa');
+                    const gmPct = metricCoveragePct(item, 'grossMargin');
+                    const dePct = metricCoveragePct(item, 'debtToEquity');
+                    return (
+                      <tr key={item.id} className="text-text-secondary">
+                        <td className="px-2 py-2 text-text-primary">{item.name}</td>
+                        <td className={`px-2 py-2 text-right ${pctTone(item.fundamentals_coverage_pct)}`}>
+                          {item.fundamentals_coverage_pct.toFixed(1)}%
+                        </td>
+                        <td className={`px-2 py-2 text-right ${pctTone(item.piotroski_ready_pct)}`}>
+                          {item.piotroski_ready_pct.toFixed(1)}%
+                        </td>
+                        <td className="px-2 py-2 text-right text-xs">
+                          <div className="text-text-primary">median {formatDays(item.freshness.median_days)}</div>
+                          <div className="text-text-muted">oldest {formatDays(item.freshness.oldest_days)}</div>
+                          <div className={pctTone(100 - item.freshness.pct_older_than_7d)}>
+                            &gt;7d {item.freshness.pct_older_than_7d.toFixed(1)}%
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-right text-xs">
+                          <div className="text-text-primary">SEC {source.sec_edgar_bulk + source.sec_edgar}</div>
+                          <div className="text-text-secondary">FMP {source.fmp} · YF {source.yfinance}</div>
+                          <div className="text-text-muted">Gap {source.gap}</div>
+                        </td>
+                        <td className="px-2 py-2 text-right text-xs">
+                          <div className={pctTone(roaPct)}>ROA {roaPct.toFixed(1)}%</div>
+                          <div className={pctTone(gmPct)}>GM {gmPct.toFixed(1)}%</div>
+                          <div className={pctTone(dePct)}>D/E {dePct.toFixed(1)}%</div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-navy-700 bg-navy-900/60 p-4">
+            <h3 className="mb-3 text-sm font-semibold text-text-primary">Coverage Trend (SEC Audits)</h3>
+            {health.quality_monitor.trend.length === 0 ? (
+              <div className="rounded border border-navy-700 bg-navy-800/60 p-3 text-sm text-text-muted">
+                No SEC audit trend snapshots found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-navy-700 text-left uppercase tracking-wider text-text-muted">
+                      <th className="px-2 py-1.5">Timestamp</th>
+                      <th className="px-2 py-1.5 text-right">Field Coverage</th>
+                      <th className="px-2 py-1.5 text-right">Piotroski Ready</th>
+                      <th className="px-2 py-1.5 text-right">Processed</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-navy-700/70">
+                    {health.quality_monitor.trend.slice(-10).reverse().map((point) => (
+                      <tr key={point.timestamp_utc} className="text-text-secondary">
+                        <td className="px-2 py-1.5 text-text-primary">
+                          {point.timestamp_utc.replace('T', ' ').slice(0, 19)}
+                        </td>
+                        <td className={`px-2 py-1.5 text-right ${pctTone(point.overall_field_coverage_pct ?? 0)}`}>
+                          {point.overall_field_coverage_pct === null
+                            ? 'n/a'
+                            : `${point.overall_field_coverage_pct.toFixed(1)}%`}
+                        </td>
+                        <td className={`px-2 py-1.5 text-right ${pctTone(point.piotroski_ready_pct ?? 0)}`}>
+                          {point.piotroski_ready_pct === null
+                            ? 'n/a'
+                            : `${point.piotroski_ready_pct.toFixed(1)}%`}
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-text-primary">
+                          {point.processed === null ? 'n/a' : point.processed.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="rounded-xl border border-navy-700 bg-navy-800 p-5">

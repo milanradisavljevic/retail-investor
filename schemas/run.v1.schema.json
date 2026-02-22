@@ -218,7 +218,7 @@
             "properties": {
               "present": { "type": "array", "items": { "type": "string" } },
               "missing": { "type": "array", "items": { "type": "string" } },
-              "strategy_used": { "type": "string", "enum": ["full", "partial", "fallback_neutral"] }
+              "strategy_used": { "type": "string", "enum": ["full", "partial", "fallback_neutral", "insufficient_data"] }
             }
           },
 
@@ -228,7 +228,7 @@
             "properties": {
               "present": { "type": "array", "items": { "type": "string" } },
               "missing": { "type": "array", "items": { "type": "string" } },
-              "strategy_used": { "type": "string", "enum": ["full", "partial", "fallback_neutral"] }
+              "strategy_used": { "type": "string", "enum": ["full", "partial", "fallback_neutral", "insufficient_data"] }
             }
           },
 
@@ -261,6 +261,32 @@
                     "notes": { "type": "string" }
                   }
                 }
+              },
+              "outlier_flags": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "F5 Outlier Detection flags (symbol is kept in scoring, flagging-only)"
+              },
+              "outlierFlags": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "CamelCase alias for internal dataQuality.outlierFlags compatibility"
+              },
+              "fundamentals_age_days": {
+                "type": ["number", "null"],
+                "description": "Age of fundamentals used in scoring (days)"
+              },
+              "fundamentalsAgeDays": {
+                "type": ["number", "null"],
+                "description": "CamelCase alias for internal dataQuality.fundamentalsAgeDays compatibility"
+              },
+              "stale_fundamentals": {
+                "type": "boolean",
+                "description": "True when fundamentals_age_days exceeds 30 days (F6)"
+              },
+              "staleFundamentals": {
+                "type": "boolean",
+                "description": "CamelCase alias for internal dataQuality.staleFundamentals compatibility"
               },
               "missing_fields": { "type": "array", "items": { "type": "string" } },
               "assumptions": { "type": "array", "items": { "type": "string" }, "maxItems": 10 },

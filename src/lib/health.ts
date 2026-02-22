@@ -75,6 +75,7 @@ export interface HealthSnapshot {
     as_of: string | null;
   };
   provider_coverage: ProviderHealthData[];
+  quality_monitor: QualityMonitorData;
 }
 
 export interface ProviderHealthData {
@@ -90,6 +91,53 @@ export interface ProviderHealthData {
     yfinance_pct: number;
     merged_pct: number;
   }>;
+}
+
+export interface QualityMonitorMetricCoverage {
+  field: string;
+  covered_symbols: number;
+  coverage_pct: number;
+}
+
+export interface QualityMonitorProviderBreakdown {
+  sec_edgar_bulk: number;
+  sec_edgar: number;
+  fmp: number;
+  yfinance: number;
+  unknown: number;
+  gap: number;
+}
+
+export interface QualityMonitorFreshness {
+  oldest_days: number | null;
+  median_days: number | null;
+  pct_older_than_7d: number;
+  sample_size: number;
+}
+
+export interface QualityMonitorUniverse {
+  id: string;
+  name: string;
+  symbol_count: number;
+  fundamentals_symbols: number;
+  fundamentals_coverage_pct: number;
+  piotroski_ready_symbols: number;
+  piotroski_ready_pct: number;
+  freshness: QualityMonitorFreshness;
+  provider_breakdown: QualityMonitorProviderBreakdown;
+  metric_coverage: QualityMonitorMetricCoverage[];
+}
+
+export interface QualityMonitorTrendPoint {
+  timestamp_utc: string;
+  overall_field_coverage_pct: number | null;
+  piotroski_ready_pct: number | null;
+  processed: number | null;
+}
+
+export interface QualityMonitorData {
+  universes: QualityMonitorUniverse[];
+  trend: QualityMonitorTrendPoint[];
 }
 
 let cached: { expiresAt: number; data: HealthSnapshot } | null = null;
@@ -115,6 +163,18 @@ type UniverseCatalogItem = {
   name: string;
   symbolCount: number;
   symbols: string[];
+};
+
+type LatestFundamentalsRow = {
+  symbol: string;
+  fetchedAt: number;
+  dataJson: string;
+};
+
+type LatestFundamentalsSnapshot = {
+  fetchedAtMs: number;
+  source: 'sec_edgar_bulk' | 'sec_edgar' | 'fmp' | 'yfinance' | 'unknown';
+  data: Record<string, unknown>;
 };
 
 function hasTable(db: Database.Database, tableName: string): boolean {
@@ -175,6 +235,157 @@ function chunked<T>(arr: T[], size: number): T[][] {
     out.push(arr.slice(i, i + size));
   }
   return out;
+}
+
+function normalizeFetchedAtMs(value: number | null | undefined): number | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return value > 1_000_000_000_000 ? value : value * 1000;
+}
+
+function safeNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function parseJsonObject(value: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>;
+  } catch {
+    // ignore invalid rows in health dashboard
+  }
+  return null;
+}
+
+function normalizeProviderSource(
+  value: unknown
+): 'sec_edgar_bulk' | 'sec_edgar' | 'fmp' | 'yfinance' | 'unknown' {
+  if (value === 'sec_edgar_bulk') return 'sec_edgar_bulk';
+  if (value === 'sec_edgar') return 'sec_edgar';
+  if (value === 'fmp') return 'fmp';
+  if (value === 'yfinance' || value === null || value === undefined) return 'yfinance';
+  return 'unknown';
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return sorted[mid];
+}
+
+function loadLatestFundamentalsBySymbol(
+  privateDb: Database.Database
+): Map<string, LatestFundamentalsSnapshot> {
+  if (!hasTable(privateDb, 'fundamentals_snapshot')) return new Map();
+
+  const rows = privateDb
+    .prepare(
+      `
+      SELECT fs.symbol AS symbol, fs.fetched_at AS fetchedAt, fs.data_json AS dataJson
+      FROM fundamentals_snapshot fs
+      WHERE fs.fetched_at = (
+        SELECT MAX(fs2.fetched_at)
+        FROM fundamentals_snapshot fs2
+        WHERE fs2.symbol = fs.symbol
+      )
+    `
+    )
+    .all() as LatestFundamentalsRow[];
+
+  const bySymbol = new Map<string, LatestFundamentalsSnapshot>();
+  for (const row of rows) {
+    const symbol = String(row.symbol).toUpperCase();
+    const data = parseJsonObject(row.dataJson);
+    if (!data) continue;
+
+    const fetchedAtMs = normalizeFetchedAtMs(row.fetchedAt);
+    if (!fetchedAtMs) continue;
+
+    bySymbol.set(symbol, {
+      fetchedAtMs,
+      source: normalizeProviderSource(data._source),
+      data,
+    });
+  }
+  return bySymbol;
+}
+
+function hasPiotroskiData(secEdgar: Record<string, unknown> | null): boolean {
+  if (!secEdgar) return false;
+
+  const currentFields = [
+    secEdgar.netIncome,
+    secEdgar.totalAssets,
+    secEdgar.operatingCashFlow,
+    secEdgar.totalDebt,
+    secEdgar.currentAssets,
+    secEdgar.currentLiabilities,
+    secEdgar.sharesOutstanding,
+    secEdgar.revenue,
+    secEdgar.grossProfit,
+  ];
+
+  const priorFields = [
+    secEdgar.net_income_py,
+    secEdgar.total_assets_py,
+    secEdgar.total_debt_py,
+    secEdgar.current_assets_py,
+    secEdgar.current_liabilities_py,
+    secEdgar.shares_outstanding_py,
+    secEdgar.revenue_py,
+    secEdgar.gross_profit_py,
+  ];
+
+  const hasCurrent = currentFields.every((v) => safeNumber(v) !== null);
+  const hasPrior = priorFields.every((v) => safeNumber(v) !== null);
+  return hasCurrent && hasPrior;
+}
+
+function readAuditTrend(): QualityMonitorTrendPoint[] {
+  const auditsDir = path.join(process.cwd(), 'data', 'audits');
+  if (!fs.existsSync(auditsDir)) return [];
+
+  const candidates = fs
+    .readdirSync(auditsDir)
+    .filter((name) => name.startsWith('sec_edgar_bulk_audit_') && name.endsWith('.json'))
+    .sort()
+    .slice(-20);
+
+  const points: QualityMonitorTrendPoint[] = [];
+  for (const filename of candidates) {
+    const fullPath = path.join(auditsDir, filename);
+    try {
+      const raw = fs.readFileSync(fullPath, 'utf-8');
+      const parsed = JSON.parse(raw) as {
+        timestamp_utc?: string;
+        summary?: {
+          overall_field_coverage_pct?: number;
+          piotroski_ready?: { pct?: number; count?: number };
+          processed?: number;
+        };
+      };
+
+      const ts = parsed.timestamp_utc ?? filename.replace('sec_edgar_bulk_audit_', '').replace('.json', '');
+      points.push({
+        timestamp_utc: ts,
+        overall_field_coverage_pct: safeNumber(parsed.summary?.overall_field_coverage_pct),
+        piotroski_ready_pct: safeNumber(parsed.summary?.piotroski_ready?.pct),
+        processed: safeNumber(parsed.summary?.processed),
+      });
+    } catch {
+      // ignore malformed audit snapshots
+    }
+  }
+
+  return points;
 }
 
 function loadUniverseSymbols(id: string): string[] {
@@ -269,6 +480,7 @@ function universeCoverageFromPrices(
 
 function buildHealthSnapshot(): HealthSnapshot {
   const today = new Date().toISOString().slice(0, 10);
+  const nowMs = Date.now();
 
   const privateDbPath = path.join(process.cwd(), 'data', 'privatinvestor.db');
   const marketDbPath = path.join(process.cwd(), 'data', 'market-data.db');
@@ -381,6 +593,107 @@ function buildHealthSnapshot(): HealthSnapshot {
     const universesLoaded = universes
       .filter((u) => u.symbols_with_price > 0)
       .map((u) => u.name);
+
+    const latestFundamentalsBySymbol = loadLatestFundamentalsBySymbol(privateDb);
+    const monitorMetrics = [
+      'peRatio',
+      'pbRatio',
+      'psRatio',
+      'roe',
+      'roa',
+      'debtToEquity',
+      'grossMargin',
+      'fcf',
+      'currentRatio',
+      'operatingCashFlow',
+      'revenue',
+      'netIncome',
+    ] as const;
+
+    const qualityMonitorUniverses: QualityMonitorUniverse[] = universeCatalog
+      .filter((u) => u.symbols.length > 0)
+      .map((u) => {
+        const symbolCount = u.symbols.length;
+        const metricCounts = new Map<string, number>(monitorMetrics.map((m) => [m, 0]));
+        const providerBreakdown: QualityMonitorProviderBreakdown = {
+          sec_edgar_bulk: 0,
+          sec_edgar: 0,
+          fmp: 0,
+          yfinance: 0,
+          unknown: 0,
+          gap: 0,
+        };
+        const freshnessAgesDays: number[] = [];
+        let piotroskiReadySymbols = 0;
+        let fundamentalsSymbols = 0;
+
+        for (const symbol of u.symbols) {
+          const snapshot = latestFundamentalsBySymbol.get(symbol);
+          if (!snapshot) {
+            providerBreakdown.gap += 1;
+            continue;
+          }
+
+          fundamentalsSymbols += 1;
+          providerBreakdown[snapshot.source] += 1;
+
+          const ageDays = (nowMs - snapshot.fetchedAtMs) / (1000 * 60 * 60 * 24);
+          if (Number.isFinite(ageDays)) {
+            freshnessAgesDays.push(ageDays);
+          }
+
+          for (const metric of monitorMetrics) {
+            const value = metric === 'fcf'
+              ? snapshot.data.fcf ?? snapshot.data.freeCashFlow
+              : snapshot.data[metric];
+            if (safeNumber(value) !== null) {
+              metricCounts.set(metric, (metricCounts.get(metric) ?? 0) + 1);
+            }
+          }
+
+          const secEdgar =
+            snapshot.data.secEdgar && typeof snapshot.data.secEdgar === 'object'
+              ? (snapshot.data.secEdgar as Record<string, unknown>)
+              : null;
+          if (hasPiotroskiData(secEdgar)) {
+            piotroskiReadySymbols += 1;
+          }
+        }
+
+        const staleCount = freshnessAgesDays.filter((days) => days > 7).length;
+        const oldestDays = freshnessAgesDays.length > 0 ? Math.max(...freshnessAgesDays) : null;
+        const medianDays = median(freshnessAgesDays);
+        const denom = symbolCount > 0 ? symbolCount : 1;
+
+        return {
+          id: u.id,
+          name: u.name,
+          symbol_count: symbolCount,
+          fundamentals_symbols: fundamentalsSymbols,
+          fundamentals_coverage_pct: Number(((fundamentalsSymbols / denom) * 100).toFixed(1)),
+          piotroski_ready_symbols: piotroskiReadySymbols,
+          piotroski_ready_pct: Number(((piotroskiReadySymbols / denom) * 100).toFixed(1)),
+          freshness: {
+            oldest_days: oldestDays === null ? null : Number(oldestDays.toFixed(1)),
+            median_days: medianDays === null ? null : Number(medianDays.toFixed(1)),
+            pct_older_than_7d: Number(((staleCount / Math.max(freshnessAgesDays.length, 1)) * 100).toFixed(1)),
+            sample_size: freshnessAgesDays.length,
+          },
+          provider_breakdown: providerBreakdown,
+          metric_coverage: monitorMetrics.map((metric) => {
+            const coveredSymbols = metricCounts.get(metric) ?? 0;
+            return {
+              field: metric,
+              covered_symbols: coveredSymbols,
+              coverage_pct: Number(((coveredSymbols / denom) * 100).toFixed(1)),
+            };
+          }),
+        };
+      })
+      .filter((u) => u.symbol_count >= 40)
+      .sort((a, b) => b.fundamentals_coverage_pct - a.fundamentals_coverage_pct);
+
+    const qualityMonitorTrend = readAuditTrend();
 
     const providerKeyFields = [
       'peRatio',
@@ -509,6 +822,10 @@ function buildHealthSnapshot(): HealthSnapshot {
         as_of: regimeAsOf,
       },
       provider_coverage: providerCoverage,
+      quality_monitor: {
+        universes: qualityMonitorUniverses,
+        trend: qualityMonitorTrend,
+      },
     };
 
     return response;

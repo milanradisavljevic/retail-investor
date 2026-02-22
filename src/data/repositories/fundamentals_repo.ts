@@ -15,23 +15,28 @@ export interface FundamentalsSnapshot {
 
 export interface FundamentalsData {
   _source?: string;
+  _sources?: Record<string, string>;
   peRatio: number | null;
   pbRatio: number | null;
   psRatio: number | null;
   pegRatio: number | null;
   forwardPE?: number | null;
   roe: number | null;
-  roa: number | null;
+  roa?: number | null;
   debtToEquity: number | null;
-  currentRatio: number | null;
+  currentRatio?: number | null;
   quickRatio?: number | null;
   profitMargin?: number | null;
-  grossMargin: number | null;
+  grossMargin?: number | null;
   operatingMargin: number | null;
   netMargin: number | null;
   dividendYield: number | null;
   payoutRatio: number | null;
   freeCashFlow: number | null;
+  fcf?: number | null;
+  operatingCashFlow?: number | null;
+  revenue?: number | null;
+  netIncome?: number | null;
   marketCap: number | null;
   enterpriseValue: number | null;
   revenueGrowth: number | null;
@@ -50,8 +55,116 @@ export interface FundamentalsData {
   bookValuePerShare?: number | null;
   revenuePerShare?: number | null;
   currentPrice?: number | null;
+  secEdgar?: Record<string, unknown>;
   // Raw API response for debugging
   raw?: Record<string, unknown>;
+}
+
+const EMPTY_FUNDAMENTALS: FundamentalsData = {
+  peRatio: null,
+  pbRatio: null,
+  psRatio: null,
+  pegRatio: null,
+  roe: null,
+  debtToEquity: null,
+  operatingMargin: null,
+  netMargin: null,
+  dividendYield: null,
+  payoutRatio: null,
+  freeCashFlow: null,
+  marketCap: null,
+  enterpriseValue: null,
+  revenueGrowth: null,
+  earningsGrowth: null,
+  analystTargetMean: null,
+  analystTargetLow: null,
+  analystTargetHigh: null,
+  analystCount: null,
+  nextEarningsDate: null,
+  beta: null,
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function pickOptionalNumber(...values: unknown[]): number | null | undefined {
+  for (const value of values) {
+    if (value === undefined) continue;
+    if (value === null) return null;
+    return toNullableNumber(value);
+  }
+  return undefined;
+}
+
+function parseFundamentalsData(dataJson: string): FundamentalsData {
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(dataJson);
+  } catch {
+    return { ...EMPTY_FUNDAMENTALS };
+  }
+
+  if (!isRecord(parsed)) {
+    return { ...EMPTY_FUNDAMENTALS };
+  }
+
+  const record = parsed;
+  const secEdgar = isRecord(record.secEdgar) ? record.secEdgar : undefined;
+  const data = { ...EMPTY_FUNDAMENTALS, ...(record as Partial<FundamentalsData>) };
+
+  const roa = pickOptionalNumber(record.roa, secEdgar?.roa);
+  if (roa !== undefined) data.roa = roa;
+
+  const grossMargin = pickOptionalNumber(record.grossMargin, secEdgar?.grossMargin);
+  if (grossMargin !== undefined) data.grossMargin = grossMargin;
+
+  const currentRatio = pickOptionalNumber(record.currentRatio, secEdgar?.currentRatio);
+  if (currentRatio !== undefined) data.currentRatio = currentRatio;
+
+  const fcf = pickOptionalNumber(record.fcf, record.freeCashFlow);
+  if (fcf !== undefined) {
+    data.fcf = fcf;
+    if (data.freeCashFlow === null) {
+      data.freeCashFlow = fcf;
+    }
+  }
+
+  const operatingCashFlow = pickOptionalNumber(
+    record.operatingCashFlow,
+    secEdgar?.operatingCashFlow
+  );
+  if (operatingCashFlow !== undefined) data.operatingCashFlow = operatingCashFlow;
+
+  const revenue = pickOptionalNumber(record.revenue, secEdgar?.revenue);
+  if (revenue !== undefined) data.revenue = revenue;
+
+  const netIncome = pickOptionalNumber(record.netIncome, secEdgar?.netIncome);
+  if (netIncome !== undefined) data.netIncome = netIncome;
+
+  if (secEdgar) {
+    data.secEdgar = secEdgar;
+  }
+
+  if (isRecord(record._sources)) {
+    data._sources = Object.fromEntries(
+      Object.entries(record._sources).filter(([, v]) => typeof v === 'string')
+    ) as Record<string, string>;
+  }
+
+  return data;
 }
 
 export function saveFundamentals(
@@ -88,7 +201,7 @@ export function getLatestFundamentals(symbol: string): FundamentalsSnapshot | nu
   return {
     symbol: row.symbol,
     fetchedAt: row.fetchedAt,
-    data: JSON.parse(row.data_json) as FundamentalsData,
+    data: parseFundamentalsData(row.data_json),
   };
 }
 
@@ -115,7 +228,7 @@ export function getLatestFundamentalsBySource(
   return {
     symbol: row.symbol,
     fetchedAt: row.fetchedAt,
-    data: JSON.parse(row.data_json) as FundamentalsData,
+    data: parseFundamentalsData(row.data_json),
   };
 }
 
@@ -157,7 +270,7 @@ export function getAllLatestFundamentals(): Map<string, FundamentalsSnapshot> {
     result.set(row.symbol, {
       symbol: row.symbol,
       fetchedAt: row.fetchedAt,
-      data: JSON.parse(row.data_json) as FundamentalsData,
+      data: parseFundamentalsData(row.data_json),
     });
   }
 
@@ -184,9 +297,9 @@ export function getUniverseMedians(symbols: string[]): Partial<FundamentalsData>
     pbRatio: calculateMedian(relevantData.map((d) => d.pbRatio)),
     psRatio: calculateMedian(relevantData.map((d) => d.psRatio)),
     roe: calculateMedian(relevantData.map((d) => d.roe)),
-    roa: calculateMedian(relevantData.map((d) => d.roa)),
+    roa: calculateMedian(relevantData.map((d) => d.roa ?? null)),
     debtToEquity: calculateMedian(relevantData.map((d) => d.debtToEquity)),
-    grossMargin: calculateMedian(relevantData.map((d) => d.grossMargin)),
+    grossMargin: calculateMedian(relevantData.map((d) => d.grossMargin ?? null)),
   };
 }
 

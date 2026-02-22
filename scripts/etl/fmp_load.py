@@ -403,6 +403,105 @@ def store_fundamentals_snapshot(
     return fetched_at
 
 
+def _normalize_epoch_ms(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        ts = int(value)
+    except (TypeError, ValueError):
+        return None
+    if ts <= 0:
+        return None
+    return ts * 1000 if ts < 1_000_000_000_000 else ts
+
+
+def _median(values: list[float]) -> float | None:
+    if not values:
+        return None
+    sorted_values = sorted(values)
+    mid = len(sorted_values) // 2
+    if len(sorted_values) % 2 == 0:
+        return (sorted_values[mid - 1] + sorted_values[mid]) / 2.0
+    return sorted_values[mid]
+
+
+def compute_fundamentals_freshness(
+    conn: sqlite3.Connection, symbols: list[str], stale_days: int
+) -> dict[str, Any]:
+    if not symbols:
+        return {
+            "stale_threshold_days": stale_days,
+            "checked_symbols": 0,
+            "symbols_with_snapshot": 0,
+            "missing_snapshot": 0,
+            "stale_symbols": 0,
+            "stale_pct_of_snapshot": 0.0,
+            "stale_pct_of_universe": 0.0,
+            "oldest_age_days": None,
+            "median_age_days": None,
+            "top_stale_symbols": [],
+        }
+
+    latest_by_symbol: dict[str, int] = {}
+    chunk_size = 900
+    for start_idx in range(0, len(symbols), chunk_size):
+        chunk = symbols[start_idx : start_idx + chunk_size]
+        placeholders = ",".join("?" for _ in chunk)
+        rows = conn.execute(
+            f"""
+            SELECT symbol, MAX(fetched_at) as fetched_at
+            FROM fundamentals_snapshot
+            WHERE symbol IN ({placeholders})
+            GROUP BY symbol
+            """,
+            chunk,
+        ).fetchall()
+        for symbol, fetched_at in rows:
+            normalized = _normalize_epoch_ms(fetched_at)
+            if normalized is None:
+                continue
+            latest_by_symbol[str(symbol).upper()] = normalized
+
+    now_ms = int(time.time() * 1000)
+    stale_ms = stale_days * 24 * 60 * 60 * 1000
+    age_days_values: list[float] = []
+    stale_details: list[dict[str, Any]] = []
+
+    for symbol, fetched_ms in latest_by_symbol.items():
+        age_days = max(0.0, (now_ms - fetched_ms) / (24 * 60 * 60 * 1000))
+        rounded_age = round(age_days, 1)
+        age_days_values.append(rounded_age)
+        if now_ms - fetched_ms > stale_ms:
+            stale_details.append({"symbol": symbol, "age_days": rounded_age})
+
+    stale_details.sort(key=lambda item: item["age_days"], reverse=True)
+    symbols_with_snapshot = len(latest_by_symbol)
+    checked_symbols = len(symbols)
+    stale_count = len(stale_details)
+    missing_snapshot = max(0, checked_symbols - symbols_with_snapshot)
+
+    return {
+        "stale_threshold_days": stale_days,
+        "checked_symbols": checked_symbols,
+        "symbols_with_snapshot": symbols_with_snapshot,
+        "missing_snapshot": missing_snapshot,
+        "stale_symbols": stale_count,
+        "stale_pct_of_snapshot": round(
+            (stale_count / symbols_with_snapshot) * 100.0, 2
+        )
+        if symbols_with_snapshot
+        else 0.0,
+        "stale_pct_of_universe": round((stale_count / checked_symbols) * 100.0, 2)
+        if checked_symbols
+        else 0.0,
+        "oldest_age_days": round(max(age_days_values), 1) if age_days_values else None,
+        "median_age_days": round(_median(age_days_values), 1)
+        if age_days_values
+        else None,
+        "top_stale_symbols": stale_details[:20],
+    }
+
+
 def main() -> int:
     args = parse_args()
     shell_fmp_key = os.environ.get("FMP_API_KEY")
@@ -555,6 +654,7 @@ def main() -> int:
     with_roe = 0
     with_market_cap = 0
     actions_taken = 0
+    freshness_summary: dict[str, Any] | None = None
 
     try:
         for idx, symbol in enumerate(scan_symbols, start=1):
@@ -794,6 +894,30 @@ def main() -> int:
             # Keep legacy aggregate row for compatibility with existing tooling.
             set_provider_daily_calls(conn, "fmp", usage_date, calls_used_after)
             conn.commit()
+
+        try:
+            freshness_summary = compute_fundamentals_freshness(
+                conn,
+                symbols,
+                stale_days=FRESHNESS_DAYS,
+            )
+            if freshness_summary.get("stale_symbols", 0) > 0:
+                emit(
+                    "fmp_load.warning",
+                    warning="stale_fundamentals_detected",
+                    stale_threshold_days=FRESHNESS_DAYS,
+                    stale_symbols=freshness_summary.get("stale_symbols", 0),
+                    checked_symbols=freshness_summary.get("checked_symbols", 0),
+                    stale_pct_of_universe=freshness_summary.get("stale_pct_of_universe", 0.0),
+                    oldest_age_days=freshness_summary.get("oldest_age_days"),
+                )
+        except Exception as exc:  # noqa: BLE001
+            freshness_summary = {"error": str(exc)}
+            emit(
+                "fmp_load.warning",
+                warning="freshness_check_failed",
+                error=str(exc),
+            )
         for slot in key_slots:
             slot["client"].close()
         conn.close()
@@ -838,6 +962,7 @@ def main() -> int:
         "coverage_pe_ratio": (with_pe / loaded) if loaded else 0.0,
         "coverage_roe": (with_roe / loaded) if loaded else 0.0,
         "coverage_market_cap": (with_market_cap / loaded) if loaded else 0.0,
+        "freshness": freshness_summary or {},
     }
     emit("fmp_load.summary", **summary_payload)
 

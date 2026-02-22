@@ -32,14 +32,20 @@ import type { DataQuality } from '@/data/quality/types';
 import {
   buildGroupMedians,
   resolveSymbolMetrics,
+  type ResolvedSymbolMetrics,
   type SymbolRawData,
 } from './metric_resolution';
 import { getLastTradingDay, formatDate, daysToSeconds, hoursToSeconds } from '@/core/time';
-import { summarizeDataQuality, type DataQualitySummary } from '@/data/quality/data_quality';
+import {
+  applyOutlierFlagsToDataQuality,
+  summarizeDataQuality,
+  type DataQualitySummary,
+} from '@/data/quality/data_quality';
 import { calculateModeV1 } from '@/mode/mode_v1';
 import type { ModeResult } from '@/mode/types';
 import { YFinanceProvider } from '@/providers/yfinance_provider';
 import { getDataQualityConfig } from '@/data/quality/config';
+import { detectFundamentalOutliers } from '@/data/quality/outlier_detection';
 import {
   calculatePriceTargets,
   calculateSectorMedians,
@@ -65,6 +71,21 @@ import { progressStore } from '@/lib/progress/progressStore';
 import { updateRunProgress } from '@/data/repositories/run_lock_repo';
 
 const logger = createChildLogger('scoring_engine');
+const STALE_FUNDAMENTALS_DAYS = 30;
+const STALE_RUN_ALERT_THRESHOLD = 0.10;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function normalizeFetchedAtMs(value: number | null | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return value < 1_000_000_000_000 ? value * 1000 : value;
+}
+
+function computeAgeDays(fetchedAtMs: number | null | undefined): number | null {
+  const normalized = normalizeFetchedAtMs(fetchedAtMs);
+  if (normalized === null) return null;
+  const ageMs = Math.max(0, Date.now() - normalized);
+  return Number((ageMs / MS_PER_DAY).toFixed(1));
+}
 
 export interface SymbolScore {
   symbol: string;
@@ -160,6 +181,15 @@ export async function scoreSymbol(
     ...fundamentalResult.assumptions,
     ...technicalResult.assumptions,
   ];
+  if (dataQuality.staleFundamentals) {
+    if (typeof dataQuality.fundamentalsAgeDays === 'number') {
+      assumptions.push(
+        `Fundamentals are ${dataQuality.fundamentalsAgeDays.toFixed(1)} days old (stale > ${STALE_FUNDAMENTALS_DAYS}d)`
+      );
+    } else {
+      assumptions.push(`Fundamentals are marked stale (> ${STALE_FUNDAMENTALS_DAYS}d)`);
+    }
+  }
 
   // Calculate price target if we have the context
   let priceTarget: PriceTarget | null = null;
@@ -502,6 +532,54 @@ export async function scoreUniverse(
     });
 
     const medians = buildGroupMedians(asOfDateStr, Object.values(rawDataMap));
+    const resolvedDataMap: Record<string, ResolvedSymbolMetrics> = {};
+    for (const symbol of symbolsToScore) {
+      const raw = rawDataMap[symbol] ?? {
+        symbol,
+        fundamentals: null,
+        technical: null,
+        profile: null,
+      };
+      resolvedDataMap[symbol] = resolveSymbolMetrics(
+        symbol,
+        raw,
+        medians,
+        fallbackFundamentalsMap[symbol] ?? null,
+        fallbackProfileMap[symbol] ?? null
+      );
+    }
+
+    const outlierReport = detectFundamentalOutliers(
+      symbolsToScore.map((symbol) => ({
+        symbol,
+        sector: rawDataMap[symbol]?.profile?.sector ?? fallbackProfileMap[symbol]?.sector ?? null,
+        fundamentals: resolvedDataMap[symbol]?.fundamentals ?? null,
+      }))
+    );
+
+    for (const symbol of symbolsToScore) {
+      const resolved = resolvedDataMap[symbol];
+      if (!resolved) continue;
+      const fundamentalsAgeDays = computeAgeDays(rawDataMap[symbol]?.fundamentalsFetchedAt ?? null);
+      const staleFundamentals =
+        fundamentalsAgeDays !== null && fundamentalsAgeDays > STALE_FUNDAMENTALS_DAYS;
+      resolvedDataMap[symbol] = {
+        ...resolved,
+        dataQuality: {
+          ...applyOutlierFlagsToDataQuality(
+            resolved.dataQuality,
+            outlierReport.flagsBySymbol[symbol.toUpperCase()] ?? []
+          ),
+          fundamentalsAgeDays,
+          staleFundamentals,
+        },
+      };
+    }
+
+    logger.info(
+      outlierReport.summary,
+      'Outlier detection completed (F5, flagging-only)'
+    );
 
     // Build sector medians for price targets
     const stockMetricsForSectors: StockMetrics[] = [];
@@ -537,13 +615,10 @@ export async function scoreUniverse(
       async (symbol) => {
         try {
           const raw = rawDataMap[symbol];
-          const resolved = resolveSymbolMetrics(
-            symbol,
-            raw,
-            medians,
-            fallbackFundamentalsMap[symbol] ?? null,
-            fallbackProfileMap[symbol] ?? null
-          );
+          const resolved = resolvedDataMap[symbol];
+          if (!resolved) {
+            throw new Error(`Missing resolved metrics for ${symbol}`);
+          }
 
           const scoreContext: ScoreSymbolContext = {
             profile: raw.profile,
@@ -580,6 +655,9 @@ export async function scoreUniverse(
               imputedRatio: 1,
               missingCritical: ['all'],
               metrics: {},
+              outlierFlags: [],
+              fundamentalsAgeDays: null,
+              staleFundamentals: false,
               missingFields: ['all'],
               assumptions: [`Scoring failed: ${message}`],
               adjustedPriceMode: 'adjusted',
@@ -655,13 +733,10 @@ export async function scoreUniverse(
       }
 
       const raw = rawDataMap[score.symbol];
-      const resolved = resolveSymbolMetrics(
-        score.symbol,
-        raw,
-        medians,
-        fallbackFundamentalsMap[score.symbol] ?? null,
-        fallbackProfileMap[score.symbol] ?? null
-      );
+      const resolved = resolvedDataMap[score.symbol];
+      if (!resolved) {
+        throw new Error(`Missing resolved metrics for ${score.symbol}`);
+      }
 
       const scoreContext: ScoreSymbolContext = {
         profile: raw.profile,
@@ -716,13 +791,11 @@ export async function scoreUniverse(
             return;
           }
 
-          const resolved = resolveSymbolMetrics(
-            symbol,
-            raw,
-            medians,
-            fallbackFundamentalsMap[symbol] ?? null,
-            fallbackProfileMap[symbol] ?? null
-          );
+          const resolved = resolvedDataMap[symbol];
+          if (!resolved) {
+            logger.warn({ symbol }, 'No resolved data for Top 30 symbol');
+            return;
+          }
 
           const scoreContext: ScoreSymbolContext = {
             profile: raw.profile,
@@ -838,6 +911,28 @@ export async function scoreUniverse(
     progressStore.completeRun(runId);
     updateRunProgress(99, 'Run abgeschlossen, Ergebnisse werden bereitgestellt...');
 
+    const staleSymbols = scores
+      .filter((score) => score.dataQuality.staleFundamentals)
+      .map((score) => score.symbol);
+    const staleRatio = scores.length > 0 ? staleSymbols.length / scores.length : 0;
+    const pipelineWarnings: string[] = [];
+    if (truncated) {
+      pipelineWarnings.push(`Truncated universe from ${symbols.length} to ${symbolsToScore.length}`);
+    }
+    if (staleRatio > STALE_RUN_ALERT_THRESHOLD) {
+      const msg = `Staleness alert: ${(staleRatio * 100).toFixed(1)}% of symbols use fundamentals older than ${STALE_FUNDAMENTALS_DAYS} days (${staleSymbols.length}/${scores.length}).`;
+      pipelineWarnings.push(msg);
+      logger.warn(
+        {
+          staleSymbols: staleSymbols.length,
+          symbolCount: scores.length,
+          staleRatio: Number((staleRatio * 100).toFixed(2)),
+          thresholdPct: STALE_RUN_ALERT_THRESHOLD * 100,
+        },
+        'F6 staleness alert triggered'
+      );
+    }
+
     return {
       scores,
       mode,
@@ -854,9 +949,7 @@ export async function scoreUniverse(
           truncated,
           originalSymbolCount: symbols.length,
           scoredSymbolCount: symbolsToScore.length,
-          warnings: truncated
-            ? [`Truncated universe from ${symbols.length} to ${symbolsToScore.length}`]
-            : [],
+          warnings: pipelineWarnings,
           requestBudget,
         },
         symbolsUsed: symbolsToScore,

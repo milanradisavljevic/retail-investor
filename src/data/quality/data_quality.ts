@@ -28,7 +28,6 @@ export function computeDataQuality(input: DataQualityInput): DataQuality {
   const criticalConfidences: number[] = [];
   let rawCritical = 0;
   let fallbackPenalties = 0;
-  let outlierPenalties = 0;
 
   for (const metric of required) {
     const mq = input.metrics[metric];
@@ -79,8 +78,6 @@ export function computeDataQuality(input: DataQualityInput): DataQuality {
       0.1 * rawCriticalRatio);
 
   score -= fallbackPenalties;
-  outlierPenalties += applyOutlierFlags(input.metrics);
-  score -= outlierPenalties;
   if (score < 0) score = 0;
   if (score > 100) score = 100;
 
@@ -96,25 +93,49 @@ export function computeDataQuality(input: DataQualityInput): DataQuality {
     imputedRatio: Number(imputedRatio.toFixed(3)),
     missingCritical: Array.from(missingCriticalSet),
     metrics: input.metrics,
+    outlierFlags: [],
+    fundamentalsAgeDays: null,
+    staleFundamentals: false,
   };
 }
 
-function applyOutlierFlags(metrics: Record<string, MetricQuality>): number {
-  let penalty = 0;
+const OUTLIER_FLAG_PENALTY = 1.5;
+const MAX_OUTLIER_PENALTY = 12;
 
-  const pe = metrics.peRatio;
-  if (pe && pe.value !== null && (pe.value > 200 || pe.value < 0)) {
-    penalty += 2;
-    pe.notes = pe.notes ? `${pe.notes}; outlier pe` : 'outlier pe';
+export function applyOutlierFlagsToDataQuality(
+  dataQuality: DataQuality,
+  outlierFlags: string[]
+): DataQuality {
+  const normalizedFlags = Array.from(
+    new Set(
+      outlierFlags
+        .map((flag) => flag.trim())
+        .filter((flag) => flag.length > 0)
+    )
+  ).sort();
+
+  const scorePenalty = Math.min(
+    MAX_OUTLIER_PENALTY,
+    normalizedFlags.length * OUTLIER_FLAG_PENALTY
+  );
+  const adjustedScore = Math.max(
+    0,
+    Number((dataQuality.dataQualityScore - scorePenalty).toFixed(1))
+  );
+
+  for (const flag of normalizedFlags) {
+    const [, metric] = flag.split(':');
+    if (!metric) continue;
+    const mq = dataQuality.metrics[metric];
+    if (!mq) continue;
+    mq.notes = mq.notes ? `${mq.notes}; outlier flagged` : 'outlier flagged';
   }
 
-  const de = metrics.debtToEquity;
-  if (de && de.value !== null && de.value > 10) {
-    penalty += 2;
-    de.notes = de.notes ? `${de.notes}; high debt/equity` : 'high debt/equity';
-  }
-
-  return penalty;
+  return {
+    ...dataQuality,
+    dataQualityScore: adjustedScore,
+    outlierFlags: normalizedFlags,
+  };
 }
 
 export function summarizeDataQuality(

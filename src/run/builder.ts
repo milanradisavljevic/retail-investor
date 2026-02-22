@@ -143,6 +143,12 @@ export function buildRunRecord(
       imputed_ratio: s.dataQuality.imputedRatio,
       missing_critical: s.dataQuality.missingCritical,
       metrics: s.dataQuality.metrics,
+      outlier_flags: s.dataQuality.outlierFlags ?? [],
+      outlierFlags: s.dataQuality.outlierFlags ?? [],
+      fundamentals_age_days: s.dataQuality.fundamentalsAgeDays ?? null,
+      fundamentalsAgeDays: s.dataQuality.fundamentalsAgeDays ?? null,
+      stale_fundamentals: s.dataQuality.staleFundamentals ?? false,
+      staleFundamentals: s.dataQuality.staleFundamentals ?? false,
       missing_fields: s.dataQuality.missingFields ?? [],
       assumptions: (s.dataQuality.assumptions ??
         []) as RunV1SchemaJson['scores'][0]['data_quality']['assumptions'],

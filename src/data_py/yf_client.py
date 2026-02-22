@@ -5,8 +5,11 @@ Fetches annual financial statements, balance sheet data, and historical prices.
 """
 
 import logging
+import os
+import tempfile
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional
 import pandas as pd
 
@@ -19,6 +22,37 @@ try:
 except ImportError:
     yf = None
     logger.warning("yfinance not installed - Yahoo Finance functionality unavailable")
+
+
+def _configure_yfinance_cache() -> None:
+    """
+    Configure yfinance's internal cache to a writable location.
+    """
+    if yf is None:
+        return
+
+    cache_override = os.environ.get("YFINANCE_CACHE_DIR")
+    cache_dir = (
+        Path(cache_override)
+        if cache_override
+        else Path(tempfile.gettempdir()) / "retail-investor" / "yfinance-cache"
+    )
+
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_api = getattr(yf, "cache", None)
+        if cache_api is None:
+            return
+
+        if hasattr(cache_api, "set_cache_location"):
+            cache_api.set_cache_location(str(cache_dir))
+        elif hasattr(cache_api, "set_tz_cache_location"):
+            cache_api.set_tz_cache_location(str(cache_dir))
+    except Exception as exc:
+        logger.warning("Unable to configure yfinance cache directory: %s", exc)
+
+
+_configure_yfinance_cache()
 
 
 def normalize_symbol(symbol: str) -> str:

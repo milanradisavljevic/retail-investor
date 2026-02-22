@@ -198,6 +198,10 @@ export default function BacktestingClient({ models, universes, comparisonRows }:
           <p className="text-slate-400">
             Russell 2000 (1993 Symbole, 51 fehlende) · Benchmark: S&P 500 (SPY)
           </p>
+          <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            Hinweis: Historische Index-Zusammensetzungen sind noch nicht vollstaendig integriert.
+            Backtest-Ergebnisse koennen dadurch durch Survivorship Bias um ca. 5-10% nach oben verzerrt sein.
+          </div>
         </header>
 
         <div className="flex flex-wrap gap-2">

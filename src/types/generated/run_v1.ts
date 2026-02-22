@@ -28,7 +28,7 @@ export interface RunV1SchemaJson {
   };
   mode: {
     model_version: string;
-    label: 'RISK_ON' | 'NEUTRAL' | 'RISK_OFF';
+    label: 'RISK_ON' | 'NEUTRAL' | 'RISK_OFF' | 'CRISIS';
     score: number;
     confidence: number;
     benchmark: string;
@@ -38,6 +38,26 @@ export interface RunV1SchemaJson {
       vol20?: number | null;
       vol60?: number | null;
       breadth?: number | null;
+    };
+    regime_signals?: {
+      vix?: {
+        value?: number | null;
+        score?: number;
+      };
+      yield_curve?: {
+        value?: number | null;
+        score?: number;
+      };
+      fed_rate?: {
+        value?: number | null;
+        score?: number;
+        delta_3m?: number | null;
+      };
+      cpi?: {
+        value?: number | null;
+        score?: number;
+        yoy?: number | null;
+      };
     };
   };
   data_quality_summary: {
@@ -141,6 +161,30 @@ export interface RunV1SchemaJson {
           notes?: string;
         };
       };
+      /**
+       * F5 Outlier Detection flags (symbol is kept in scoring, flagging-only)
+       */
+      outlier_flags?: string[];
+      /**
+       * CamelCase alias for internal dataQuality.outlierFlags compatibility
+       */
+      outlierFlags?: string[];
+      /**
+       * Age of fundamentals used in scoring (days)
+       */
+      fundamentals_age_days?: number | null;
+      /**
+       * CamelCase alias for internal dataQuality.fundamentalsAgeDays compatibility
+       */
+      fundamentalsAgeDays?: number | null;
+      /**
+       * True when fundamentals_age_days exceeds 30 days (F6)
+       */
+      stale_fundamentals?: boolean;
+      /**
+       * CamelCase alias for internal dataQuality.staleFundamentals compatibility
+       */
+      staleFundamentals?: boolean;
       missing_fields?: string[];
       /**
        * @maxItems 10

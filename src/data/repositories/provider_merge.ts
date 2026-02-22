@@ -30,6 +30,8 @@ export interface MergedFundamentalsData extends FundamentalsData {
     sec_edgar_available?: boolean;
     fmp_available: boolean;
     yfinance_available: boolean;
+    latest_source_fetched_at?: number;
+    oldest_source_fetched_at?: number;
     merged_at: number;
   };
 }
@@ -67,6 +69,7 @@ const ACCOUNTING_PRIORITY_FIELDS = [
   'grossMargin',
   'fcf',
   'currentRatio',
+  'operatingCashFlow',
   'revenue',
   'netIncome',
   'assets',
@@ -172,8 +175,16 @@ function mergeFromSnapshots(snapshots: SnapshotBySource): MergedFundamentalsData
     const secEdgar = record.secEdgar as Record<string, unknown> | undefined;
 
     switch (field) {
+      case 'roa':
+        return record.roa ?? secEdgar?.roa ?? null;
+      case 'grossMargin':
+        return record.grossMargin ?? secEdgar?.grossMargin ?? null;
       case 'fcf':
-        return record.fcf ?? record.freeCashFlow ?? null;
+        return record.fcf ?? secEdgar?.fcf ?? null;
+      case 'currentRatio':
+        return record.currentRatio ?? secEdgar?.currentRatio ?? null;
+      case 'operatingCashFlow':
+        return record.operatingCashFlow ?? secEdgar?.operatingCashFlow ?? null;
       case 'revenue':
         return record.revenue ?? secEdgar?.revenue ?? null;
       case 'netIncome':
@@ -221,21 +232,26 @@ function mergeFromSnapshots(snapshots: SnapshotBySource): MergedFundamentalsData
     primary: ProviderSource,
     secondary: ProviderSource
   ): void => {
+    const fieldKey = String(field);
+    if (hasValue(mergedRecord[fieldKey]) && hasValue(sources[fieldKey])) {
+      return;
+    }
+
     const primaryValue = getSourceData(primary)?.[field];
     if (hasValue(primaryValue)) {
-      mergedRecord[String(field)] = primaryValue;
-      sources[String(field)] = primary;
+      mergedRecord[fieldKey] = primaryValue;
+      sources[fieldKey] = primary;
       return;
     }
 
     const secondaryValue = getSourceData(secondary)?.[field];
     if (hasValue(secondaryValue)) {
-      mergedRecord[String(field)] = secondaryValue;
-      sources[String(field)] = secondary;
+      mergedRecord[fieldKey] = secondaryValue;
+      sources[fieldKey] = secondary;
       return;
     }
 
-    mergedRecord[String(field)] = null;
+    mergedRecord[fieldKey] = null;
   };
 
   for (const field of ACCOUNTING_PRIORITY_FIELDS) {
@@ -258,6 +274,27 @@ function mergeFromSnapshots(snapshots: SnapshotBySource): MergedFundamentalsData
       sec_edgar_available: Boolean(snapshots.sec_edgar),
       fmp_available: Boolean(snapshots.fmp),
       yfinance_available: Boolean(snapshots.yfinance),
+      latest_source_fetched_at: Math.max(
+        0,
+        ...[
+          snapshots.sec_edgar_bulk?.fetchedAt,
+          snapshots.sec_edgar?.fetchedAt,
+          snapshots.fmp?.fetchedAt,
+          snapshots.yfinance?.fetchedAt,
+        ]
+          .filter((value): value is number => typeof value === 'number')
+          .map((value) => normalizeFetchedAtMs(value))
+      ),
+      oldest_source_fetched_at: Math.min(
+        ...[
+          snapshots.sec_edgar_bulk?.fetchedAt,
+          snapshots.sec_edgar?.fetchedAt,
+          snapshots.fmp?.fetchedAt,
+          snapshots.yfinance?.fetchedAt,
+        ]
+          .filter((value): value is number => typeof value === 'number')
+          .map((value) => normalizeFetchedAtMs(value))
+      ),
       merged_at: Date.now(),
     },
   };

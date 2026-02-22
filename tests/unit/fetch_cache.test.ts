@@ -107,4 +107,46 @@ describe('fetchSymbolDataWithCache', () => {
     expect(stats.technicalCacheHits).toBe(1);
     expect(result.raw.fundamentals?.peRatio).toBe(20);
   });
+
+  it('fetches fundamentals from provider on cache miss (no bridge fundamentals fallback)', async () => {
+    const provider: MarketDataProvider = {
+      getFundamentals: vi.fn().mockResolvedValue(makeFundamentals()),
+      getTechnicalMetrics: vi.fn().mockResolvedValue(makeTechnical()),
+      getCompanyProfile: vi.fn().mockResolvedValue({
+        name: 'AAA',
+        ticker: 'AAA',
+        shareOutstanding: 1,
+        marketCapitalization: 1,
+      }),
+      getRequestCount: () => 0,
+      close: () => {},
+    };
+
+    const stats: RequestStats = { ...baseStats };
+    const now = Date.now();
+
+    await fetchSymbolDataWithCache('AAA', {
+      provider,
+      fallbackProvider: null,
+      throttler: new RequestThrottler(0),
+      cache: { fundamentalsTtlMs: 10_000, technicalTtlSeconds: 10_000, profileTtlMs: 10_000 },
+      requiredMetrics: [],
+      stats,
+      persistProfile: false,
+      cacheOverrides: {
+        fundamentals: vi.fn().mockReturnValue(null),
+        mergedFundamentals: vi.fn().mockReturnValue(null),
+        technical: vi.fn().mockReturnValue({ symbol: 'AAA', fetchedAt: now, data: makeTechnical() }),
+        profile: vi.fn().mockReturnValue({
+          symbol: 'AAA',
+          fetchedAt: now,
+          profile: { name: 'AAA', ticker: 'AAA', shareOutstanding: 1, marketCapitalization: 1 },
+        }),
+      },
+    });
+
+    expect(provider.getFundamentals).toHaveBeenCalledTimes(1);
+    expect(stats.fundamentalsCacheHits).toBe(0);
+    expect(stats.fundamentalsRequests).toBe(1);
+  });
 });

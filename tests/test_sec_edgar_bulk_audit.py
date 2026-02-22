@@ -5,6 +5,7 @@ from pathlib import Path
 from scripts.etl.sec_edgar_bulk_audit import (
     extract_from_companyfacts,
     format_cik_file_name,
+    merge_sec_payload,
 )
 from scripts.etl.sec_edgar_poc import RawAccountingData, calculate_derived_metrics
 
@@ -36,6 +37,47 @@ class TestSecEdgarBulkAudit(unittest.TestCase):
         self.assertEqual(raw.shares_outstanding, 100)
         self.assertEqual(payload["_source"], "sec_edgar_bulk")
         self.assertEqual(payload["_method"], "bulk_json")
+        self.assertEqual(payload.get("roa"), 10.0)
+        self.assertEqual(payload.get("grossMargin"), 50.0)
+        self.assertEqual(payload.get("currentRatio"), 2.0)
+        self.assertEqual(payload.get("operatingCashFlow"), 150)
+        self.assertEqual(payload.get("revenue"), 600)
+        self.assertEqual(payload.get("netIncome"), 100)
+        self.assertEqual(payload.get("secEdgar", {}).get("net_income_py"), 80)
+        self.assertEqual(payload.get("secEdgar", {}).get("total_assets_py"), 900)
+        self.assertEqual(
+            payload.get("_sources", {}).get("operatingCashFlow"), "sec_edgar_bulk"
+        )
+
+    def test_merge_preserves_existing_non_sec_fields(self) -> None:
+        existing = {
+            "_source": "fmp",
+            "peRatio": 15.0,
+            "pbRatio": 2.0,
+            "rawFmp": {"provider": "fmp"},
+            "_sources": {"peRatio": "fmp", "pbRatio": "fmp"},
+        }
+        sec_payload = {
+            "_source": "sec_edgar_bulk",
+            "roa": 8.2,
+            "grossMargin": 33.1,
+            "fcf": 1200000.0,
+            "currentRatio": 1.7,
+            "operatingCashFlow": 2500000.0,
+            "revenue": 9000000.0,
+            "netIncome": 800000.0,
+            "secEdgar": {"netIncome_py": 700000.0},
+        }
+
+        merged = merge_sec_payload(existing, sec_payload)
+
+        self.assertEqual(merged.get("peRatio"), 15.0)
+        self.assertEqual(merged.get("pbRatio"), 2.0)
+        self.assertEqual(merged.get("roa"), 8.2)
+        self.assertEqual(merged.get("grossMargin"), 33.1)
+        self.assertEqual(merged.get("secEdgar", {}).get("netIncome_py"), 700000.0)
+        self.assertEqual(merged.get("_sources", {}).get("peRatio"), "fmp")
+        self.assertEqual(merged.get("_sources", {}).get("roa"), "sec_edgar_bulk")
 
     def test_derived_metrics_math_including_capex_sign(self) -> None:
         raw_negative = RawAccountingData(

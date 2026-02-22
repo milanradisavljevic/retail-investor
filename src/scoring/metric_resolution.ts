@@ -11,6 +11,7 @@ import { getGroupMedian } from '@/data/repositories/group_medians_repo';
 export interface SymbolRawData {
   symbol: string;
   fundamentals: FundamentalsData | null;
+  fundamentalsFetchedAt?: number | null;
   technical: TechnicalMetrics | null;
   profile: CompanyProfile | null;
 }
@@ -102,6 +103,8 @@ export function resolveSymbolMetrics(
         psRatio: metrics.psRatio?.value ?? null,
         roe: metrics.roe?.value ?? null,
         debtToEquity: metrics.debtToEquity?.value ?? null,
+        roa: metrics.roa?.value ?? raw.fundamentals.roa ?? null,
+        grossMargin: metrics.grossMargin?.value ?? raw.fundamentals.grossMargin ?? null,
         beta: metrics.beta?.value ?? raw.fundamentals.beta ?? null,
       }
     : null;
@@ -136,7 +139,9 @@ function extractFundamentalMetrics(
     pbRatio: fundamentals.pbRatio ?? null,
     psRatio: fundamentals.psRatio ?? null,
     roe: fundamentals.roe ?? null,
+    roa: fundamentals.roa ?? null,
     debtToEquity: fundamentals.debtToEquity ?? null,
+    grossMargin: fundamentals.grossMargin ?? null,
     beta: fundamentals.beta ?? null,
   };
 }

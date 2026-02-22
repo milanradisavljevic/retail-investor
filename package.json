@@ -15,6 +15,7 @@
     "generate:types": "tsx scripts/generate_types.ts",
     "evaluate:mode": "tsx scripts/evaluate_mode_models.ts",
     "run:daily": "tsx scripts/run_daily.ts",
+    "validate:cross-source": "node --import tsx scripts/validation/cross_source_audit.ts",
     "db:init": "tsx scripts/init_db.ts",
     "validate:schemas": "tsx scripts/validate_schemas.ts",
     "backtest": "python scripts/backtesting/fetch-historical.py && tsx scripts/backtesting/run-backtest.ts",

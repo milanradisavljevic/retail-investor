@@ -31,6 +31,10 @@ function makeFundamentals(overrides: Partial<FundamentalsData> = {}): Fundamenta
     dividendYield: null,
     payoutRatio: null,
     freeCashFlow: null,
+    fcf: null,
+    operatingCashFlow: null,
+    revenue: null,
+    netIncome: null,
     marketCap: null,
     enterpriseValue: null,
     revenueGrowth: null,
@@ -141,7 +145,14 @@ describe('provider merge repository', () => {
       makeFundamentals({
         _source: 'sec_edgar_bulk',
         roe: 17,
+        roa: 8.4,
         debtToEquity: 0.42,
+        grossMargin: 36.5,
+        currentRatio: 1.9,
+        fcf: 55_000_000,
+        operatingCashFlow: 88_000_000,
+        revenue: 410_000_000,
+        netIncome: 33_000_000,
       }),
       now
     );
@@ -149,9 +160,24 @@ describe('provider merge repository', () => {
     const merged = getMergedFundamentals('SEC1');
     expect(merged).not.toBeNull();
     expect(merged?.roe).toBe(17);
+    expect(merged?.roa).toBe(8.4);
     expect(merged?.debtToEquity).toBe(0.42);
+    expect(merged?.grossMargin).toBe(36.5);
+    expect(merged?.currentRatio).toBe(1.9);
+    expect(merged?.fcf).toBe(55_000_000);
+    expect(merged?.freeCashFlow).toBe(55_000_000);
+    expect(merged?.operatingCashFlow).toBe(88_000_000);
+    expect(merged?.revenue).toBe(410_000_000);
+    expect(merged?.netIncome).toBe(33_000_000);
     expect(merged?._merge_meta?.sources.roe).toBe('sec_edgar_bulk');
+    expect(merged?._merge_meta?.sources.roa).toBe('sec_edgar_bulk');
     expect(merged?._merge_meta?.sources.debtToEquity).toBe('sec_edgar_bulk');
+    expect(merged?._merge_meta?.sources.grossMargin).toBe('sec_edgar_bulk');
+    expect(merged?._merge_meta?.sources.currentRatio).toBe('sec_edgar_bulk');
+    expect(merged?._merge_meta?.sources.fcf).toBe('sec_edgar_bulk');
+    expect(merged?._merge_meta?.sources.operatingCashFlow).toBe('sec_edgar_bulk');
+    expect(merged?._merge_meta?.sources.revenue).toBe('sec_edgar_bulk');
+    expect(merged?._merge_meta?.sources.netIncome).toBe('sec_edgar_bulk');
   });
 
   it('computes provider coverage statistics for mixed availability', () => {

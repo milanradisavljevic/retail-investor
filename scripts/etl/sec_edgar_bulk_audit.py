@@ -74,6 +74,19 @@ RAW_FIELDS_PY = {
     "shares_outstanding_py": "SharesOutstanding",
 }
 
+SEC_TOP_LEVEL_FIELDS = (
+    "roe",
+    "roa",
+    "debtToEquity",
+    "grossMargin",
+    "fcf",
+    "fcfYield",
+    "currentRatio",
+    "operatingCashFlow",
+    "revenue",
+    "netIncome",
+)
+
 DURATION_FIELDS = {
     "net_income",
     "revenue",
@@ -239,21 +252,43 @@ def extract_from_companyfacts(
     payload["_source"] = "sec_edgar_bulk"
     payload["_method"] = "bulk_json"
 
+    # Promote SEC fields to top-level in addition to nested secEdgar.
+    payload["operatingCashFlow"] = raw.operating_cash_flow
+    payload["revenue"] = raw.revenue
+    payload["netIncome"] = raw.net_income
+
     # Add fiscal years to payload
     if raw.fiscal_year:
         payload["fiscalYearCurrent"] = raw.fiscal_year
     if raw.fiscal_year_py:
         payload["fiscalYearPrior"] = raw.fiscal_year_py
 
-    # Add prior year fields to payload under secEdgar
-    sec_edgar_data = {}
+    # Add prior-year fields to nested secEdgar payload (do not overwrite existing raw fields).
+    sec_edgar_data = payload.get("secEdgar", {})
+    if not isinstance(sec_edgar_data, dict):
+        sec_edgar_data = {}
+
     for attr_name in RAW_FIELDS_PY.keys():
         value = getattr(raw, attr_name, None)
         if value is not None:
             sec_edgar_data[attr_name] = value
 
-    if sec_edgar_data:
-        payload["secEdgar"] = sec_edgar_data
+    if raw.fiscal_year:
+        sec_edgar_data["fiscalYearCurrent"] = raw.fiscal_year
+    if raw.fiscal_year_py:
+        sec_edgar_data["fiscalYearPrior"] = raw.fiscal_year_py
+
+    payload["secEdgar"] = sec_edgar_data
+
+    # Track source at field level for promoted SEC keys.
+    field_sources = payload.get("_sources", {})
+    if not isinstance(field_sources, dict):
+        field_sources = {}
+    for field in SEC_TOP_LEVEL_FIELDS:
+        if payload.get(field) is not None:
+            field_sources[field] = "sec_edgar_bulk"
+    if field_sources:
+        payload["_sources"] = field_sources
 
     return raw, payload
 
@@ -299,16 +334,175 @@ def upsert_payload(
         """
     )
     fetched_at = int(time.time())
+    existing_row = conn.execute(
+        f"SELECT data_json FROM {table_name} WHERE symbol = ? ORDER BY fetched_at DESC LIMIT 1",
+        (symbol,),
+    ).fetchone()
+
+    existing_payload: dict[str, Any] = {}
+    if existing_row:
+        try:
+            parsed = json.loads(existing_row[0])
+            if isinstance(parsed, dict):
+                existing_payload = parsed
+        except Exception:
+            existing_payload = {}
+
+    merged_payload = merge_sec_payload(existing_payload, payload)
     conn.execute(
         f"INSERT OR REPLACE INTO {table_name} (symbol, fetched_at, data_json) VALUES (?, ?, ?)",
-        (symbol, fetched_at, json.dumps(payload, sort_keys=True, default=str)),
+        (symbol, fetched_at, json.dumps(merged_payload, sort_keys=True, default=str)),
     )
+
+
+def merge_sec_payload(existing: dict[str, Any], sec_payload: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(existing) if isinstance(existing, dict) else {}
+
+    field_sources = merged.get("_sources", {})
+    if not isinstance(field_sources, dict):
+        field_sources = {}
+    else:
+        field_sources = dict(field_sources)
+
+    # Keep SEC metadata fresh while preserving non-SEC provider artifacts.
+    for key in (
+        "_source",
+        "_method",
+        "_extracted_at",
+        "_fiscal_year_end",
+        "_extraction_notes",
+        "fiscalYearCurrent",
+        "fiscalYearPrior",
+    ):
+        if key in sec_payload:
+            merged[key] = sec_payload[key]
+
+    # Promote only SEC-accounting-centric fields; do not overwrite FMP/yfinance valuation fields.
+    for field in SEC_TOP_LEVEL_FIELDS:
+        value = sec_payload.get(field)
+        if value is not None:
+            merged[field] = value
+            field_sources[field] = "sec_edgar_bulk"
+
+    if "secEdgar" in sec_payload and isinstance(sec_payload["secEdgar"], dict):
+        merged["secEdgar"] = sec_payload["secEdgar"]
+
+    if field_sources:
+        merged["_sources"] = field_sources
+
+    return merged
 
 
 def to_percent(part: int, total: int) -> float:
     if total <= 0:
         return 0.0
     return round((part / total) * 100.0, 2)
+
+
+def _normalize_epoch_ms(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        ts = int(value)
+    except (TypeError, ValueError):
+        return None
+    if ts <= 0:
+        return None
+    return ts * 1000 if ts < 1_000_000_000_000 else ts
+
+
+def _median(values: list[float]) -> float | None:
+    if not values:
+        return None
+    sorted_values = sorted(values)
+    mid = len(sorted_values) // 2
+    if len(sorted_values) % 2 == 0:
+        return (sorted_values[mid - 1] + sorted_values[mid]) / 2.0
+    return sorted_values[mid]
+
+
+def compute_fundamentals_freshness(
+    db_path: str,
+    symbols: list[str],
+    stale_days: int = 30,
+    table_name: str = "fundamentals_snapshot",
+) -> dict[str, Any]:
+    if not symbols:
+        return {
+            "stale_threshold_days": stale_days,
+            "checked_symbols": 0,
+            "symbols_with_snapshot": 0,
+            "missing_snapshot": 0,
+            "stale_symbols": 0,
+            "stale_pct_of_snapshot": 0.0,
+            "stale_pct_of_universe": 0.0,
+            "oldest_age_days": None,
+            "median_age_days": None,
+            "top_stale_symbols": [],
+        }
+
+    latest_by_symbol: dict[str, int] = {}
+    conn = sqlite3.connect(db_path)
+    try:
+        chunk_size = 900
+        for start_idx in range(0, len(symbols), chunk_size):
+            chunk = symbols[start_idx : start_idx + chunk_size]
+            placeholders = ",".join("?" for _ in chunk)
+            rows = conn.execute(
+                f"""
+                SELECT symbol, MAX(fetched_at) as fetched_at
+                FROM {table_name}
+                WHERE symbol IN ({placeholders})
+                GROUP BY symbol
+                """,
+                chunk,
+            ).fetchall()
+            for symbol, fetched_at in rows:
+                normalized = _normalize_epoch_ms(fetched_at)
+                if normalized is None:
+                    continue
+                latest_by_symbol[str(symbol).upper()] = normalized
+    finally:
+        conn.close()
+
+    now_ms = int(time.time() * 1000)
+    stale_ms = stale_days * 24 * 60 * 60 * 1000
+    age_days_values: list[float] = []
+    stale_details: list[dict[str, Any]] = []
+
+    for symbol, fetched_ms in latest_by_symbol.items():
+        age_days = max(0.0, (now_ms - fetched_ms) / (24 * 60 * 60 * 1000))
+        rounded_age = round(age_days, 1)
+        age_days_values.append(rounded_age)
+        if now_ms - fetched_ms > stale_ms:
+            stale_details.append({"symbol": symbol, "age_days": rounded_age})
+
+    stale_details.sort(key=lambda item: item["age_days"], reverse=True)
+    symbols_with_snapshot = len(latest_by_symbol)
+    checked_symbols = len(symbols)
+    stale_count = len(stale_details)
+    missing_snapshot = max(0, checked_symbols - symbols_with_snapshot)
+
+    return {
+        "stale_threshold_days": stale_days,
+        "checked_symbols": checked_symbols,
+        "symbols_with_snapshot": symbols_with_snapshot,
+        "missing_snapshot": missing_snapshot,
+        "stale_symbols": stale_count,
+        "stale_pct_of_snapshot": round(
+            (stale_count / symbols_with_snapshot) * 100.0, 2
+        )
+        if symbols_with_snapshot
+        else 0.0,
+        "stale_pct_of_universe": round((stale_count / checked_symbols) * 100.0, 2)
+        if checked_symbols
+        else 0.0,
+        "oldest_age_days": round(max(age_days_values), 1) if age_days_values else None,
+        "median_age_days": round(_median(age_days_values), 1)
+        if age_days_values
+        else None,
+        "top_stale_symbols": stale_details[:20],
+    }
 
 
 def main() -> int:
@@ -480,6 +674,17 @@ def main() -> int:
             conn.close()
 
     skipped_total = skipped_missing_mapping + skipped_missing_file + skipped_parse_error
+    freshness_summary: dict[str, Any] | None = None
+    if args.write_db:
+        try:
+            freshness_summary = compute_fundamentals_freshness(
+                args.db_path,
+                target_tickers,
+                stale_days=30,
+                table_name=target_table or "fundamentals_snapshot",
+            )
+        except Exception as exc:  # noqa: BLE001
+            freshness_summary = {"error": str(exc)}
 
     field_coverage_pct = {
         field: to_percent(field_present_counts[field], processed)
@@ -520,6 +725,21 @@ def main() -> int:
         print("db_write_tables:")
         for table_name, count in sorted(db_table_counts.items()):
             print(f"  {table_name}: {count}")
+    if freshness_summary is not None:
+        if "error" in freshness_summary:
+            print(f"\nfreshness: unavailable ({freshness_summary['error']})")
+        else:
+            print(
+                "\nfreshness: "
+                f"{freshness_summary['stale_symbols']}/{freshness_summary['symbols_with_snapshot']} stale "
+                f"(>{freshness_summary['stale_threshold_days']}d, "
+                f"{freshness_summary['stale_pct_of_snapshot']}% of snapshots)"
+            )
+            if freshness_summary["stale_symbols"] > 0:
+                print(
+                    "WARNING: stale fundamentals detected "
+                    f"(universe pct={freshness_summary['stale_pct_of_universe']}%)"
+                )
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     audit_path = Path("data/audits") / f"sec_edgar_bulk_audit_{timestamp}.json"
@@ -558,6 +778,7 @@ def main() -> int:
                 "pct": piotroski_ready_pct,
             },
             "db_tables_used": db_table_counts,
+            "freshness": freshness_summary or {},
         },
         "per_ticker": audit_items,
     }

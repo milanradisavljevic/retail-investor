@@ -14,6 +14,9 @@ export interface DataQuality {
   imputedRatio: number;
   missingCritical: string[];
   metrics: Record<string, MetricQuality>;
+  outlierFlags?: string[];
+  fundamentalsAgeDays?: number | null;
+  staleFundamentals?: boolean;
   missingFields?: string[];
   assumptions?: string[];
   adjustedPriceMode?: 'adjusted' | 'raw' | 'mixed';

@@ -193,6 +193,27 @@ export function StockDetailView({
   const isScanOnly = score.is_scan_only;
   const valueCoverage = score.valuation_input_coverage ?? score.value_input_coverage;
   const piotroski = (score as ScoreWithPiotroski).raw?.fundamental?.piotroski ?? null;
+  const fundamentalsAgeDays =
+    typeof dq.fundamentals_age_days === 'number'
+      ? dq.fundamentals_age_days
+      : typeof dq.fundamentalsAgeDays === 'number'
+        ? dq.fundamentalsAgeDays
+        : null;
+  const staleFundamentals =
+    typeof dq.stale_fundamentals === 'boolean'
+      ? dq.stale_fundamentals
+      : typeof dq.staleFundamentals === 'boolean'
+        ? dq.staleFundamentals
+        : fundamentalsAgeDays !== null
+          ? fundamentalsAgeDays > 30
+          : false;
+  const freshnessBadgeTone = staleFundamentals
+    ? 'border-accent-gold/40 bg-accent-gold/10 text-accent-gold'
+    : 'border-accent-green/40 bg-accent-green/10 text-accent-green';
+  const freshnessLabel =
+    fundamentalsAgeDays === null
+      ? 'Data: age unknown'
+      : `Data: ${fundamentalsAgeDays.toFixed(1)} days old${staleFundamentals ? ' ⚠' : ''}`;
 
   const inputs = diagnostics?.inputs;
   const components = diagnostics?.components;
@@ -558,6 +579,11 @@ export function StockDetailView({
           <p className="mb-2 text-sm text-text-secondary">
             {t('stockDetail.qualityScore').replace('{score}', dq.data_quality_score.toFixed(1))}
           </p>
+          <div className="mb-3">
+            <span className={`inline-flex rounded border px-2 py-0.5 text-xs ${freshnessBadgeTone}`}>
+              {freshnessLabel}
+            </span>
+          </div>
           {dq.missing_fields && dq.missing_fields.length > 0 && (
             <p className="mb-3 text-xs text-accent-gold">
               {t('stockDetail.missingFields').replace('{fields}', dq.missing_fields.join(', '))}

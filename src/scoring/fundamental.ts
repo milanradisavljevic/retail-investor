@@ -49,7 +49,7 @@ export const DEFAULT_THRESHOLDS: FundamentalThresholds = {
   pb: { low: 1.5, high: 5 },
   ps: { low: 1, high: 5 },
   roe: { low: 8, high: 35 },
-  roa: { low: 3, high: 15 },
+  roa: { low: 0, high: 10 },
   debtEquity: { low: 0.2, high: 1.5 },
   grossMargin: { low: 20, high: 60 },
   fcfYield: { low: 2, high: 10 },
@@ -139,9 +139,9 @@ export function calculateFundamentalScore(
   const pbObj = impute(data.pbRatio, universeMediData?.pbRatio, 'pbRatio');
   const psObj = impute(data.psRatio, universeMediData?.psRatio, 'psRatio');
   const roeObj = impute(data.roe, universeMediData?.roe, 'roe');
-  const roaObj = impute(data.roa, universeMediData?.roa, 'roa');
+  const roaObj = impute(data.roa ?? null, universeMediData?.roa, 'roa');
   const debtEquityObj = impute(data.debtToEquity, universeMediData?.debtToEquity, 'debtToEquity');
-  const grossMarginObj = impute(data.grossMargin, universeMediData?.grossMargin, 'grossMargin');
+  const grossMarginObj = impute(data.grossMargin ?? null, universeMediData?.grossMargin, 'grossMargin');
 
   // Calculate individual scores
   // Note: normalizeToRange returns 50 for NaN. We only use these scores if !isMissing.

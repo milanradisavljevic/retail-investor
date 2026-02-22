@@ -142,7 +142,7 @@ const DEFAULT_CONFIG: ScoringConfig = {
     pb: { low: 1.5, high: 5 },
     ps: { low: 1, high: 5 },
     roe: { low: 5, high: 20 },
-    roa: { low: 3, high: 15 },
+    roa: { low: 0, high: 10 },
     debtEquity: { low: 0.5, high: 2 },
     grossMargin: { low: 20, high: 60 },
     fcfYield: { low: 2, high: 10 },
