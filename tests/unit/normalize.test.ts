@@ -62,20 +62,25 @@ describe('normalize', () => {
       expect(normalizeToRange(NaN, { low: 0, high: 100 })).toBe(50);
     });
 
-    it('returns 100 for values at or below low threshold (inverted)', () => {
-      expect(normalizeToRange(10, { low: 15, high: 30 }, true)).toBe(100);
+    it('returns 95 for values at or below low threshold (inverted soft-cap)', () => {
+      expect(normalizeToRange(10, { low: 15, high: 30 }, true)).toBe(95);
     });
 
     it('returns 0 for values at or above high threshold (inverted)', () => {
       expect(normalizeToRange(35, { low: 15, high: 30 }, true)).toBe(0);
     });
 
-    it('returns 100 for values at or above high threshold (normal)', () => {
-      expect(normalizeToRange(25, { low: 5, high: 20 }, false)).toBe(100);
+    it('returns 95 for values at or above high threshold (normal soft-cap)', () => {
+      expect(normalizeToRange(25, { low: 5, high: 20 }, false)).toBe(95);
     });
 
     it('returns 0 for values at or below low threshold (normal)', () => {
       expect(normalizeToRange(3, { low: 5, high: 20 }, false)).toBe(0);
+    });
+
+    it('caps interpolated scores at 95', () => {
+      expect(normalizeToRange(20, { low: 10, high: 20 }, false)).toBe(95);
+      expect(normalizeToRange(10, { low: 10, high: 20 }, true)).toBe(95);
     });
   });
 
