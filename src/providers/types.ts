@@ -30,7 +30,7 @@ export interface TechnicalMetrics {
   beta: number | null;
   avgVolume10Day?: number | null;
   avgVolume3Month?: number | null;
-  candles?: any[];
+  candles?: unknown[];
   marketCap?: number | null;
 }
 
@@ -60,11 +60,21 @@ export interface BasicFinancials {
   profitMargin?: number | null;
   returnOnEquity?: number | null;
   returnOnAssets?: number | null;
+  roic?: number | null;
   debtToEquity?: number | null;
   currentRatio?: number | null;
   quickRatio?: number | null;
   revenueGrowth?: number | null;
   earningsGrowth?: number | null;
+  grossMargins?: number | null;
+  operatingMargins?: number | null;
+  netMargins?: number | null;
+  dividendYield?: number | null;
+  trailingAnnualDividendYield?: number | null;
+  payoutRatio?: number | null;
+  freeCashFlow?: number | null;
+  evToEbitda?: number | null;
+  beta?: number | null;
 }
 
 export interface Quote {

@@ -80,13 +80,23 @@ def fetch_batch(symbols: List[str], methods: List[str]) -> Dict[str, Dict[str, A
                     'priceToBook': info.get('priceToBook'),
                     'priceToSales': info.get('priceToSalesTrailing12Months'),
                     'profitMargin': info.get('profitMargins'),
+                    'grossMargins': info.get('grossMargins'),
+                    'operatingMargins': info.get('operatingMargins'),
+                    'netMargins': info.get('profitMargins'),
                     'returnOnEquity': info.get('returnOnEquity'),
                     'returnOnAssets': info.get('returnOnAssets'),
+                    'roic': info.get('returnOnCapital'),
                     'debtToEquity': info.get('debtToEquity'),
                     'currentRatio': info.get('currentRatio'),
                     'quickRatio': info.get('quickRatio'),
                     'revenueGrowth': info.get('revenueGrowth'),
                     'earningsGrowth': info.get('earningsGrowth'),
+                    'dividendYield': info.get('dividendYield'),
+                    'trailingAnnualDividendYield': info.get('trailingAnnualDividendYield'),
+                    'payoutRatio': info.get('payoutRatio'),
+                    'freeCashFlow': info.get('freeCashflow'),
+                    'evToEbitda': info.get('enterpriseToEbitda'),
+                    'beta': info.get('beta'),
                 }
 
             if 'quote' in methods:

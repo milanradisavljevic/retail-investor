@@ -8,6 +8,78 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### [Phase 3g] Batch Normalization + Technical Activation + SSOT Merge Priority - 2026-02-22 (Codex)
+
+#### Changed
+- **YFinance Batch Fundamentals auf Scoring-Skalen normalisiert (`src/providers/yfinance_batch_provider.ts`, `src/data_py/yfinance_batch.py`, `src/providers/types.ts`)** - Ich (Codex) habe die Batch-Mapping-Logik auf Prozent-/Ratio-Paritaet mit dem Single-Symbol-Provider gebracht: `roe/roa/margins/growth/dividend/payout/roic` werden als Prozent normalisiert, `debtToEquity` wird robust auf Ratio skaliert und zusaetzliche yfinance-Felder (`grossMargins`, `operatingMargins`, `beta`, `freeCashFlow`, `evToEbitda`, etc.) werden im Batch-Python-Fetch mitgeliefert.
+- **Technical Pillar Inputs aus Batch-Candles aktiviert (`src/providers/yfinance_batch_provider.ts`)** - Ich (Codex) habe im Batch-Provider die technischen Kennzahlen mit Candle-basierter Berechnung vervollstaendigt (`high52Week/low52Week`, `priceReturn5Day/13Week/26Week/52Week`, `priceReturnMTD/YTD`, `volatility3Month`, `avgVolume10Day/3Month`) statt neutraler Null-Werte.
+- **SSOT-Merge im Fetch-Flow priorisiert (`src/scoring/fetch.ts`)** - Ich (Codex) habe den Merged-Fundamentals-Pfad auf "immer anwenden" umgestellt: `getMergedFundamentalsIfFresh(...)` wird jetzt konsistent als SSOT-Basis benutzt und Live-Provider-Werte nur noch als Backfill fuer fehlende Felder gemerged.
+- **Batch-Ausfall robuster gemacht (`src/scoring/fetch.ts`)** - Ich (Codex) habe bei kompletter Batch-Exception (z. B. Timeout/Provider-Fehler) einen symbolweisen Single-Symbol-Recovery-Flow eingebaut, damit der Run nicht mehr als Ganzes hart abbricht.
+- **Batch-Mapping fuer Fetch/Tests entkoppelt (`src/providers/yfinance_batch_provider.ts`, `src/scoring/fetch.ts`)** - Ich (Codex) habe oeffentliche Batch-Mapping-Wrapper eingefuehrt (`mapBatchFundamentals`, `mapBatchTechnicalMetrics`), damit `fetch.ts` ohne `any`-Casts arbeitet und die Mapping-Logik deterministisch testbar bleibt.
+
+#### Added
+- **Deterministische Mapping-Unit-Tests (`tests/unit/yfinance_batch_provider_mapping.test.ts`)** - Ich (Codex) habe neue Tests fuer:
+  - Prozent-/Ratio-Normalisierung inkl. `debtToEquity`-Heuristik
+  - Technical-Metrik-Berechnung aus Candle-Daten (non-neutral Returns/Volatility/Range)
+  - Ratio-Handling bei bereits normierten D/E-Werten
+
+#### Validation
+- **TypeScript-Check gruen** - Ich (Codex) habe `npx tsc --noEmit --pretty false` erfolgreich ausgefuehrt.
+- **Gezielte Unit-Tests gruen** - Ich (Codex) habe erfolgreich ausgefuehrt:
+  - `npx vitest run tests/unit/yfinance_batch_provider_mapping.test.ts tests/unit/fetch_cache.test.ts --run`
+- **Gezielter Lint gruen** - Ich (Codex) habe erfolgreich ausgefuehrt:
+  - `npx eslint src/providers/yfinance_batch_provider.ts src/providers/types.ts src/scoring/fetch.ts tests/unit/yfinance_batch_provider_mapping.test.ts`
+- **E2E Daily-Run (NASDAQ-100) erfolgreich** - Ich (Codex) habe `UNIVERSE=nasdaq100 npm run run:daily` ausgefuehrt. Neues Run-Artifact: `data/runs/2026-02-22__d7ecf1d1.json`.
+  - Gegenueber `2026-02-22__d615e3b6`: `avg_data_quality_score` von `43.16` auf `98.79`, `quality=0` von `98` auf `0`, `technical stddev` von `1.49` auf `19.22`, `technical=50` von `98` auf `0`.
+
+### [Quality Observatory] Universe+Stock Data Quality Baseline (US Core 3) - 2026-02-22 (Codex)
+
+#### Added
+- **Neues Observatory-Datenmodell (`src/types/quality_observatory.ts`)** - Ich (Codex) habe zentrale Typen fuer Universe-Scorecards, Stock-Records, Drift-Reports und Snapshot-Output eingefuehrt.
+- **Observatory Engine (`src/lib/quality/observatory.ts`)** - Ich (Codex) habe eine aggregierende Auswertung implementiert, die fuer `nasdaq100`, `sp500-full`, `russell2000_full` Universe- und Stock-Level-Datenqualitaet berechnet (Coverage, Freshness, Source-Mix, Cross-Source-Consistency, Run-DQ, Gate-Status, Drift).
+- **Build-Skript fuer persistente Mess-Snapshots (`scripts/quality/build_observatory.ts`)** - Ich (Codex) habe ein CLI-Skript hinzugefuegt, das die Auswertung nach `data/quality/observatory/<timestamp>/...` schreibt und `latest.json`/`latest_*` aktualisiert.
+- **Neue API-Endpunkte (`src/app/api/quality/overview/route.ts`, `src/app/api/quality/universe/route.ts`, `src/app/api/quality/stock/route.ts`)** - Ich (Codex) habe Read-Only-Endpunkte fuer Overview, Universe-Drilldown und Stock-Drilldown implementiert.
+- **Neue Produktseite `/quality` (`src/app/quality/page.tsx`)** - Ich (Codex) habe eine UI fuer Universe-Scorecards inkl. Gate-Badge und Worst-Stocks-Tabelle erstellt.
+- **Unit-Test fuer KPI-Distribution (`tests/unit/quality_observatory.test.ts`)** - Ich (Codex) habe Tests fuer Null-safe Verteilung und Basis-Perzentile hinzugefuegt.
+
+#### Changed
+- **Daily-Run um Observatory-Hook erweitert (`scripts/run_daily.ts`)** - Ich (Codex) habe einen optionalen Post-Run-Hook eingebaut (`--quality-observatory` / `QUALITY_OBSERVATORY_AFTER_RUN`), der nach dem Run automatisch ein Observatory-Snapshot erzeugen kann.
+- **NPM Script ergaenzt (`package.json`)** - Ich (Codex) habe `quality:build` hinzugefuegt (`node --import tsx scripts/quality/build_observatory.ts`).
+- **Navigation erweitert (`src/app/components/layout/Shell.tsx`)** - Ich (Codex) habe den Link zur neuen Seite `Quality Observatory` hinzugefuegt.
+
+#### Validation
+- **TypeScript-Check gruen** - Ich (Codex) habe `npx tsc --noEmit --pretty false` erfolgreich ausgefuehrt.
+- **Lint gruen (geaenderte Observatory-Dateien)** - Ich (Codex) habe `npx eslint ...` auf den neuen/angepassten Observatory- und API-Dateien erfolgreich ausgefuehrt.
+- **Unit-Tests gruen** - Ich (Codex) habe erfolgreich ausgefuehrt:
+  - `npx vitest run tests/unit/quality_observatory.test.ts tests/unit/run_quality_gate.test.ts tests/unit/fundamentals_repo_freshness.test.ts`
+- **Erster Observatory-Baseline-Run erzeugt** - Ich (Codex) habe `npm run quality:build` erfolgreich ausgefuehrt. Ergebnis (US Core 3):
+  - `nasdaq100`: snapshot `100.0%`, quality4 `0.0%`, valuation3 `12.0%`, avgDQ `43.16`, pctLow `98%`, gate `red`
+  - `sp500-full`: snapshot `100.0%`, quality4 `0.2%`, valuation3 `8.4%`, avgDQ `42`, pctLow `100%`, gate `red`
+  - `russell2000_full`: snapshot `99.0%`, quality4 `36.9%`, valuation3 `0.1%`, avgDQ `42`, pctLow `100%`, gate `red`
+
+### [Phase 3f Stabilization] Timestamp-Hotfix + Quality Gate + SEC-First Orchestration - 2026-02-22 (Codex)
+
+#### Changed
+- **Timestamp-Normalisierung fuer Fundamentals-Freshness (`src/data/repositories/fundamentals_repo.ts`)** - Ich (Codex) habe `fetched_at` robust auf Millisekunden normalisiert (sekundenbasierte Legacy-Werte werden konvertiert), sowohl beim Speichern als auch beim Lesen. Dadurch greifen Freshness-Checks (`getFundamentalsIfFresh`) wieder korrekt statt fälschlich als stale zu werten.
+- **Run-Level Quality Gate eingefuehrt (`src/run/quality_gate.ts`, `src/run/builder.ts`, `schemas/run.v1.schema.json`, `src/types/generated/run_v1.ts`)** - Ich (Codex) habe ein explizites `quality_gate` im Run-Artifact ergänzt (`green|yellow|red`, `blocked`, `reasons`, `metrics`, `thresholds`, `evaluated_at`) und in den Run-Builder integriert.
+- **Hard-Gate im Dashboard umgesetzt (`src/app/components/DashboardClient.tsx`, `src/app/components/ScoreBoardClient.tsx`)** - Ich (Codex) habe bei `quality_gate.blocked=true` einen sichtbaren Blocker-Banner eingebaut und investierbare Aktionen im Scoreboard deaktiviert (kein Drilldown/Price-Target-Actions fuer rote Runs).
+- **Live-Run API respektiert Quality-Gate (`src/app/api/live-run/route.ts`)** - Ich (Codex) habe API-Antworten fuer rote Runs auf `topPicks: []` gesetzt und den `qualityGate`-Status im Response exponiert, damit auch API-Clients nicht an der Produkt-Sperre vorbeilaufen.
+- **SEC/FMP Snapshot-Writes auf Millisekunden umgestellt (`scripts/etl/sec_edgar_bulk_audit.py`, `scripts/etl/fmp_load.py`)** - Ich (Codex) habe neue Snapshot-Eintraege von Sekunden- auf Millisekunden-Epoch umgestellt, damit kuenftige Daten ohne Freshness-Interpretationsfehler geschrieben werden.
+- **SEC-First Daily-Preflight eingebaut (`scripts/run_daily.ts`)** - Ich (Codex) habe einen optionalen SEC-Sync vor dem Scoring ergänzt (`--sec-sync` bzw. `SEC_SYNC_BEFORE_RUN`), inklusive Universe-Alias-Aufloesung (`nasdaq100`, `sp500-full`, `russell2000_full`) und Fail-Fast bei fehlenden SEC-Inputs.
+- **US-Universes SEC-Orchestrierung als Ein-Kommando-Run (`scripts/etl/sec_sync_us_universes.py`, `package.json`)** - Ich (Codex) habe ein Wrapper-Skript hinzugefuegt, das SEC-Bulk-Ingestion sequenziell fuer die drei Kern-US-Universes startet (`npm run etl:sec:us`).
+
+#### Added
+- **Freshness-Regressionstests fuer Sekunden-vs-Millisekunden (`tests/unit/fundamentals_repo_freshness.test.ts`)** - Ich (Codex) habe Tests fuer Normalisierung und TTL-Verhalten ergänzt.
+- **Quality-Gate Unit-Tests (`tests/unit/run_quality_gate.test.ts`)** - Ich (Codex) habe Tests fuer `green`, `yellow` und `red`-Klassifikation samt Blockierverhalten hinzugefuegt.
+
+#### Validation
+- **Typegen erfolgreich** - Ich (Codex) habe `npm run generate:types` erfolgreich ausgefuehrt.
+- **TypeScript-Check gruen** - Ich (Codex) habe `npx tsc --noEmit --pretty false` erfolgreich ausgefuehrt.
+- **Gezielte Unit-Tests gruen** - Ich (Codex) habe erfolgreich ausgefuehrt:
+  - `npx vitest run tests/unit/fundamentals_repo_freshness.test.ts tests/unit/run_quality_gate.test.ts tests/unit/provider-merge.test.ts`
+- **Gezielter Lint gruen** - Ich (Codex) habe `npx eslint ...` auf den geaenderten TS/TSX-Dateien erfolgreich ohne Warnungen abgeschlossen.
+- **Python-Syntaxcheck gruen** - Ich (Codex) habe `python3 -m py_compile scripts/etl/sec_sync_us_universes.py scripts/etl/sec_edgar_bulk_audit.py scripts/etl/fmp_load.py` erfolgreich ausgefuehrt.
+
 ### [Repo Hygiene] Altlasten Cleanup nach Phase 3e/3f - 2026-02-22 (Codex)
 
 #### Changed
