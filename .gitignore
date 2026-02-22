@@ -118,6 +118,8 @@ gha-creds-*.json
 # Unwanted files
 Kooha-2026-01-31-18-10-05.mp4
 Textdatei\302\240\342\200\246.txt
+*.Zone.Identifier
+logs/
 
 # Additional documentation files (local only)
 BACKTEST_CHARTS_IMPLEMENTATION_COMPLETE.md

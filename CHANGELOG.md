@@ -8,6 +8,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### [Repo Hygiene] Altlasten Cleanup nach Phase 3e/3f - 2026-02-22 (Codex)
+
+#### Changed
+- **Veraltete Root-Dokumente final entfernt** - Ich (Codex) habe die bereits markierten Legacy-Dateien aus dem Root bereinigt (`ROADMAP.md`, `Master Roadmap.md`, `Project Context.md`, `ux.md`, `diagnostic-report.md`, `low-scores-investigation.md`, `technical-pillar-investigation.md`), um den Repository-Stand mit dem produktiven Git-Stand konsistent zu halten.
+- **`.gitignore` gegen Windows-Altlasten und lokale Laufartefakte gehaertet (`.gitignore`)** - Ich (Codex) habe `*.Zone.Identifier` und `logs/` ergaenzt, damit diese lokalen Nebenartefakte nicht erneut als ungeplante Diffs auftauchen.
+
+#### Cleanup
+- **Lokale untracked Altlasten entfernt (nicht produktiv, nicht versioniert)** - Ich (Codex) habe alte Prompt-/Notiz-/ZIP-Artefakte und lokale Restdateien aus dem Worktree entfernt (u. a. `companyfacts.zip`, `PROMPT_architecture_cleanup.md`, `ROADMAP_UPDATE_2026-02-20.md`, `sec_edgar_poc.py`, `notes/`-Reste, `logs/`), damit der lokale Stand wieder sauber ist.
+- **Wichtige Projektdateien beibehalten** - Ich (Codex) habe `CHANGELOG.md` bewusst unveraendert erhalten (keine Loeschung).
+
 ### [Phase 3f Follow-up] Minor Warnings Cleanup (avgMetrics + Soft-Cap Tests) - 2026-02-22 (Codex)
 
 #### Changed
