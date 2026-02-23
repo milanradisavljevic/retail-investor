@@ -70,6 +70,29 @@ export interface RunV1SchemaJson {
     generated_at: string;
     universe_name: string;
   };
+  /**
+   * Run-level investability gate derived from data quality signals
+   */
+  quality_gate?: {
+    status: 'green' | 'yellow' | 'red';
+    blocked: boolean;
+    reasons: string[];
+    evaluated_at: string;
+    metrics: {
+      symbol_count: number;
+      avg_data_quality_score: number;
+      pct_low: number;
+      critical_fallback_ratio: number;
+    };
+    thresholds: {
+      red_avg_data_quality_score_lt: number;
+      red_pct_low_gte: number;
+      red_critical_fallback_ratio_gte: number;
+      yellow_avg_data_quality_score_lt: number;
+      yellow_pct_low_gte: number;
+      yellow_critical_fallback_ratio_gte: number;
+    };
+  };
   universe: {
     definition: {
       /**

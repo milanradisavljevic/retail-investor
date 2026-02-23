@@ -392,7 +392,7 @@ def store_fundamentals_snapshot(
 ) -> int:
     payload = dict(data)
     payload["_source"] = "fmp"
-    fetched_at = int(time.time())
+    fetched_at = int(time.time() * 1000)
     conn.execute(
         """
         INSERT OR REPLACE INTO fundamentals_snapshot (symbol, fetched_at, data_json)

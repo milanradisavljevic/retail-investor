@@ -160,12 +160,12 @@ export async function loadUniversesWithMetadata(): Promise<UniverseWithMetadata[
     'sp500-full',
     'nasdaq100-full',
     'russell2000_full',
-    'russell2000_full_yf',
-    'russell2000_full_clean',
     'cac40-full',
     'dax40-full',
     'ftse100-full',
     'eurostoxx50-full',
+    'nikkei225_full',
+    'etf',
     'test',
   ]);
 

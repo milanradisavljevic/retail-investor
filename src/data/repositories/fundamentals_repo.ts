@@ -88,6 +88,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function normalizeEpochMs(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    return Date.now();
+  }
+  return value < 1_000_000_000_000 ? value * 1000 : value;
+}
+
 function toNullableNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === 'number') {
@@ -173,12 +180,13 @@ export function saveFundamentals(
   fetchedAt: number = Date.now()
 ): void {
   const db = getDatabase();
+  const normalizedFetchedAt = normalizeEpochMs(fetchedAt);
   const stmt = db.prepare(`
     INSERT INTO fundamentals_snapshot (symbol, fetched_at, data_json)
     VALUES (?, ?, ?)
   `);
 
-  stmt.run(symbol, fetchedAt, JSON.stringify(data));
+  stmt.run(symbol, normalizedFetchedAt, JSON.stringify(data));
   logger.debug({ symbol }, 'Saved fundamentals snapshot');
 }
 
@@ -200,7 +208,7 @@ export function getLatestFundamentals(symbol: string): FundamentalsSnapshot | nu
 
   return {
     symbol: row.symbol,
-    fetchedAt: row.fetchedAt,
+    fetchedAt: normalizeEpochMs(row.fetchedAt),
     data: parseFundamentalsData(row.data_json),
   };
 }
@@ -227,7 +235,7 @@ export function getLatestFundamentalsBySource(
 
   return {
     symbol: row.symbol,
-    fetchedAt: row.fetchedAt,
+    fetchedAt: normalizeEpochMs(row.fetchedAt),
     data: parseFundamentalsData(row.data_json),
   };
 }
@@ -269,7 +277,7 @@ export function getAllLatestFundamentals(): Map<string, FundamentalsSnapshot> {
   for (const row of rows) {
     result.set(row.symbol, {
       symbol: row.symbol,
-      fetchedAt: row.fetchedAt,
+      fetchedAt: normalizeEpochMs(row.fetchedAt),
       data: parseFundamentalsData(row.data_json),
     });
   }

@@ -37,6 +37,14 @@
   },
   "overrides": {
     "DAX 40 (Sample)": {},
-    "STOXX Europe (Sample)": {}
+    "STOXX Europe (Sample)": {},
+    "ETF Universe": {
+      "pillar_weights": {
+        "valuation": 0,
+        "quality": 0,
+        "technical": 0.5,
+        "risk": 0.5
+      }
+    }
   }
 }

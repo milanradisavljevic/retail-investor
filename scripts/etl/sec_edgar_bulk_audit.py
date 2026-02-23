@@ -333,7 +333,7 @@ def upsert_payload(
         )
         """
     )
-    fetched_at = int(time.time())
+    fetched_at = int(time.time() * 1000)
     existing_row = conn.execute(
         f"SELECT data_json FROM {table_name} WHERE symbol = ? ORDER BY fetched_at DESC LIMIT 1",
         (symbol,),

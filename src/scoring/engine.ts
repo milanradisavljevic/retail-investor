@@ -156,7 +156,7 @@ export async function scoreSymbol(
   dataQuality: DataQuality,
   scoringConfig = getScoringConfig(),
   context?: ScoreSymbolContext,
-  options?: { computePriceTarget?: boolean; isTop30?: boolean }
+  options?: { computePriceTarget?: boolean; isTop30?: boolean; etfMode?: boolean }
 ): Promise<SymbolScore> {
   // Calculate scores
   const fundamentalResult = calculateFundamentalScore(
@@ -168,7 +168,15 @@ export async function scoreSymbol(
   const technicalResult = calculateTechnicalScore(technicalMetrics);
 
   const isShieldStrategy = (process.env.SCORING_PRESET || process.env.PRESET || '').toLowerCase() === 'shield';
-  const evidence = calculateEvidencePillars(fundamentalResult, technicalResult, isShieldStrategy);
+  const etfMode = options?.etfMode === true;
+  const evidence = etfMode
+    ? {
+        valuation: 0,
+        quality: 0,
+        technical: Number((((technicalResult.components.trend + technicalResult.components.momentum) / 2).toFixed(1))),
+        risk: Number((technicalResult.components.volatility.toFixed(1))),
+      }
+    : calculateEvidencePillars(fundamentalResult, technicalResult, isShieldStrategy);
   const totalScore = calculateTotalScore(evidence, scoringConfig.pillarWeights);
 
   // Combine missing fields and assumptions
@@ -189,6 +197,9 @@ export async function scoreSymbol(
     } else {
       assumptions.push(`Fundamentals are marked stale (> ${STALE_FUNDAMENTALS_DAYS}d)`);
     }
+  }
+  if (etfMode) {
+    assumptions.push('ETF mode active: total score uses Technical + Risk only; Valuation/Quality are set to 0');
   }
 
   // Calculate price target if we have the context
@@ -236,7 +247,7 @@ export async function scoreSymbol(
     industry: context?.profile?.industry ?? null,
     sector: context?.profile?.sector ?? null,
     breakdown: {
-      fundamental: fundamentalResult.total,
+      fundamental: etfMode ? 0 : fundamentalResult.total,
       technical: technicalResult.total,
     },
     evidence,
@@ -270,10 +281,24 @@ export async function scoreUniverse(
     ? getConfigWithUniverse(options.universeOverride)
     : getConfig();
   const symbols = getUniverseWithConfig(appConfig);
+  const isEtfUniverse =
+    appConfig.universe.type === 'etf' ||
+    appConfig.universe.name.toLowerCase().includes('etf');
   const baseScoringConfig = getScoringConfig();
-  const scoringConfig = options?.weightsOverride
+  const configuredScoring = options?.weightsOverride
     ? getScoringConfigWithWeights(options.weightsOverride, baseScoringConfig)
     : baseScoringConfig;
+  const scoringConfig = isEtfUniverse
+    ? {
+        ...configuredScoring,
+        pillarWeights: {
+          valuation: 0,
+          quality: 0,
+          technical: 0.5,
+          risk: 0.5,
+        },
+      }
+    : configuredScoring;
   const errors: string[] = [];
   const scores: SymbolScore[] = [];
   const scanOnlyScores: SymbolScore[] = [];
@@ -632,7 +657,7 @@ export async function scoreUniverse(
             resolved.dataQuality,
             scoringConfig,
             scoreContext,
-            { computePriceTarget: false }
+            { computePriceTarget: false, etfMode: isEtfUniverse }
           );
           scanOnlyScores.push(score);
           logger.debug({ symbol, score: score.totalScore }, 'Symbol scored');
@@ -646,8 +671,10 @@ export async function scoreUniverse(
           scanOnlyScores.push({
             symbol,
             totalScore: 50,
-            breakdown: { fundamental: 50, technical: 50 },
-            evidence: { valuation: 50, quality: 50, technical: 50, risk: 50 },
+            breakdown: { fundamental: isEtfUniverse ? 0 : 50, technical: 50 },
+            evidence: isEtfUniverse
+              ? { valuation: 0, quality: 0, technical: 50, risk: 50 }
+              : { valuation: 50, quality: 50, technical: 50, risk: 50 },
             dataQuality: {
               dataQualityScore: 50,
               dataQualityConfidence: 0,
@@ -750,7 +777,7 @@ export async function scoreUniverse(
         resolved.dataQuality,
         scoringConfig,
         scoreContext,
-        { computePriceTarget: true }
+        { computePriceTarget: true, etfMode: isEtfUniverse }
       );
       scores.push({ ...deepScore, isScanOnly: false });
     }
@@ -809,7 +836,7 @@ export async function scoreUniverse(
             resolved.dataQuality,
             scoringConfig,
             scoreContext,
-            { computePriceTarget: true, isTop30: true }
+            { computePriceTarget: true, isTop30: true, etfMode: isEtfUniverse }
           );
 
           // Update the score with Monte Carlo diagnostics

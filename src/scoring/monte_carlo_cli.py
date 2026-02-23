@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """
 CLI wrapper for Monte Carlo Fair Value calculation - invoked by TypeScript via child_process.
 
@@ -16,10 +18,6 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scoring.formulas.monte_carlo_lite import calculate_monte_carlo_fair_value
-from data_py.finnhub_client import FinnhubClient
-from data_py.cache import SQLiteCache
-
 
 class FinnhubClientAdapter:
     """
@@ -36,7 +34,7 @@ class FinnhubClientAdapter:
     - get_company_profile(symbol)
     """
 
-    def __init__(self, finnhub_client: FinnhubClient):
+    def __init__(self, finnhub_client):
         self.client = finnhub_client
 
     def company_basic_financials(self, symbol: str, metric: str = "all"):
@@ -83,6 +81,12 @@ def main():
     args = parser.parse_args()
 
     try:
+        # Import heavy dependencies lazily so "--help" works even when optional
+        # runtime packages (e.g. numpy) are missing in the current Python env.
+        from scoring.formulas.monte_carlo_lite import calculate_monte_carlo_fair_value
+        from data_py.finnhub_client import FinnhubClient
+        from data_py.cache import SQLiteCache
+
         # Get Finnhub API key from environment
         api_key = os.environ.get("FINNHUB_API_KEY")
         if not api_key:

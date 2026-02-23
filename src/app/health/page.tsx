@@ -5,8 +5,10 @@ import {
   CheckCircle,
   Clock,
   Database as DatabaseIcon,
+  Zap,
 } from 'lucide-react';
 import { getHealthSnapshot } from '@/lib/health';
+import type { EtlRun } from '@/lib/etl_log';
 
 const FMP_COLOR = '#4F7942';
 const YFINANCE_COLOR = '#5B8DEF';
@@ -121,6 +123,80 @@ function metricCoveragePct(
 function formatDays(value: number | null): string {
   if (value === null) return 'n/a';
   return `${value.toFixed(1)}d`;
+}
+
+function formatDuration(sec: number | null): string {
+  if (sec === null) return 'n/a';
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
+  return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
+}
+
+function providerLabel(provider: string): string {
+  switch (provider) {
+    case 'sec':
+      return 'SEC EDGAR';
+    case 'fmp':
+      return 'FMP';
+    case 'yfinance':
+      return 'yfinance';
+    case 'daily_run':
+      return 'Daily Run';
+    default:
+      return provider;
+  }
+}
+
+function statusStyle(status: string): string {
+  switch (status) {
+    case 'success':
+      return 'border-accent-green/40 bg-accent-green/10 text-accent-green';
+    case 'failed':
+      return 'border-accent-red/40 bg-accent-red/10 text-accent-red';
+    case 'running':
+      return 'border-accent-blue/40 bg-accent-blue/10 text-accent-blue';
+    default:
+      return 'border-navy-600 bg-navy-700/40 text-text-muted';
+  }
+}
+
+function statusLabel(status: string): string {
+  switch (status) {
+    case 'success':
+      return 'OK';
+    case 'failed':
+      return 'Fail';
+    case 'running':
+      return 'Running';
+    default:
+      return status;
+  }
+}
+
+function EtlRunRow({ run }: { run: EtlRun }) {
+  const status = run.status;
+  return (
+    <tr className="text-text-secondary text-xs">
+      <td className="px-2 py-2 text-text-primary">
+        {run.started_at.replace('T', ' ').slice(0, 19)}
+      </td>
+      <td className="px-2 py-2">{providerLabel(run.provider)}</td>
+      <td className="px-2 py-2">
+        <span className={`rounded border px-1.5 py-0.5 text-[10px] ${statusStyle(status)}`}>
+          {statusLabel(status)}
+        </span>
+      </td>
+      <td className="px-2 py-2 text-right font-mono">{formatDuration(run.duration_sec)}</td>
+      <td className="px-2 py-2 text-right">{run.symbol_count?.toLocaleString() ?? 'n/a'}</td>
+      {run.error_message ? (
+        <td className="px-2 py-2 text-accent-red truncate max-w-[200px]" title={run.error_message}>
+          {run.error_message}
+        </td>
+      ) : (
+        <td className="px-2 py-2 text-text-muted">—</td>
+      )}
+    </tr>
+  );
 }
 
 function ProviderCoverageCard({
@@ -516,6 +592,42 @@ export default async function HealthPage() {
             )}
           </div>
         </div>
+      </section>
+
+      <section className="rounded-xl border border-navy-700 bg-navy-800 p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-accent-blue" />
+          <h2 className="text-lg font-semibold text-text-primary">ETL Status</h2>
+          <span className="ml-auto text-xs text-text-muted">
+            Last {health.etl_runs.length} runs
+          </span>
+        </div>
+
+        {health.etl_runs.length === 0 ? (
+          <div className="rounded-lg border border-navy-700 bg-navy-900/60 p-4 text-sm text-text-muted">
+            No ETL runs logged yet. Runs will appear here after ETL scripts are executed.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-navy-700 text-left text-[10px] uppercase tracking-wider text-text-muted">
+                  <th className="px-2 py-2">Started</th>
+                  <th className="px-2 py-2">Provider</th>
+                  <th className="px-2 py-2">Status</th>
+                  <th className="px-2 py-2 text-right">Duration</th>
+                  <th className="px-2 py-2 text-right">Symbols</th>
+                  <th className="px-2 py-2">Error</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-navy-700/70">
+                {health.etl_runs.map((run) => (
+                  <EtlRunRow key={run.id} run={run} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

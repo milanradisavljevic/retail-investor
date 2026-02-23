@@ -77,6 +77,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 Datenqualität
               </Link>
               <Link
+                href="/quality"
+                className="text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Quality Observatory
+              </Link>
+              <Link
                 href="/macro"
                 className="text-text-secondary hover:text-text-primary transition-colors"
               >

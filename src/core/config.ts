@@ -10,6 +10,7 @@ export interface UniverseConfig {
   symbols: string[];
   provider?: string;
   benchmark?: string;
+  type?: 'equity' | 'etf';
   description?: string;
   version?: string;
   selection_rule?: string;
@@ -131,6 +132,10 @@ function normalizeUniverse(raw: unknown): UniverseConfig {
         : typeof parsed.default_benchmark === 'string'
           ? parsed.default_benchmark
           : 'SPY',
+    type:
+      parsed.type === 'etf'
+        ? 'etf'
+        : 'equity',
     description: typeof parsed.description === 'string' ? parsed.description : '',
     version: typeof parsed.version === 'string' ? parsed.version : '1',
     selection_rule:

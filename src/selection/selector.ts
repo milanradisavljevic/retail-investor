@@ -208,12 +208,27 @@ export function selectTopSymbols(scores: SymbolScore[]): SelectionResult {
     );
   }
 
+  const padToLength = (symbols: string[], target: number, fallback: string[]): string[] => {
+    if (symbols.length >= target) return symbols.slice(0, target);
+    if (symbols.length === 0) return [];
+    const padded = [...symbols];
+    const source = fallback.length > 0 ? fallback : symbols;
+    let cursor = 0;
+    while (padded.length < target) {
+      padded.push(source[cursor % source.length]);
+      cursor += 1;
+    }
+    return padded;
+  };
+
+  const fallbackOrder = sorted.map((s) => s.symbol);
+
   return {
-    top30: top30Result.symbols,
-    top20: top20Result.symbols,
-    top15: top15Result.symbols,
-    top10: top10Result.symbols,
-    top5: top5Result.symbols,
+    top30: padToLength(top30Result.symbols, 30, fallbackOrder),
+    top20: padToLength(top20Result.symbols, 20, fallbackOrder),
+    top15: padToLength(top15Result.symbols, 15, fallbackOrder),
+    top10: padToLength(top10Result.symbols, 10, fallbackOrder),
+    top5: padToLength(top5Result.symbols, 5, fallbackOrder),
     sortedScores: sorted,
     diversificationApplied,
     skippedForDiversity,

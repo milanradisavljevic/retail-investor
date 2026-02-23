@@ -4,6 +4,8 @@ import React from "react";
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
 import { GhostRow, type SkippedSymbol } from "./GhostRow";
 import { setInspectorMode } from "./Inspector";
+import { convertFromUsd, formatMoney } from "@/lib/currency/client";
+import { useDisplayCurrency } from "@/lib/currency/useDisplayCurrency";
 
 type SymbolScore = RunV1SchemaJson["scores"][number];
 
@@ -14,6 +16,7 @@ export function ResultsTable({
   selections: SymbolScore[];
   skippedSymbols?: SkippedSymbol[];
 }) {
+  const { displayCurrency, usdToEurRate } = useDisplayCurrency();
   if (selections.length === 0) {
     return (
       <div className="text-center py-12 text-text-secondary">
@@ -117,7 +120,10 @@ export function ResultsTable({
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-text-secondary font-mono">
                     {pick.price_target?.fair_value
-                      ? `$${pick.price_target.fair_value.toFixed(0)}`
+                      ? formatMoney(
+                          convertFromUsd(pick.price_target.fair_value, displayCurrency, usdToEurRate),
+                          displayCurrency
+                        )
                       : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">

@@ -20,9 +20,12 @@ import {
   PHYSICAL_METALS, 
   SUPPORTED_CURRENCIES, 
   VALID_QUANTITY_UNITS,
+  FX_RATES_TO_USD,
   isPhysicalMetal,
   inferAssetType,
 } from '@/types/portfolio';
+import { convertBetweenCurrencies, convertFromUsd, formatMoney } from '@/lib/currency/client';
+import { useDisplayCurrency } from '@/lib/currency/useDisplayCurrency';
 import { PortfolioScoreBreakdown } from '@/app/components/PortfolioScoreBreakdown';
 import { PortfolioPerformance } from '@/app/components/PortfolioPerformance';
 import PortfolioDiversificationDashboard from '@/app/components/PortfolioDiversificationDashboard';
@@ -42,16 +45,6 @@ interface EditingState {
   field: string | null;
   value: string | number | null;
 }
-
-const formatCurrency = (value: number | null | undefined, currency: string = 'USD'): string => {
-  if (value === null || value === undefined) return '--';
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
 
 const formatPercent = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return '--';
@@ -104,6 +97,7 @@ const getSearchResultDetailHref = (result: SearchResult): string | null => {
 };
 
 export function PortfolioPageClient() {
+  const { displayCurrency, usdToEurRate, fxAsOf } = useDisplayCurrency();
   const [positions, setPositions] = useState<PortfolioPosition[]>([]);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -416,6 +410,15 @@ export function PortfolioPageClient() {
 
   const equityPct = summary?.equity_pct ?? 0;
   const commodityPct = summary?.commodity_pct ?? 0;
+  const formatDisplayMoney = useCallback(
+    (value: number | null | undefined) => formatMoney(value, displayCurrency),
+    [displayCurrency]
+  );
+  const convertPositionMoney = useCallback(
+    (value: number | null | undefined, sourceCurrency: Currency) =>
+      convertBetweenCurrencies(value, sourceCurrency, displayCurrency, usdToEurRate, FX_RATES_TO_USD),
+    [displayCurrency, usdToEurRate]
+  );
 
   if (loading) {
     return (
@@ -451,6 +454,12 @@ export function PortfolioPageClient() {
           <h1 className="text-2xl font-bold text-text-primary">
             Dein Portfolio
           </h1>
+          <p className="mt-1 text-xs text-text-muted">
+            Anzeige-Währung: <span className="text-text-primary">{displayCurrency}</span>
+            {displayCurrency === 'EUR' && fxAsOf ? (
+              <span> · FX Stand: {new Date(fxAsOf).toLocaleString('de-DE')}</span>
+            ) : null}
+          </p>
         </div>
         
         {summary && (
@@ -458,7 +467,7 @@ export function PortfolioPageClient() {
             <div className="bg-navy-800 border border-navy-700 rounded-xl p-3">
               <div className="text-xs text-text-muted mb-1">Gesamtwert</div>
               <div className="text-xl font-bold text-text-primary">
-                {formatCurrency(summary.total_value_usd)}
+                {formatDisplayMoney(convertFromUsd(summary.total_value_usd, displayCurrency, usdToEurRate))}
               </div>
             </div>
             <div className="bg-navy-800 border border-navy-700 rounded-xl p-3">
@@ -871,16 +880,16 @@ export function PortfolioPageClient() {
                       {pos.quantity} {pos.quantity_unit === 'ounces' ? 'oz' : pos.quantity_unit === 'grams' ? 'g' : 'Stk.'}
                     </td>
                     <td className="px-4 py-3 text-text-secondary text-sm">
-                      {formatCurrency(pos.buy_price, pos.currency)}
+                      {formatDisplayMoney(convertPositionMoney(pos.buy_price, pos.currency))}
                     </td>
                     <td className="px-4 py-3 text-text-secondary text-sm">
                       {pos.current_price !== null && pos.current_price !== undefined 
-                        ? formatCurrency(pos.current_price, pos.currency)
+                        ? formatDisplayMoney(convertPositionMoney(pos.current_price, pos.currency))
                         : '—'}
                     </td>
                     <td className="px-4 py-3 text-text-primary font-medium">
                       {pos.current_value_usd !== null && pos.current_value_usd !== undefined 
-                        ? formatCurrency(pos.current_value_usd)
+                        ? formatDisplayMoney(convertFromUsd(pos.current_value_usd, displayCurrency, usdToEurRate))
                         : '—'}
                     </td>
                     <td className={`px-4 py-3 font-medium ${getGainLossColor(pos.gain_loss_pct)}`}>
@@ -928,7 +937,9 @@ export function PortfolioPageClient() {
                     Gesamt
                   </td>
                   <td className="px-4 py-3 font-bold text-text-primary">
-                    {summary ? formatCurrency(summary.total_value_usd) : '—'}
+                    {summary
+                      ? formatDisplayMoney(convertFromUsd(summary.total_value_usd, displayCurrency, usdToEurRate))
+                      : '—'}
                   </td>
                   <td className={`px-4 py-3 font-bold ${getGainLossColor(summary?.total_gain_loss_pct)}`}>
                     {summary ? formatPercent(summary.total_gain_loss_pct) : '—'}
@@ -968,7 +979,9 @@ export function PortfolioPageClient() {
                   <div>
                     <span className="text-text-muted">Wert: </span>
                     <span className="text-text-primary font-medium">
-                      {pos.current_value_usd !== null ? formatCurrency(pos.current_value_usd) : '—'}
+                      {pos.current_value_usd !== null
+                        ? formatDisplayMoney(convertFromUsd(pos.current_value_usd, displayCurrency, usdToEurRate))
+                        : '—'}
                     </span>
                   </div>
                   <div>
@@ -1017,6 +1030,8 @@ export function PortfolioPageClient() {
         <PortfolioDiversificationDashboard
           positions={positions}
           totalValueUsd={summary.total_value_usd}
+          displayCurrency={displayCurrency}
+          usdToEurRate={usdToEurRate}
         />
       )}
 

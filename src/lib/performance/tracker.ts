@@ -3,7 +3,7 @@
  * Measures and analyzes run performance to identify bottlenecks
  */
 
-import { writeFile } from 'fs/promises';
+import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { createChildLogger } from '@/utils/logger';
 
@@ -264,7 +264,9 @@ export class PerformanceTracker {
   async save(): Promise<void> {
     try {
       const metrics = this.finalize();
-      const filename = join(process.cwd(), 'data', 'performance', `${metrics.run_id}.json`);
+      const performanceDir = join(process.cwd(), 'data', 'performance');
+      await mkdir(performanceDir, { recursive: true });
+      const filename = join(performanceDir, `${metrics.run_id}.json`);
       await writeFile(filename, JSON.stringify(metrics, null, 2), 'utf-8');
 
       logger.info({

@@ -2,12 +2,14 @@ export type Language = 'de' | 'en';
 export type Theme = 'dark' | 'light';
 export type RiskTolerance = 'conservative' | 'balanced' | 'aggressive';
 export type ScorePrecision = 0 | 1 | 2;
+export type DisplayCurrency = 'USD' | 'EUR';
 
 export type AppSettings = {
   general: {
     language: Language;
     theme: Theme;
     defaultUniverse: string;
+    displayCurrency: DisplayCurrency;
   };
   analysis: {
     defaultStrategy: string;

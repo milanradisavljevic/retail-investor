@@ -88,6 +88,9 @@ export function DashboardClient({
   const { t } = useTranslation();
   const { status: etlStatus, loading: etlLoading } = useEtlStatus();
   const [pdfLoading, setPdfLoading] = useState(false);
+  const qualityGate = run?.quality_gate;
+  const qualityGateStatus = qualityGate?.status ?? 'green';
+  const qualityGateBlocked = qualityGate?.blocked ?? false;
 
   const handlePdfDownload = async () => {
     if (pdfLoading) return;
@@ -191,6 +194,20 @@ export function DashboardClient({
             {run.universe.definition.name}
           </span>
           {run.mode && <ModeBadge mode={run.mode} />}
+          {qualityGate && (
+            <span
+              className={`text-xs px-3 py-1 rounded-full border ${
+                qualityGateStatus === 'green'
+                  ? 'border-accent-green/50 bg-accent-green/10 text-accent-green'
+                  : qualityGateStatus === 'yellow'
+                    ? 'border-accent-gold/50 bg-accent-gold/10 text-accent-gold'
+                    : 'border-accent-red/50 bg-accent-red/10 text-accent-red'
+              }`}
+              title={`Quality Gate: ${qualityGateStatus.toUpperCase()}`}
+            >
+              Quality Gate: {qualityGateStatus.toUpperCase()}
+            </span>
+          )}
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
@@ -245,6 +262,22 @@ export function DashboardClient({
         </p>
       </div>
 
+      {qualityGateBlocked && (
+        <div className="mb-6 rounded-xl border border-accent-red/50 bg-accent-red/10 p-4">
+          <h3 className="text-sm font-semibold text-accent-red">
+            Investierbare Vorschlaege sind blockiert (Quality Gate RED)
+          </h3>
+          <p className="mt-1 text-sm text-text-secondary">
+            Dieser Run hat zu niedrige Datenqualitaet. Bitte ETL/Sec-Fundamentals neu laden und den Run erneut starten.
+          </p>
+          {qualityGate?.reasons?.length ? (
+            <p className="mt-2 text-xs text-text-muted">
+              Trigger: {qualityGate.reasons.join(' | ')}
+            </p>
+          ) : null}
+        </div>
+      )}
+
       {/* Documents Warning */}
       <DocumentsBanner symbols={run.flags.user_documents_missing} />
 
@@ -258,7 +291,11 @@ export function DashboardClient({
         <RegimeBadge />
       </div>
 
-      <ScoreBoardClient topScores={topCardScores} tableScores={topTableScores} />
+      <ScoreBoardClient
+        topScores={topCardScores}
+        tableScores={topTableScores}
+        qualityBlocked={qualityGateBlocked}
+      />
 
       {/* Run Details */}
       <div className="bg-navy-800 rounded-xl border border-navy-700 p-6 mb-8">

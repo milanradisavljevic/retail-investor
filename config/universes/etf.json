@@ -1,0 +1,32 @@
+{
+  "name": "ETF Universe",
+  "type": "etf",
+  "provider": "yfinance",
+  "benchmark": "SPY",
+  "description": "ETF-Universum mit vereinfachtem Scoring (Technical + Risk)",
+  "version": "2026-02-23",
+  "selection_rule": "static list of broad market, sector, international, bond, and commodity ETFs",
+  "survivorship_bias_note": "Static ETF list; not point-in-time reconstituted.",
+  "symbols": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "XLK",
+    "XLF",
+    "XLE",
+    "XLV",
+    "XLI",
+    "XLP",
+    "XLY",
+    "XLB",
+    "XLU",
+    "XLRE",
+    "VTI",
+    "VEA",
+    "VWO",
+    "BND",
+    "TLT",
+    "GLD",
+    "SLV"
+  ]
+}

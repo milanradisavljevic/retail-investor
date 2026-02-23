@@ -1,0 +1,21 @@
+[Unit]
+Description=INTRINSIC Daily ETL Timer
+Documentation=https://github.com/your-org/intrinsic
+Requires=intrinsic-etl.service
+
+[Timer]
+# Run daily at 06:00 UTC (adjust timezone as needed)
+OnCalendar=*-*-* 06:00:00
+Timezone=UTC
+
+# Run immediately if last scheduled time was missed (e.g., system was off)
+Persistent=true
+
+# Randomize start time by up to 15 minutes to avoid thundering herd
+RandomizedDelaySec=900
+
+# Accuracy of the timer (default is 1 minute)
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -8,6 +8,8 @@ import { ScoreHistory } from './ScoreHistory';
 import { PiotroskiCard } from './scoring/PiotroskiCard';
 import { buildExplainSignals, type Signal } from '@/lib/explainSignals';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { convertFromUsd, formatMoney } from '@/lib/currency/client';
+import { useDisplayCurrency } from '@/lib/currency/useDisplayCurrency';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
 import type { PiotroskiResult } from '@/scoring/formulas/piotroski';
 
@@ -184,6 +186,7 @@ export function StockDetailView({
   nextSymbol,
 }: Props) {
   const { t } = useTranslation();
+  const { displayCurrency, usdToEurRate } = useDisplayCurrency();
   const [pdfLoading, setPdfLoading] = useState(false);
   const displayName = companyName ?? score.company_name ?? score.symbol;
   const dq = score.data_quality;
@@ -236,7 +239,7 @@ export function StockDetailView({
 
   const range52w =
     low52w !== null && high52w !== null
-      ? `${fmtNumber(low52w, { prefix: '$' })} - ${fmtNumber(high52w, { prefix: '$' })}`
+      ? `${formatMoney(convertFromUsd(low52w, displayCurrency, usdToEurRate), displayCurrency)} - ${formatMoney(convertFromUsd(high52w, displayCurrency, usdToEurRate), displayCurrency)}`
       : '—';
 
   const handlePdfDownload = async () => {
@@ -410,7 +413,12 @@ export function StockDetailView({
           {priceTarget ? (
             <div className="rounded-xl border border-navy-700 bg-navy-800 p-4">
               <h3 className="mb-3 text-lg font-semibold text-text-primary">{t('stockDetail.priceTarget')}</h3>
-              <PriceTargetCard {...priceTarget} showDeepAnalysisWarning={true} />
+              <PriceTargetCard
+                {...priceTarget}
+                showDeepAnalysisWarning={true}
+                displayCurrency={displayCurrency}
+                usdToEurRate={usdToEurRate}
+              />
             </div>
           ) : (
             <div className="rounded-xl border border-navy-700 bg-navy-800 p-4">
@@ -551,7 +559,9 @@ export function StockDetailView({
                                 .replace('{reason}', comp.reason ?? '')}
                         </span>
                         <span className={comp.clamped ? 'text-accent-gold' : 'text-text-secondary'}>
-                          {comp.included ? `$${fmtNumber(comp.value)}` : '—'}
+                          {comp.included
+                            ? formatMoney(convertFromUsd(comp.value, displayCurrency, usdToEurRate), displayCurrency)
+                            : '—'}
                           {comp.clamped ? t('stockDetail.componentClamped') : ''}
                         </span>
                       </div>
@@ -561,10 +571,10 @@ export function StockDetailView({
               </div>
               <div className="border-t border-navy-700 pt-2 text-xs text-text-muted">
                 {t('stockDetail.fairValueDetails')
-                  .replace('{raw}', fmtNumber(fairValueDiag?.raw))
-                  .replace('{bounded}', fmtNumber(fairValueDiag?.bounded))
-                  .replace('{min}', fmtNumber(fairValueDiag?.min))
-                  .replace('{max}', fmtNumber(fairValueDiag?.max))}
+                  .replace('{raw}', formatMoney(convertFromUsd(fairValueDiag?.raw, displayCurrency, usdToEurRate), displayCurrency))
+                  .replace('{bounded}', formatMoney(convertFromUsd(fairValueDiag?.bounded, displayCurrency, usdToEurRate), displayCurrency))
+                  .replace('{min}', formatMoney(convertFromUsd(fairValueDiag?.min, displayCurrency, usdToEurRate), displayCurrency))
+                  .replace('{max}', formatMoney(convertFromUsd(fairValueDiag?.max, displayCurrency, usdToEurRate), displayCurrency))}
               </div>
             </div>
           ) : (

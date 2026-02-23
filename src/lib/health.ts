@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { getDatabase } from '@/data/db';
 import { getProviderCoverage } from '@/data/repositories/provider_merge';
 import { detectRegime } from '@/regime/engine';
+import { getRecentEtlRuns, type EtlRun } from './etl_log';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -76,6 +77,7 @@ export interface HealthSnapshot {
   };
   provider_coverage: ProviderHealthData[];
   quality_monitor: QualityMonitorData;
+  etl_runs: EtlRun[];
 }
 
 export interface ProviderHealthData {
@@ -826,6 +828,7 @@ function buildHealthSnapshot(): HealthSnapshot {
         universes: qualityMonitorUniverses,
         trend: qualityMonitorTrend,
       },
+      etl_runs: getRecentEtlRuns(20),
     };
 
     return response;

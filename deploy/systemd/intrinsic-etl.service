@@ -1,0 +1,47 @@
+[Unit]
+Description=INTRINSIC Daily ETL Pipeline
+Documentation=https://github.com/your-org/intrinsic
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=YOUR_USERNAME
+Group=YOUR_USERNAME
+WorkingDirectory=/home/YOUR_USERNAME/dev/retail-investor
+
+# Environment
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="NODE_ENV=production"
+Environment="PYTHONUNBUFFERED=1"
+
+# Load environment variables from .env file
+EnvironmentFile=-/home/YOUR_USERNAME/dev/retail-investor/.env
+
+# Execute the ETL orchestrator
+ExecStart=/home/YOUR_USERNAME/dev/retail-investor/scripts/etl/run_daily_etl_orchestrator.sh
+
+# Logging
+StandardOutput=append:/var/log/intrinsic/etl.log
+StandardError=append:/var/log/intrinsic/etl.log
+
+# Resource limits
+MemoryMax=2G
+CPUQuota=80%
+
+# Timeout (ETL can take up to 30 minutes)
+TimeoutStartSec=1800
+
+# Restart policy (don't restart on failure, we want to know about it)
+Restart=no
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/YOUR_USERNAME/dev/retail-investor/data
+ReadWritePaths=/home/YOUR_USERNAME/dev/retail-investor/logs
+ReadWritePaths=/var/log/intrinsic
+
+[Install]
+WantedBy=multi-user.target

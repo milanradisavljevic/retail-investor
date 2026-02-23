@@ -1,6 +1,8 @@
 "use client";
 
 import type { RunV1SchemaJson } from "@/types/generated/run_v1";
+import { convertFromUsd, formatMoney } from "@/lib/currency/client";
+import { useDisplayCurrency } from "@/lib/currency/useDisplayCurrency";
 
 type SymbolScore = RunV1SchemaJson["scores"][number];
 
@@ -13,6 +15,7 @@ export function StockInspector({
   score: SymbolScore;
   onClose: () => void;
 }) {
+  const { displayCurrency, usdToEurRate } = useDisplayCurrency();
   const evidence = score.evidence;
   const priceTarget = score.price_target;
 
@@ -76,7 +79,9 @@ export function StockInspector({
               <div>
                 <div className="text-xs text-text-tertiary mb-1">Fair Value</div>
                 <div className="text-xl font-bold text-text-primary font-mono">
-                  ${priceTarget.fair_value?.toFixed(2) || "—"}
+                  {priceTarget.fair_value !== undefined && priceTarget.fair_value !== null
+                    ? formatMoney(convertFromUsd(priceTarget.fair_value, displayCurrency, usdToEurRate), displayCurrency)
+                    : "—"}
                 </div>
               </div>
               <div>

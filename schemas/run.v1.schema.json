@@ -125,6 +125,52 @@
       }
     },
 
+    "quality_gate": {
+      "type": "object",
+      "description": "Run-level investability gate derived from data quality signals",
+      "required": ["status", "blocked", "reasons", "metrics", "thresholds", "evaluated_at"],
+      "properties": {
+        "status": { "type": "string", "enum": ["green", "yellow", "red"] },
+        "blocked": { "type": "boolean" },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "evaluated_at": { "type": "string" },
+        "metrics": {
+          "type": "object",
+          "required": [
+            "symbol_count",
+            "avg_data_quality_score",
+            "pct_low",
+            "critical_fallback_ratio"
+          ],
+          "properties": {
+            "symbol_count": { "type": "number", "minimum": 0 },
+            "avg_data_quality_score": { "type": "number", "minimum": 0, "maximum": 100 },
+            "pct_low": { "type": "number", "minimum": 0, "maximum": 1 },
+            "critical_fallback_ratio": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "thresholds": {
+          "type": "object",
+          "required": [
+            "red_avg_data_quality_score_lt",
+            "red_pct_low_gte",
+            "red_critical_fallback_ratio_gte",
+            "yellow_avg_data_quality_score_lt",
+            "yellow_pct_low_gte",
+            "yellow_critical_fallback_ratio_gte"
+          ],
+          "properties": {
+            "red_avg_data_quality_score_lt": { "type": "number", "minimum": 0, "maximum": 100 },
+            "red_pct_low_gte": { "type": "number", "minimum": 0, "maximum": 1 },
+            "red_critical_fallback_ratio_gte": { "type": "number", "minimum": 0, "maximum": 1 },
+            "yellow_avg_data_quality_score_lt": { "type": "number", "minimum": 0, "maximum": 100 },
+            "yellow_pct_low_gte": { "type": "number", "minimum": 0, "maximum": 1 },
+            "yellow_critical_fallback_ratio_gte": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+
     "universe": {
       "type": "object",
       "required": ["definition", "symbols"],

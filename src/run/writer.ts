@@ -43,6 +43,9 @@ export function writeRunRecord(run: RunV1SchemaJson): WriteResult {
   // Save to index
   saveToIndex(run, filePath, hash);
 
+  // Save to score history
+  saveToScoreHistory(run);
+
   return {
     runId: run.run_id,
     filePath,
@@ -109,4 +112,68 @@ export function getRunHistory(
     timestamp: string;
     pickOfDay: string;
   }>;
+}
+
+/**
+ * Save scores to score_history table for trend analysis
+ */
+function saveToScoreHistory(run: RunV1SchemaJson): void {
+  const db = getDatabase();
+  
+  // Prepare insert statement
+  const insertStmt = db.prepare(`
+    INSERT INTO score_history (
+      symbol, run_date, universe, total_score,
+      valuation_score, quality_score, technical_score, risk_score,
+      rank, sector, industry
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  // Prepare delete statement for re-runs (delete existing entries for this run_date + universe)
+  const deleteStmt = db.prepare(`
+    DELETE FROM score_history WHERE run_date = ? AND universe = ?
+  `);
+
+  const runDate = run.run_date;
+  const universe = run.universe?.definition?.name || 'unknown';
+
+  // Delete any existing entries for this run (in case of re-run)
+  deleteStmt.run(runDate, universe);
+
+  // Insert all scores from this run
+  const insertMany = db.transaction((scores: any[]) => {
+    for (const score of scores) {
+      const breakdown = score.breakdown || {};
+      const raw = score.raw || {};
+      const fundamentals = raw.fundamentals || {};
+      
+      // Map breakdown fields - note: current structure uses 'fundamental' and 'technical'
+      // valuation/quality/risk may be added in future scoring engine versions
+      const valuationScore = breakdown.valuation ?? breakdown.fundamental ?? null;
+      const qualityScore = breakdown.quality ?? null;
+      const technicalScore = breakdown.technical ?? null;
+      const riskScore = breakdown.risk ?? null;
+      
+      insertStmt.run(
+        score.symbol,
+        runDate,
+        universe,
+        score.total_score ?? null,
+        valuationScore,
+        qualityScore,
+        technicalScore,
+        riskScore,
+        null, // rank - can be calculated later if needed
+        fundamentals.sector || null,
+        fundamentals.industry || score.industry || null
+      );
+    }
+  });
+
+  insertMany(run.scores || []);
+  
+  logger.info(
+    { runId: run.run_id, symbolCount: run.scores?.length || 0 },
+    'Scores saved to history'
+  );
 }

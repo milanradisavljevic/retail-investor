@@ -296,6 +296,10 @@
         "label": "Default Universe",
         "description": "Pre-selected stock universe"
       },
+      "displayCurrency": {
+        "label": "Currency",
+        "description": "Display currency for prices and portfolio values"
+      },
       "dateFormat": {
         "label": "Date Format",
         "description": "Display format for dates"
@@ -375,6 +379,10 @@
         "russell2000_full": "Russell 2000 (Full)",
         "dax_full": "DAX 40",
         "eurostoxx50": "Euro STOXX 50"
+      },
+      "displayCurrency": {
+        "USD": "USD (US Dollar)",
+        "EUR": "EUR (Euro)"
       },
       "dateFormat": {
         "EU": "EU (DD.MM.YYYY)",

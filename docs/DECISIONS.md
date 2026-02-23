@@ -221,3 +221,28 @@ const index = parseInt(seed.substring(0, 8), 16) % top5.length;
 
 **Updated:** 2026-02-13 — Migrated from v3 to stable endpoints.
 
+---
+
+## D023: EU-Universes DQ-Gate Threshold Lowered
+
+**Decision:** Lower DQ-Gate threshold for EU universes from >90 to >80.
+
+**Rationale:**
+- yfinance has limited fundamentals coverage for European tickers (.PA, .L)
+- CAC 40 and FTSE 100 consistently show DQ 80-85 due to missing `debtToEquity`, `roe`, `peRatio`, `pbRatio`
+- Lowering threshold prevents false negatives while maintaining data quality visibility
+
+**Impact:**
+- CAC 40 (DQ 80.7): Yellow gate → Green gate (acceptable)
+- FTSE 100 (DQ 85.0): Already green
+- DAX 40 (DQ 95.8): Unchanged (excellent)
+- EURO STOXX 50 (DQ 92.5): Unchanged (excellent)
+
+**Trade-offs:**
+- Pro: EU universes remain production-ready
+- Pro: Consistent with actual data availability
+- Con: Lower bar for EU vs US (transparent via DQ display)
+
+**Date:** 2026-02-23
+**Status:** ✅ Implemented
+

@@ -1,6 +1,8 @@
 "use client";
 
 import { formatPercent } from "@/lib/percent";
+import type { DisplayCurrency } from "@/lib/settings/types";
+import { convertFromUsd, formatMoney } from "@/lib/currency/client";
 
 type ConfidenceLevel = "high" | "medium" | "low";
 
@@ -21,6 +23,8 @@ interface PriceTargetProps {
   deepAnalysisChange?: { from: boolean | null | undefined; to: boolean | null | undefined } | null;
   /** Whether to show the deep analysis warning box. Defaults to false (for compact/dashboard views). */
   showDeepAnalysisWarning?: boolean;
+  displayCurrency?: DisplayCurrency;
+  usdToEurRate?: number;
 }
 
 function getDeltaColor(value: number): string {
@@ -51,13 +55,18 @@ function PriceBox({
   delta,
   highlight,
   muted,
+  displayCurrency,
+  usdToEurRate,
 }: {
   label: string;
   value: number;
   delta?: number;
   highlight?: boolean;
   muted?: boolean;
+  displayCurrency: DisplayCurrency;
+  usdToEurRate: number;
 }) {
+  const converted = convertFromUsd(value, displayCurrency, usdToEurRate);
   return (
     <div
       className={`text-center p-2 rounded ${
@@ -72,7 +81,7 @@ function PriceBox({
           highlight ? "text-accent-blue" : "text-text-primary"
         } ${muted ? "text-text-muted" : ""}`}
       >
-        ${value.toFixed(2)}
+        {formatMoney(converted, displayCurrency)}
       </div>
       {delta !== undefined && (
         <div className={`text-xs ${getDeltaColor(delta)}`}>
@@ -145,6 +154,8 @@ export function PriceTargetCard(props: PriceTargetProps) {
     confidenceChange,
     deepAnalysisChange,
     showDeepAnalysisWarning = false,
+    displayCurrency = "USD",
+    usdToEurRate = 1,
   } = props;
 
   const isNegativeUpside = upside_pct < 0;
@@ -157,17 +168,17 @@ export function PriceTargetCard(props: PriceTargetProps) {
       {/* Header */}
       <div className="flex justify-between items-center">
         <span className="text-text-secondary text-sm font-medium">
-          Price Target
+          Price Target ({displayCurrency})
         </span>
         <ConfidenceBadge level={confidence} />
       </div>
 
       {/* Price Grid */}
       <div className="grid grid-cols-4 gap-2">
-        <PriceBox label="Current" value={current_price} />
-        <PriceBox label="Entry Target" value={target_buy_price} highlight />
-        <PriceBox label="Exit Target" value={target_sell_price} delta={expected_return_pct} />
-        <PriceBox label="Fair Value" value={fair_value} delta={upside_pct} muted />
+        <PriceBox label="Current" value={current_price} displayCurrency={displayCurrency} usdToEurRate={usdToEurRate} />
+        <PriceBox label="Entry Target" value={target_buy_price} highlight displayCurrency={displayCurrency} usdToEurRate={usdToEurRate} />
+        <PriceBox label="Exit Target" value={target_sell_price} delta={expected_return_pct} displayCurrency={displayCurrency} usdToEurRate={usdToEurRate} />
+        <PriceBox label="Fair Value" value={fair_value} delta={upside_pct} muted displayCurrency={displayCurrency} usdToEurRate={usdToEurRate} />
       </div>
 
       {isNegativeUpside && (
@@ -246,12 +257,16 @@ export function PriceTargetCompact({
   expected_return_pct = 0,
   holding_period_months = 0,
   confidence = "medium",
+  displayCurrency = "USD",
+  usdToEurRate = 1,
 }: Pick<
   PriceTargetProps,
   | "target_sell_price"
   | "expected_return_pct"
   | "holding_period_months"
   | "confidence"
+  | "displayCurrency"
+  | "usdToEurRate"
 >) {
   const getReturnColor = (pct: number) => {
     if (pct >= 0.15) return "text-accent-green";
@@ -262,7 +277,7 @@ export function PriceTargetCompact({
   return (
     <div className="flex items-center gap-3 text-sm">
       <span className="text-text-primary font-medium">
-        ${target_sell_price.toFixed(2)}
+        {formatMoney(convertFromUsd(target_sell_price, displayCurrency, usdToEurRate), displayCurrency)}
       </span>
       <span className={getReturnColor(expected_return_pct)}>
         {formatPercent(expected_return_pct, { signed: true })}

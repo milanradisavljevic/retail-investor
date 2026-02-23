@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     language: 'de',
     theme: 'dark',
     defaultUniverse: 'russell2000_full',
+    displayCurrency: 'USD',
   },
   analysis: {
     defaultStrategy: 'compounder',
@@ -46,6 +47,10 @@ export const SETTINGS_OPTIONS = {
     { value: 'cac40-full', label: 'CAC 40 (Voll)' },
     { value: 'eurostoxx50-full', label: 'EURO STOXX 50 (Voll)' },
     { value: 'ftse100-full', label: 'FTSE 100 (Voll)' },
+  ],
+  displayCurrency: [
+    { value: 'USD', label: 'USD (US-Dollar)' },
+    { value: 'EUR', label: 'EUR (Euro)' },
   ],
   strategy: [
     { value: 'compounder', label: 'Compounder' },
@@ -102,6 +107,10 @@ export const SETTINGS_LABELS = {
     defaultUniverse: {
       label: 'Standard-Universe',
       description: 'Vorausgewähltes Aktien-Universe',
+    },
+    displayCurrency: {
+      label: 'Währung',
+      description: 'Anzeige-Währung für Preise und Portfolio-Werte',
     },
   },
   analysis: {

@@ -4,10 +4,11 @@ import { useMemo, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { PriceTargetCard } from './PriceTargetCard';
 import { ScoreBreakdownModal } from './ScoreBreakdownModal';
-import { MiniPerfChart } from './MiniPerfChart';
 import { InlineMiniPerfChart } from './InlineMiniPerfChart';
 import { buildScoreBreakdown } from '@/lib/scoreBreakdown';
 import { formatPercent } from '@/lib/percent';
+import { convertFromUsd, formatMoney } from '@/lib/currency/client';
+import { useDisplayCurrency } from '@/lib/currency/useDisplayCurrency';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
 import type { SymbolDelta } from '@/lib/runDelta';
 
@@ -64,11 +65,18 @@ type CardItem = {
 type Props = {
   topScores: CardItem[];
   tableScores: CardItem[];
+  qualityBlocked?: boolean;
 };
 
-export function ScoreBoardClient({ topScores, tableScores }: Props) {
+export function ScoreBoardClient({ topScores, tableScores, qualityBlocked = false }: Props) {
   const [selected, setSelected] = useState<ScoreEntry | null>(null);
   const breakdown = useMemo(() => (selected ? buildScoreBreakdown(selected) : null), [selected]);
+  const { displayCurrency, usdToEurRate } = useDisplayCurrency();
+  const etfModeActive = useMemo(() => {
+    const all = [...topScores, ...tableScores].map((item) => item.score);
+    if (all.length === 0) return false;
+    return all.every((score) => score.evidence.valuation === 0 && score.evidence.quality === 0);
+  }, [tableScores, topScores]);
 
   const getReturnColor = (pct: number | undefined) => {
     if (pct === undefined || pct === null) return 'text-text-muted';
@@ -87,6 +95,16 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
 
   return (
     <>
+      {qualityBlocked && (
+        <div className="mb-4 rounded-xl border border-accent-red/40 bg-accent-red/10 p-3 text-sm text-accent-red">
+          Investierbare Aktionen sind deaktiviert, bis die Datenqualitaet wieder im sicheren Bereich liegt.
+        </div>
+      )}
+      {etfModeActive && (
+        <div className="mb-4 rounded-xl border border-accent-blue/40 bg-accent-blue/10 p-3 text-sm text-accent-blue">
+          ETF-Modus aktiv: Valuation/Quality sind deaktiviert. Total Score = Durchschnitt aus Technical und Risk.
+        </div>
+      )}
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 mb-10">
         {topScores.length === 0 && (
           <div className="col-span-full rounded-lg border border-navy-700 bg-navy-800 p-4 text-sm text-text-muted">
@@ -110,15 +128,11 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
             if (dqScore !== null && dqScore < 70) return '⚠ Limited data';
             return null;
           })();
-
-          return (
-            <Link
-              href={`/briefing/${score.symbol}`}
-              key={score.symbol}
-              className={`block rounded-xl border p-5 transition-all hover:border-navy-500 bg-navy-800 min-w-0 ${
-                isPickOfDay ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-navy-700'
-              }`}
-            >
+          const cardClassName = `block rounded-xl border p-5 transition-all hover:border-navy-500 bg-navy-800 min-w-0 ${
+            isPickOfDay ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-navy-700'
+          } ${qualityBlocked ? 'opacity-80 cursor-not-allowed' : ''}`;
+          const cardContent = (
+            <>
               <div className="mb-4 flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -136,8 +150,9 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                 <div className="ml-4 text-right">
                   <button
                     type="button"
-                    onClick={(e) => onOpen(e, score)}
-                    className={`text-2xl font-bold ${getScoreColor(score.total_score)} hover:underline`}
+                    onClick={qualityBlocked ? undefined : (e) => onOpen(e, score)}
+                    disabled={qualityBlocked}
+                    className={`text-2xl font-bold ${getScoreColor(score.total_score)} hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60`}
                   >
                     {score.total_score.toFixed(1)}
                   </button>
@@ -175,13 +190,15 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                 </div>
               </div>
 
-              {priceTarget && (
+              {priceTarget && !qualityBlocked && (
                 <div className="mt-4 border-t border-dashed border-slate-600 pt-3">
                   <PriceTargetCard
                     {...priceTarget}
                     returnDelta={deltaReturn}
                     confidenceChange={confidenceChange}
                     deepAnalysisChange={deepAnalysisChange}
+                    displayCurrency={displayCurrency}
+                    usdToEurRate={usdToEurRate}
                   />
                 </div>
               )}
@@ -198,6 +215,25 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                   {dataWarning}
                 </p>
               )}
+              {qualityBlocked && (
+                <p className="mt-3 text-xs text-accent-red">
+                  Price target und Drilldown sind fuer diesen Run deaktiviert.
+                </p>
+              )}
+            </>
+          );
+
+          if (qualityBlocked) {
+            return (
+              <div key={score.symbol} className={cardClassName}>
+                {cardContent}
+              </div>
+            );
+          }
+
+          return (
+            <Link href={`/briefing/${score.symbol}`} key={score.symbol} className={cardClassName}>
+              {cardContent}
             </Link>
           );
         })}
@@ -240,8 +276,9 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                       <td className={`px-4 py-3 text-right text-sm font-semibold ${getScoreColor(score.total_score)}`}>
                         <button
                           type="button"
-                          onClick={(e) => onOpen(e, score)}
-                          className="hover:underline"
+                          onClick={qualityBlocked ? undefined : (e) => onOpen(e, score)}
+                          disabled={qualityBlocked}
+                          className="hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60"
                         >
                           {score.total_score.toFixed(1)}
                         </button>
@@ -256,7 +293,12 @@ export function ScoreBoardClient({ topScores, tableScores }: Props) {
                         {score.breakdown.technical.toFixed(1)}
                       </td>
                       <td className="px-4 py-3 text-right text-sm font-medium text-text-primary">
-                        {priceTarget?.target_sell_price ? `$${priceTarget.target_sell_price.toFixed(2)}` : '—'}
+                        {priceTarget?.target_sell_price
+                          ? formatMoney(
+                              convertFromUsd(priceTarget.target_sell_price, displayCurrency, usdToEurRate),
+                              displayCurrency
+                            )
+                          : '—'}
                       </td>
                       <td className={`px-4 py-3 text-right text-sm font-medium ${getReturnColor(priceTarget?.expected_return_pct)}`}>
                         <div>

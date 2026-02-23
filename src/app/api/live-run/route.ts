@@ -43,6 +43,11 @@ type LiveRunOutput = {
   asOfDate: string;
   universe: string;
   strategy: string;
+  qualityGate?: {
+    status: 'green' | 'yellow' | 'red';
+    blocked: boolean;
+    reasons: string[];
+  };
   topPicks: Array<{
     rank: number;
     symbol: string;
@@ -141,12 +146,21 @@ async function executeScoringRun(
       console.log('[LiveRun] Run complete:', writeResult.runId);
 
       const topK = Math.max(1, Math.min(body.topK ?? 10, 20));
+      const qualityGate = runRecord.quality_gate
+        ? {
+            status: runRecord.quality_gate.status,
+            blocked: runRecord.quality_gate.blocked,
+            reasons: runRecord.quality_gate.reasons,
+          }
+        : undefined;
+      const blockedByQualityGate = qualityGate?.blocked === true;
       const output: LiveRunOutput = {
         runId: runRecord.run_id,
         asOfDate: runRecord.as_of_date,
         universe: runRecord.universe?.definition?.name ?? body.universe ?? 'unknown',
         strategy: body.strategy || '4-pillar',
-        topPicks: buildPicks(runRecord, topK),
+        qualityGate,
+        topPicks: blockedByQualityGate ? [] : buildPicks(runRecord, topK),
       };
 
       return output;
@@ -245,13 +259,22 @@ export async function POST(request: NextRequest) {
 
     const topK = Math.max(1, Math.min(body.topK ?? 10, 20));
     const run = latest.run;
+    const qualityGate = run.quality_gate
+      ? {
+          status: run.quality_gate.status,
+          blocked: run.quality_gate.blocked,
+          reasons: run.quality_gate.reasons,
+        }
+      : undefined;
+    const blockedByQualityGate = qualityGate?.blocked === true;
 
     const output: LiveRunOutput = {
       runId: run.run_id,
       asOfDate: run.as_of_date,
       universe: run.universe?.definition?.name ?? 'unknown',
       strategy: body.strategy || '4-pillar',
-      topPicks: buildPicks(run, topK),
+      qualityGate,
+      topPicks: blockedByQualityGate ? [] : buildPicks(run, topK),
     };
 
     return NextResponse.json(output);

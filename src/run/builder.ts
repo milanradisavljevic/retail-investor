@@ -10,6 +10,7 @@ import { selectTopSymbols } from '@/selection/selector';
 import { selectPickOfDay } from '@/selection/pick_of_day';
 import type { ScoringResult, SymbolScore } from '@/scoring/engine';
 import type { RunV1SchemaJson } from '@/types/generated/run_v1';
+import { evaluateRunQualityGate } from '@/run/quality_gate';
 import fs from 'fs';
 import path from 'path';
 
@@ -230,6 +231,10 @@ export function buildRunRecord(
     as_of_date: asOfDateStr,
     mode: transformedMode,
     data_quality_summary: scoringResult.dataQualitySummary,
+    quality_gate: evaluateRunQualityGate(
+      scoringResult.dataQualitySummary,
+      scoringResult.scores.length
+    ),
 
     provider: {
       name: scoringResult.metadata.provider,

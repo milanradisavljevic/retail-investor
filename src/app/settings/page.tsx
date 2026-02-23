@@ -13,7 +13,7 @@ import {
   SettingsNumberInput,
   SettingsButton,
 } from '@/app/components/SettingsSection';
-import type { RiskTolerance, ScorePrecision } from '@/lib/settings/types';
+import type { DisplayCurrency, RiskTolerance, ScorePrecision } from '@/lib/settings/types';
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -143,6 +143,17 @@ export default function SettingsPage() {
               value={settings.general.defaultUniverse}
               onChange={(v) => updateCategory('general', { defaultUniverse: v })}
               options={translateOpts('universe', SETTINGS_OPTIONS.universe)}
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            label={t('settings.general.displayCurrency.label') || 'Währung'}
+            description={t('settings.general.displayCurrency.description') || 'Anzeige-Währung für Preise und Portfolio-Werte'}
+          >
+            <SettingsSelect
+              value={settings.general.displayCurrency}
+              onChange={(v) => updateCategory('general', { displayCurrency: v as DisplayCurrency })}
+              options={translateOpts('displayCurrency', SETTINGS_OPTIONS.displayCurrency)}
             />
           </SettingsRow>
         </SettingsSection>

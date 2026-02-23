@@ -18,6 +18,9 @@ import { DirtyStateIndicator } from "@/app/components/DirtyStateIndicator";
 import { RunProgressIndicator } from "@/app/components/RunProgressIndicator";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { PresetSelector } from "./components/PresetSelector";
+import { convertFromUsd, formatMoney } from "@/lib/currency/client";
+import { useDisplayCurrency } from "@/lib/currency/useDisplayCurrency";
+import type { DisplayCurrency } from "@/lib/settings/types";
 
 type PillarWeights = {
   valuation: number;
@@ -653,7 +656,17 @@ function FilterPanel({ filters, onChange, t }: { filters: FilterState; onChange:
   );
 }
 
-function LiveRunOutput({ picks, t }: { picks: LivePick[]; t: (key: string) => string }) {
+function LiveRunOutput({
+  picks,
+  t,
+  displayCurrency,
+  usdToEurRate,
+}: {
+  picks: LivePick[];
+  t: (key: string) => string;
+  displayCurrency: DisplayCurrency;
+  usdToEurRate: number;
+}) {
   return (
     <div className="space-y-3">
       {picks.map((pick) => (
@@ -683,13 +696,17 @@ function LiveRunOutput({ picks, t }: { picks: LivePick[]; t: (key: string) => st
             <div className="bg-[#111827] rounded-lg border border-[#1F2937] px-3 py-2">
               <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Einstieg</p>
               <p className="text-sm text-[#F1F5F9]">
-                {pick.currentPrice !== null ? `$${pick.currentPrice.toFixed(2)}` : "--"}
+                {pick.currentPrice !== null
+                  ? formatMoney(convertFromUsd(pick.currentPrice, displayCurrency, usdToEurRate), displayCurrency)
+                  : "--"}
               </p>
             </div>
             <div className="bg-[#111827] rounded-lg border border-[#1F2937] px-3 py-2">
               <p className="text-xs text-[#94A3B8] uppercase tracking-wide">Ziel</p>
               <p className="text-sm text-[#F1F5F9]">
-                {pick.targetPrice !== null ? `$${pick.targetPrice.toFixed(2)}` : "--"}
+                {pick.targetPrice !== null
+                  ? formatMoney(convertFromUsd(pick.targetPrice, displayCurrency, usdToEurRate), displayCurrency)
+                  : "--"}
               </p>
             </div>
             <div className="bg-[#111827] rounded-lg border border-[#1F2937] px-3 py-2">
@@ -802,6 +819,7 @@ export default function StrategyLabClient({
   recentBacktests?: Array<{ title: string; ago: string; metrics: string }>;
 }) {
   const { t } = useTranslation();
+  const { displayCurrency, usdToEurRate } = useDisplayCurrency();
   const [activeTab, setActiveTab] = useState<"live" | "backtest">("live");
 
   // Initialize default universe
@@ -1415,7 +1433,12 @@ export default function StrategyLabClient({
                 industry: p.sector || "Unbekannt" 
               }))} 
             />
-            <LiveRunOutput picks={visiblePicks} t={t} />
+            <LiveRunOutput
+              picks={visiblePicks}
+              t={t}
+              displayCurrency={displayCurrency}
+              usdToEurRate={usdToEurRate}
+            />
           </SectionCard>
         </div>
       )}

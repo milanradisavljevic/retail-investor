@@ -1,22 +1,20 @@
 {
-  "version": "1.0.0",
-  "generated_at": "2026-01-24",
+  "version": "1.1.0",
+  "generated_at": "2026-02-23",
   "universes": {
     "us": [
       {"id": "sp500-full", "name": "S&P 500", "symbolCount": 501},
-      {"id": "nasdaq100", "name": "NASDAQ 100", "symbolCount": 100},
+      {"id": "nasdaq100-full", "name": "NASDAQ 100", "symbolCount": 100},
       {"id": "russell2000_full", "name": "Russell 2000", "symbolCount": 1943}
     ],
     "europe": [
-      {"id": "dax_full", "name": "DAX 40", "symbolCount": 40},
-      {"id": "cac40_full", "name": "CAC 40", "symbolCount": 40},
-      {"id": "ftse100_full", "name": "FTSE 100", "symbolCount": 100},
-      {"id": "eurostoxx50_full", "name": "Euro Stoxx 50", "symbolCount": 49}
+      {"id": "dax40-full", "name": "DAX 40", "symbolCount": 40},
+      {"id": "cac40-full", "name": "CAC 40", "symbolCount": 40},
+      {"id": "ftse100-full", "name": "FTSE 100", "symbolCount": 100},
+      {"id": "eurostoxx50-full", "name": "Euro Stoxx 50", "symbolCount": 50}
     ],
     "asia": [
-      {"id": "nikkei225_full", "name": "Nikkei 225", "symbolCount": 54},
-      {"id": "sensex_full", "name": "SENSEX", "symbolCount": 11},
-      {"id": "shanghai_comp_full", "name": "Shanghai Composite", "symbolCount": 60}
+      {"id": "nikkei225_full", "name": "Nikkei 225", "symbolCount": 225}
     ],
     "latam": [
       {"id": "ibovespa_full", "name": "Ibovespa", "symbolCount": 86}

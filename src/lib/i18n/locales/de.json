@@ -296,6 +296,10 @@
         "label": "Standard-Universum",
         "description": "Vorausgewähltes Aktien-Universum"
       },
+      "displayCurrency": {
+        "label": "Währung",
+        "description": "Anzeige-Währung für Preise und Portfolio-Werte"
+      },
       "dateFormat": {
         "label": "Datumsformat",
         "description": "Darstellung von Daten"
@@ -375,6 +379,10 @@
         "russell2000_full": "Russell 2000 (Voll)",
         "dax_full": "DAX 40",
         "eurostoxx50": "Euro STOXX 50"
+      },
+      "displayCurrency": {
+        "USD": "USD (US-Dollar)",
+        "EUR": "EUR (Euro)"
       },
       "dateFormat": {
         "EU": "EU (TT.MM.JJJJ)",

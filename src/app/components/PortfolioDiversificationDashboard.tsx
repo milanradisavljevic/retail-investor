@@ -16,10 +16,14 @@ import {
 import { AlertTriangle, Info } from 'lucide-react';
 import type { PortfolioPosition } from '@/types/portfolio';
 import { FX_RATES_TO_USD } from '@/types/portfolio';
+import type { DisplayCurrency } from '@/lib/settings/types';
+import { convertFromUsd, formatMoney } from '@/lib/currency/client';
 
 interface PortfolioDiversificationDashboardProps {
   positions: PortfolioPosition[];
   totalValueUsd: number;
+  displayCurrency: DisplayCurrency;
+  usdToEurRate: number;
 }
 
 interface SectorRow {
@@ -84,14 +88,6 @@ const REGION_BY_SUFFIX: Record<string, string> = {
   AX: 'Australien',
   SA: 'Brasilien',
 };
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 function getPositionValueUsd(position: PortfolioPosition): number {
   if (
@@ -159,10 +155,14 @@ function ExposureBarCard({
   title,
   data,
   fill,
+  displayCurrency,
+  usdToEurRate,
 }: {
   title: string;
   data: ExposureRow[];
   fill: string;
+  displayCurrency: DisplayCurrency;
+  usdToEurRate: number;
 }) {
   const chartData = data.map((row) => ({
     ...row,
@@ -202,7 +202,9 @@ function ExposureBarCard({
                   <div className="rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 shadow-lg">
                     <div className="text-xs font-medium text-text-primary">{row.name}</div>
                     <div className="text-xs text-text-muted">{row.pctValue.toFixed(1)}%</div>
-                    <div className="text-xs text-text-secondary">{formatCurrency(row.value)}</div>
+                    <div className="text-xs text-text-secondary">
+                      {formatMoney(convertFromUsd(row.value, displayCurrency, usdToEurRate), displayCurrency)}
+                    </div>
                   </div>
                 );
               }}
@@ -218,6 +220,8 @@ function ExposureBarCard({
 export default function PortfolioDiversificationDashboard({
   positions,
   totalValueUsd,
+  displayCurrency,
+  usdToEurRate,
 }: PortfolioDiversificationDashboardProps) {
   const {
     sectorRows,
@@ -348,7 +352,9 @@ export default function PortfolioDiversificationDashboard({
                       <div className="rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 shadow-lg">
                         <div className="text-xs font-medium text-text-primary">{row.name}</div>
                         <div className="text-xs text-text-muted">{(row.pct * 100).toFixed(1)}%</div>
-                        <div className="text-xs text-text-secondary">{formatCurrency(row.value)}</div>
+                        <div className="text-xs text-text-secondary">
+                          {formatMoney(convertFromUsd(row.value, displayCurrency, usdToEurRate), displayCurrency)}
+                        </div>
                       </div>
                     );
                   }}
@@ -374,7 +380,7 @@ export default function PortfolioDiversificationDashboard({
                 <tr className="border-b border-navy-700 text-left text-xs uppercase tracking-wider text-text-muted">
                   <th className="pb-2 font-medium">Sektor</th>
                   <th className="pb-2 font-medium">Positionen</th>
-                  <th className="pb-2 font-medium">Wert (USD)</th>
+                  <th className="pb-2 font-medium">Wert ({displayCurrency})</th>
                   <th className="pb-2 font-medium">Anteil</th>
                   <th className="pb-2 text-right font-medium">Avg Score</th>
                 </tr>
@@ -384,7 +390,9 @@ export default function PortfolioDiversificationDashboard({
                   <tr key={row.name} className="border-b border-navy-700/70 last:border-0">
                     <td className="py-2 text-text-primary">{row.name}</td>
                     <td className="py-2 text-text-secondary">{row.positions}</td>
-                    <td className="py-2 text-text-secondary">{formatCurrency(row.value)}</td>
+                    <td className="py-2 text-text-secondary">
+                      {formatMoney(convertFromUsd(row.value, displayCurrency, usdToEurRate), displayCurrency)}
+                    </td>
                     <td className="py-2">
                       <div className="w-36">
                         <div className="mb-1 flex items-center justify-between text-xs text-text-muted">
@@ -419,8 +427,20 @@ export default function PortfolioDiversificationDashboard({
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ExposureBarCard title="Währungs-Exposure" data={currencyRows} fill="#60A5FA" />
-        <ExposureBarCard title="Geographie-Verteilung" data={geoRows} fill="#34D399" />
+        <ExposureBarCard
+          title="Währungs-Exposure"
+          data={currencyRows}
+          fill="#60A5FA"
+          displayCurrency={displayCurrency}
+          usdToEurRate={usdToEurRate}
+        />
+        <ExposureBarCard
+          title="Geographie-Verteilung"
+          data={geoRows}
+          fill="#34D399"
+          displayCurrency={displayCurrency}
+          usdToEurRate={usdToEurRate}
+        />
       </div>
 
       {recommendation && (
